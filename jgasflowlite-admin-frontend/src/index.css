@@ -1,0 +1,735 @@
+/* src/index.css */
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * JDent SaaS theme (teal)
+ *
+ *  - Primary palette is "lime"  a green/yellow blend.
+ *  - The Tailwind `purple-*` palette is **remapped** to the same lime values,
+ *    so every existing `bg-purple-50`, `text-purple-600`, `from-purple-600` …
+ *    utility class automatically renders the new colour. No JSX edits needed.
+ *  - Border radius scale is reduced one notch so all `rounded-*` utilities
+ *    feel less rounded.
+ *
+ * To change the theme, edit only the variables below.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Primary palette (lime / green-yellow) ────────────────────────────── */
+  --color-primary-50:  #f0fdfa;
+  --color-primary-100: #ccfbf1;
+  --color-primary-200: #99f6e4;
+  --color-primary-300: #5eead4;
+  --color-primary-400: #2dd4bf;
+  --color-primary-500: #14b8a6;   /* brand accent */
+  --color-primary-600: #0d9488;   /* primary action */
+  --color-primary-700: #0f766e;
+  --color-primary-800: #115e59;
+  --color-primary-900: #134e4a;
+  --color-primary-950: #042f2e;
+
+  /* ── Remap Tailwind's `purple-*` palette to the same values ───────────
+   * This makes the entire existing UI green-yellow without renaming
+   * any class in any component. */
+  --color-purple-50:  #f0fdfa;
+  --color-purple-100: #ccfbf1;
+  --color-purple-200: #99f6e4;
+  --color-purple-300: #5eead4;
+  --color-purple-400: #2dd4bf;
+  --color-purple-500: #14b8a6;
+  --color-purple-600: #0d9488;
+  --color-purple-700: #0f766e;
+  --color-purple-800: #115e59;
+  --color-purple-900: #134e4a;
+  --color-purple-950: #042f2e;
+
+  /* Surfaces */
+  --color-background: var(--color-primary-50);
+  --color-foreground: var(--color-gray-900);
+  --color-card: var(--color-white);
+  --color-card-foreground: var(--color-gray-900);
+  --color-border: var(--color-primary-200);
+  --color-input: var(--color-primary-100);
+  --color-ring: var(--color-primary-500);
+
+  /* ── Border radius  one notch tighter across the scale ──────────────
+   * Tailwind defaults are commented for reference. */
+  --radius-xs:  0.0625rem;  /* was 0.125rem  */
+  --radius-sm:  0.125rem;   /* was 0.25rem   */
+  --radius-md:  0.25rem;    /* was 0.375rem  */
+  --radius-lg:  0.375rem;   /* was 0.5rem    */
+  --radius-xl:  0.5rem;     /* was 0.75rem   */
+  --radius-2xl: 0.625rem;   /* was 1rem      */
+  --radius-3xl: 0.875rem;   /* was 1.5rem    */
+  --radius-4xl: 1.25rem;    /* was 2rem      */
+}
+
+/* ── Brand gradient / glow helpers ─────────────────────────────────────────
+ * Class names kept as `purple-*` so existing JSX (`className="purple-gradient"`)
+ * keeps working. The colours inside now resolve to the lime palette. */
+
+.purple-gradient,
+.brand-gradient {
+  background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-700) 100%);
+}
+
+.text-gradient-purple,
+.text-gradient-brand {
+  background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.shadow-purple-glow,
+.shadow-brand-glow {
+  box-shadow: 0 10px 30px -5px color-mix(in srgb, var(--color-primary-500) 25%, transparent);
+}
+
+.hover\:shadow-purple-glow:hover,
+.hover\:shadow-brand-glow:hover {
+  box-shadow: 0 20px 40px -10px color-mix(in srgb, var(--color-primary-500) 35%, transparent);
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode global styles */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+@supports (scrollbar-width: thin) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary-500) var(--color-primary-50);
+  }
+  .dark * {
+    scrollbar-color: var(--color-primary-600) #1f2937;
+  }
+}
+
+@media (hover: hover) {
+  ::-webkit-scrollbar { width: 8px; }
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-primary-50);
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-track { background: #1f2937; }
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--color-primary-500), var(--color-primary-700));
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--color-primary-500), var(--color-primary-700));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, var(--color-primary-600), var(--color-primary-800));
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, var(--color-primary-400), var(--color-primary-600));
+}
+
+/* Sidebar scrollbar */
+.sidebar-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--color-primary-300), var(--color-primary-500));
+  border-radius: 3px;
+}
+.dark .sidebar-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--color-primary-700), var(--color-primary-600));
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, var(--color-primary-400), var(--color-primary-600));
+}
+.dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, var(--color-primary-500), var(--color-primary-700));
+}
+
+/* Search results scrollbar */
+.search-results-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary-400) var(--color-primary-100);
+}
+.dark .search-results-scroll {
+  scrollbar-color: var(--color-primary-600) #1f2937;
+}
+.search-results-scroll::-webkit-scrollbar { width: 8px; }
+.search-results-scroll::-webkit-scrollbar-track {
+  background: var(--color-primary-100);
+  border-radius: 4px;
+}
+.dark .search-results-scroll::-webkit-scrollbar-track { background: #1f2937; }
+.search-results-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-primary-400);
+  border-radius: 4px;
+}
+.dark .search-results-scroll::-webkit-scrollbar-thumb { background: var(--color-primary-600); }
+.search-results-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-primary-500); }
+.dark .search-results-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-primary-700); }
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/*
+ * Shimmer effect  used by skeleton placeholders during page load. A pale
+ * highlight sweeps across the block left→right on loop. Disable transitions
+ * globally would otherwise jitter the gradient  the block-level `transition`
+ * override below stops that.
+ */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-block {
+  background-image: linear-gradient(
+    90deg,
+    rgb(243 244 246) 0%,
+    rgb(229 231 235) 50%,
+    rgb(243 244 246) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+  transition: none;
+}
+
+.dark .shimmer-block {
+  background-image: linear-gradient(
+    90deg,
+    rgb(55 65 81) 0%,
+    rgb(75 85 99) 50%,
+    rgb(55 65 81) 100%
+  );
+}
+
+/*
+ * A burst of signal running along the trace.
+ *
+ * The path carries pathLength="100", which renormalises every dash unit to a
+ * percent of its own length. Without that the dash pattern would have to be
+ * guessed against the real geometry, and the burst would either sit still on
+ * a short path or vanish for most of the cycle on a long one.
+ */
+/*
+ * The orb's mesh, firing.
+ *
+ * `neuralPulse` sends a short bright dash travelling along an edge and
+ * `neuralFire` flashes a node. Each element carries its own animation-delay,
+ * which is the whole trick: 34 nodes and ~60 edges out of step read as
+ * activity, whereas one shared clock reads as a blink.
+ *
+ * Both run in EVERY state. The orb should be one object doing something at
+ * different speeds, not a different object per state, so the duration is set
+ * inline from the tempo dial and the value here is only a fallback.
+ *
+ * `transform-box: fill-box` is not optional on the nodes. Without it an SVG
+ * circle scales about the viewBox origin and the dots fly off the top-left
+ * corner instead of swelling in place.
+ */
+@keyframes neuralPulse {
+  0%   { stroke-dashoffset: 26; opacity: 0.25; }
+  45%  { opacity: 1; }
+  100% { stroke-dashoffset: -26; opacity: 0.25; }
+}
+
+@keyframes neuralFire {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.85); }
+}
+
+.neural-edge {
+  stroke-dasharray: 5 21;
+  animation: neuralPulse 3.6s linear infinite;
+}
+
+.neural-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: neuralFire 4.2s ease-in-out infinite;
+}
+
+/*
+ * HUD motion.
+ *
+ * `hudScan` runs a bright line down a panel, the readout equivalent of a
+ * refresh; `hudTicker` slides the footer strip. Both are decoration and carry
+ * no information, which is deliberate: the panel shows real platform figures,
+ * so anything that MOVES on its own must be visibly abstract. Invented
+ * numbers that look like metrics are the one thing a reference image can
+ * afford and a real admin panel cannot.
+ */
+/*
+ * Panels arriving and leaving.
+ *
+ * KEYFRAMES, NOT A TRANSITION. A transition needs the element to exist in
+ * its start state for a frame before the end state is applied, which means
+ * waiting on requestAnimationFrame — and rAF is throttled in a background
+ * tab and on a loaded machine. A panel whose entrance is gated on it can
+ * open INVISIBLE and stay that way. An animation runs from its own keyframes
+ * the moment it is attached, with no second pass to miss.
+ *
+ * The travel direction comes in as --hud-from, so one pair of keyframes
+ * serves every edge.
+ */
+/*
+ * The voice screen opening and closing.
+ *
+ * It grows out of the button that opened it and shrinks back into it, the
+ * way a window does on a Mac. `transform-origin` is set inline from the
+ * button's own position, so the motion starts where the eye already is
+ * rather than from the middle of the screen.
+ *
+ * The close is the same animation reversed, which is the reason the overlay
+ * cannot simply unmount on click: React would take it away on the frame the
+ * state flips and there would be nothing left to animate.
+ */
+@keyframes vcOpen {
+  from { opacity: 0; transform: scale(0.34); }
+  /* Opaque well before it stops growing: the eye reads "it is here" from
+     opacity and "it came from there" from the scale, so finishing the fade
+     early makes the same duration feel shorter. */
+  55%  { opacity: 1; }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes vcClose {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.34); }
+}
+
+/*
+ * 240ms, and from 0.34 rather than from almost nothing.
+ *
+ * Both numbers are about cost, not taste. A 12x scale change re-rasterises
+ * every glyph and vector on the screen several times on the way up, because
+ * the texture the compositor cached at one scale is useless at the next; a
+ * 3x change is one or two re-rasters. And 420ms of that is long enough to
+ * watch, which is what "it goes stuck" means - a cheap 240ms animation is
+ * perceived as faster than an expensive 420ms one even when neither drops a
+ * frame.
+ */
+.vc-open {
+  animation: vcOpen 240ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.vc-close {
+  animation: vcClose 150ms cubic-bezier(0.4, 0, 1, 0.5) both;
+}
+
+/* Promote it to its own layer for the duration, so the scale is the
+   compositor's job and not a repaint of everything underneath. */
+.vc-open,
+.vc-close {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/*
+ * While the screen is moving, nothing inside it may be expensive.
+ *
+ * THIS IS THE FIX, and it is worth being precise about why. `backdrop-filter`
+ * samples whatever is behind the element and blurs it. Inside an ancestor
+ * that is being scaled, "whatever is behind" maps to a different region on
+ * every single frame, so the blur cannot be cached and is recomputed from
+ * scratch - five full-size panels at a 24px radius, sixty times a second, on
+ * top of a canvas redrawing a neuron mesh and nine CSS animations. That is
+ * the stall. Switching the blur off for 240ms costs a frosted edge nobody is
+ * looking at during a transform, and hands the compositor an animation it
+ * can actually run.
+ */
+.vc-busy * {
+  /* Standard property only. Writing the -webkit- alias beside it made the
+     build collapse the pair and keep ONLY the prefixed one, which is
+     Safari-only, so in Chrome the rule did nothing and the blur stayed up
+     through the whole transform. The compiled stylesheet is checked for
+     this now. */
+  backdrop-filter: none !important;
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vc-open,
+  .vc-close {
+    animation-duration: 1ms;
+  }
+}
+
+/*
+ * A finding arriving as a card.
+ *
+ * It comes forward out of the screen rather than sliding in from an edge:
+ * these are overlays over a scene, not panels in a layout, and the depth is
+ * what says so. `--pop-rx` carries the card's resting angle so one pair of
+ * keyframes serves the left and right sides, which face inward.
+ */
+@keyframes hudPop {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) rotateY(var(--pop-ry, 0deg)) translateZ(-80px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    /* `--pop-tz` is the card's RESTING distance, set per card by its age, so
+       the stack has real depth instead of four coplanar rectangles. */
+    transform: perspective(1200px) rotateY(var(--pop-ry, 0deg))
+      translateZ(var(--pop-tz, 0px)) scale(1);
+  }
+}
+
+/*
+ * A flow from the orb to a card.
+ *
+ * It DRAWS ITSELF along the curve rather than fading in, which is what makes
+ * it read as something leaving the orb and arriving at the card. `pathLength`
+ * is 100 on the path, so these units are percentages of the curve and a long
+ * ribbon and a short one take the same time.
+ */
+@keyframes hudFlowDraw {
+  from { stroke-dashoffset: 100; opacity: 0; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
+}
+
+/*
+ * The traffic on it.
+ *
+ * The dash pattern is 3 on, 26 off, so one period is 29 and offsetting by
+ * exactly 29 repeats without a seam. Any other number makes the dashes jump
+ * once per cycle.
+ */
+@keyframes hudFlowRun {
+  from { stroke-dashoffset: 29; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.hud-flow {
+  stroke-dasharray: 100;
+  animation: hudFlowDraw 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hud-flow-run {
+  opacity: 0.75;
+  animation: hudFlowRun 2.6s linear infinite both;
+}
+
+/* The wire from the orb to a card, drawn outward as the card arrives. */
+@keyframes hudWire {
+  from { opacity: 0; transform: scaleX(0); }
+  to   { opacity: 0.7; transform: scaleX(1); }
+}
+
+.hud-pop {
+  animation: hudPop 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hud-wire-stub {
+  /* Grows from the ring outward, so the wire reads as reaching for the
+     card rather than the card reaching back. */
+  transform-origin: var(--wire-origin, left center);
+  animation: hudWire 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes hudIn {
+  from { opacity: 0; transform: var(--hud-from, translate3d(0, 14px, 0)); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes hudOut {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: var(--hud-from, translate3d(0, 14px, 0)); }
+}
+
+.hud-in {
+  animation: hudIn 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hud-out {
+  animation: hudOut 240ms ease both;
+}
+
+@keyframes hudScan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateY(1200%); opacity: 0; }
+}
+
+@keyframes hudTicker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.hud-scan {
+  animation: hudScan 7s linear infinite;
+}
+
+.hud-ticker {
+  animation: hudTicker 38s linear infinite;
+}
+
+@keyframes neuralSweep {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.neural-trace {
+  stroke-dasharray: 16 84;
+  animation: neuralSweep 2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neural-edge,
+  .neural-node,
+  .neural-trace,
+  .hud-scan,
+  .hud-ticker {
+    animation: none;
+  }
+
+  /* The panels still have to arrive and leave; they just do it at once,
+     because `animation: none` on these would strand them at opacity 0. */
+  .hud-in,
+  .hud-out,
+  .hud-pop,
+  .hud-wire-stub,
+  .hud-flow {
+    animation-duration: 1ms;
+  }
+
+  /* Traffic that never stops is the one thing here that would keep moving
+     for someone who asked for no motion at all. */
+  .hud-flow-run {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInFromTop {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in            { animation: fadeIn 0.3s ease-in-out; }
+.fade-in               { animation: fadeIn 0.3s ease-in-out; }
+.slide-in-from-left-2  { animation: slideInFromLeft 0.3s ease-in-out; }
+.slide-in-from-top-1   { animation: slideInFromTop 0.3s ease-in-out; }
+
+/* Prevent layout shifts */
+.table-container {
+  min-height: 400px;
+  transition: min-height 0.3s ease-in-out;
+}
+
+.filter-badge-enter { animation: slideInFromLeft 0.2s ease-out; }
+.filter-badge-exit  { animation: fadeIn 0.15s ease-in reverse; }
+.table-row-enter    { animation: slideInFromTop 0.3s ease-out; }
+
+.smooth-height-transition {
+  transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+/* ── Scrollbar layout stability ───────────────────────────────────────────
+ * `scrollbar-gutter: stable` lives ONLY on the shell <main> (the single
+ * scroller) so the layout doesn't shift when a page grows past the fold.
+ * It must NEVER be applied to .overflow-* boxes — that reserves an empty
+ * gutter strip beside every table/card and misaligns their headers. */
+#root { width: 100%; height: 100%; }
+main { scrollbar-gutter: stable; }
+
+/* ── Quill Rich Text Editor (uses the tighter radius scale) ───────────── */
+.quill-wrapper .ql-toolbar {
+  background: #f9fafb;
+  border-color: #e5e7eb !important;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+.quill-wrapper .ql-container {
+  border-color: #e5e7eb !important;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  font-size: 0.95rem;
+  min-height: 400px;
+}
+.quill-wrapper .ql-editor { min-height: 400px; }
+.quill-wrapper .ql-editor.ql-blank::before {
+  color: #9ca3af;
+  font-style: normal;
+}
+
+/* Quill dark mode */
+.dark .quill-wrapper .ql-toolbar {
+  background: #374151;
+  border-color: #4b5563 !important;
+}
+.dark .quill-wrapper .ql-toolbar .ql-stroke { stroke: #d1d5db; }
+.dark .quill-wrapper .ql-toolbar .ql-fill   { fill:   #d1d5db; }
+.dark .quill-wrapper .ql-toolbar .ql-picker-label { color: #d1d5db; }
+.dark .quill-wrapper .ql-toolbar .ql-picker-options {
+  background: #374151;
+  border-color: #4b5563;
+}
+.dark .quill-wrapper .ql-toolbar .ql-picker-item { color: #d1d5db; }
+
+.dark .quill-wrapper .ql-toolbar button:hover .ql-stroke,
+.dark .quill-wrapper .ql-toolbar .ql-picker-label:hover .ql-stroke {
+  stroke: var(--color-primary-400);
+}
+.dark .quill-wrapper .ql-toolbar button:hover .ql-fill,
+.dark .quill-wrapper .ql-toolbar .ql-picker-label:hover .ql-fill {
+  fill: var(--color-primary-400);
+}
+.dark .quill-wrapper .ql-toolbar button.ql-active .ql-stroke { stroke: var(--color-primary-400); }
+.dark .quill-wrapper .ql-toolbar button.ql-active .ql-fill   { fill:   var(--color-primary-400); }
+
+.dark .quill-wrapper .ql-container {
+  background: #1f2937;
+  border-color: #4b5563 !important;
+  color: #f3f4f6;
+}
+.dark .quill-wrapper .ql-editor.ql-blank::before { color: #6b7280; }
+
+/* ── Single-scroller contract ──────────────────────────────────────────
+ * html/body/#root never scroll. Every screen owns exactly ONE scroll
+ * container (the shell's <main>, or the auth page's own wrapper).
+ * Kills the double-scrollbar (body + main) glitch for good. */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Voice mode on a light surface ─────────────────────────────────────
+ * The whole screen was built for near-black: white text, white hairline
+ * borders, and panels made of white at 2-10% opacity. All of that inverts
+ * here in ONE place rather than at the ~70 call sites across the seven
+ * files that make up the surface, which is the only way the two can be
+ * kept from drifting apart.
+ *
+ * The accent colours are NOT inverted. They are the persona identity and
+ * they carry it on either background; what changes is that the canvas is
+ * handed a darker variant (`ink`), because it paints its own colours and
+ * no stylesheet can reach them. */
+
+.vc-surface {
+  background:
+    radial-gradient(1200px 800px at 50% 38%, #ffffff 0%, #f4f7fb 55%, #eaf0f7 100%);
+}
+
+/* The second layer was a dark film that deepened the scene. On light it
+ * does the opposite job: lifts the middle so the orb has something to sit
+ * against. */
+.vc-surface-veil {
+  background: radial-gradient(900px 620px at 50% 42%, rgba(255, 255, 255, 0.72), transparent 70%);
+}
+
+/* Ink. `text-white` covers the headline and the figures; the softer steps
+ * are secondary text and must stay distinguishable from it, or the whole
+ * screen reads at one weight. */
+.vc-light [class*="text-white"] {
+  color: #0f2133;
+}
+.vc-light [class*="text-white/9"],
+.vc-light [class*="text-white/8"] {
+  color: #1c3448;
+}
+.vc-light [class*="text-white/7"],
+.vc-light [class*="text-white/6"],
+.vc-light [class*="text-white/5"] {
+  color: #4a627a;
+}
+.vc-light [class*="text-white/4"],
+.vc-light [class*="text-white/3"] {
+  color: #6b839b;
+}
+/* THE GREY RAMP RUNS THE OTHER WAY ON A LIGHT SCREEN.
+ *
+ * On black, gray-100 is the brightest thing on the page and gray-600 is
+ * nearly gone. Leave that untouched and every hierarchy inverts: the
+ * conversation text, which is gray-100, becomes the FAINTEST thing on a
+ * white panel and is effectively invisible, while the labels that should
+ * recede come forward.
+ *
+ * Only 100-600 are mapped, because those are the only steps this surface
+ * uses. The darker steps belong to the ordinary admin pages, which are not
+ * inside `.vc-light` and must not be touched. */
+.vc-light .text-gray-100 { color: #0f2133; }
+.vc-light .text-gray-200 { color: #1b3145; }
+.vc-light .text-gray-300 { color: #33495f; }
+.vc-light .text-gray-400 { color: #52708b; }
+.vc-light .text-gray-500 { color: #64748b; }
+.vc-light .text-gray-600 { color: #7a8fa5; }
+
+/* Hairlines. A white border is invisible on white; these carry the whole
+ * structure of the panels. */
+.vc-light [class*="border-white"] {
+  border-color: rgba(15, 33, 51, 0.12);
+}
+.vc-light [class*="border-white/2"],
+.vc-light [class*="border-white/3"] {
+  border-color: rgba(15, 33, 51, 0.2);
+}
+
+/* Panels. White-on-black at 3% becomes a faint LIFT; on light it has to
+ * become a faint SHADE, or every panel disappears into the background. */
+.vc-light [class*="bg-white/"] {
+  background-color: rgba(15, 33, 51, 0.045);
+}
+.vc-light [class*="bg-white/1"],
+.vc-light [class*="bg-white/2"] {
+  background-color: rgba(255, 255, 255, 0.82);
+}
+
+/* The accent text steps are chosen for a dark screen and fail contrast on
+ * a light one. Two steps darker clears AA at these sizes. */
+.vc-light .text-teal-300 { color: #0d766e; }
+.vc-light .text-sky-300 { color: #0269a1; }
+.vc-light .text-amber-300 { color: #a16207; }
+.vc-light .text-rose-300 { color: #be123c; }
+.vc-light .text-violet-300 { color: #6d28d9; }
+.vc-light .text-primary-300 { color: #0d766e; }
+.vc-light .text-red-300 { color: #be123c; }
+
+/* The two panels that were arbitrary dark hex values rather than a
+ * white-at-low-opacity utility, so the override above could not reach them:
+ * the brain portrait's frame and the answer cards. One rendered as a grey
+ * slab in the corner of a light screen, the other would have rendered as a
+ * black card over it. */
+.vc-panel {
+  background-color: rgba(255, 255, 255, 0.62);
+}
+.vc-panel-solid {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* The waveform strips frame the screen at 20-25% opacity. That is a whisper
+ * against black and literally nothing against white, so they showed as a
+ * smear of grey flecks along the top and bottom edges. Deepened here rather
+ * than in the component, because the opacity is part of the layout. */
+.vc-light .vc-strip {
+  opacity: 0.55;
+}

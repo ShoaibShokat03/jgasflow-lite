@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ChipsTrader design system
+ *
+ *   brand   indigo (#4f46e5) , actions, focus, selection
+ *   accent  cyan   (#06b6d4) , highlights, charts, the logo gradient
+ *   surface tokens swap for dark mode via the `.dark` class on <html>
+ *
+ * Components use the semantic tokens (bg-surface, text-muted, border-line…)
+ * so a theme change is a change here, never in JSX.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme static {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+
+  --color-accent-400: #22d3ee;
+  --color-accent-500: #06b6d4;
+  --color-accent-600: #0891b2;
+
+  --color-bg: var(--ct-bg);
+  --color-surface: var(--ct-surface);
+  --color-surface-2: var(--ct-surface-2);
+  --color-surface-3: var(--ct-surface-3);
+  --color-line: var(--ct-line);
+  --color-line-strong: var(--ct-line-strong);
+  --color-ink: var(--ct-ink);
+  --color-muted: var(--ct-muted);
+  --color-faint: var(--ct-faint);
+  --color-field: var(--ct-field);
+  --color-success: var(--ct-success);
+  --color-warning: var(--ct-warning);
+  --color-danger: var(--ct-danger);
+  --color-info: var(--ct-info);
+  --color-link: var(--ct-link);
+
+  --radius-card: 14px;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03);
+  --shadow-pop: 0 12px 32px -8px rgb(15 23 42 / 0.25), 0 2px 6px rgb(15 23 42 / 0.08);
+
+  --animate-in: fade-in 0.16s ease-out;
+  --animate-pop: pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --animate-slide: slide-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  @keyframes fade-in { from { opacity: 0; } }
+  @keyframes pop-in { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes slide-in { from { transform: translateX(24px); opacity: 0; } }
+}
+
+:root {
+  /* Every text token is checked against every surface it sits on (WCAG 2.2):
+     ink ≥ 12:1, muted ≥ 7:1, faint ≥ 4.5:1, field borders ≥ 3:1. */
+  --ct-bg: #f6f7fb;
+  --ct-surface: #ffffff;
+  --ct-surface-2: #f8fafc;
+  --ct-surface-3: #f1f5f9;
+  --ct-line: #e2e8f0;
+  --ct-line-strong: #cbd5e1;
+  --ct-field: #8a94a5;
+  --ct-ink: #0f172a;
+  --ct-muted: #475467;
+  --ct-faint: #5d6b80;
+  --ct-success: #047857;
+  --ct-warning: #b45309;
+  --ct-danger: #be123c;
+  --ct-info: #0e7490;
+  --ct-link: #4338ca;
+  /* Chart marks need 3:1 against the card (WCAG 1.4.11). */
+  --ct-chart-1: #4f46e5;
+  --ct-chart-2: #0e7490;
+  color-scheme: light;
+}
+
+.dark {
+  --ct-bg: #0b0f1a;
+  --ct-surface: #111726;
+  --ct-surface-2: #151c2e;
+  --ct-surface-3: #1b2338;
+  --ct-line: #26304a;
+  --ct-line-strong: #34405e;
+  --ct-field: #5a6784;
+  --ct-ink: #e8ebf3;
+  --ct-muted: #aeb8cc;
+  --ct-faint: #8c98b0;
+  --ct-success: #34d399;
+  --ct-warning: #fbbf24;
+  --ct-danger: #fb7185;
+  --ct-info: #22d3ee;
+  --ct-link: #a5b4fc;
+  --ct-chart-1: #818cf8;
+  --ct-chart-2: #22d3ee;
+  color-scheme: dark;
+}
+
+@layer base {
+  /* <html> is the only page scroller. The vertical scrollbar is always shown
+     (overflow-y: scroll) so the page width never changes when content gets
+     shorter or a dialog opens, and nothing can push the page sideways
+     (overflow-x: hidden). Keeping it on <html>, not <body>, leaves the viewport
+     as the scroll container, so sticky headers keep working. */
+  html { -webkit-text-size-adjust: 100%; overflow-x: hidden; overflow-y: scroll; }
+  body { min-height: 100dvh; }
+  [data-overlay] { overscroll-behavior: contain; }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    font-feature-settings: "cv11", "ss01", "tnum";
+    text-rendering: optimizeLegibility;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+  }
+  ::selection { @apply bg-brand-200 text-brand-950; }
+  .dark ::selection { @apply bg-brand-500 text-white; }
+  /* Respect users who turn motion off. */
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+  :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+  input, select, textarea, button { font: inherit; }
+
+  /* Anything clickable shows the hand cursor; anything disabled says so.
+     One rule here covers every button, link, menu item, row and picker. */
+  button, [role='button'], [role='menuitem'], [role='option'], [role='tab'], a[href], summary, label[for],
+  select, input[type='checkbox'], input[type='radio'], input[type='color'], input[type='file'], input[type='date'],
+  input[type='submit'], input[type='reset'], [onclick], tr[class*='cursor-pointer'] {
+    cursor: pointer;
+  }
+  button:disabled, [aria-disabled='true'], select:disabled, input:disabled, fieldset:disabled * {
+    cursor: not-allowed;
+  }
+  table { font-variant-numeric: tabular-nums; }
+  * { scrollbar-width: thin; scrollbar-color: var(--ct-line-strong) transparent; }
+}
+
+@layer components {
+  .card { @apply bg-surface border border-line rounded-[var(--radius-card)] shadow-[var(--shadow-card)]; }
+
+  .input {
+    @apply w-full h-9 rounded-lg border border-field bg-surface px-3 text-[13.5px] text-ink placeholder:text-faint
+      transition-[border-color,box-shadow] outline-none
+      focus:border-brand-600 focus:ring-3 focus:ring-brand-500/25
+      disabled:bg-surface-3 disabled:text-muted;
+  }
+  textarea.input { @apply h-auto py-2 leading-relaxed; }
+  select.input { @apply pr-8 appearance-none bg-no-repeat; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-position: right 0.55rem center; }
+
+  .label { @apply block text-[12px] font-medium text-muted mb-1; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13.5px] font-medium whitespace-nowrap
+      transition-[background-color,border-color,color,box-shadow,transform] active:translate-y-px
+      disabled:opacity-50 disabled:pointer-events-none select-none;
+  }
+  .btn-primary { @apply bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-900/10; }
+  .btn-secondary { @apply bg-surface text-ink border border-field hover:bg-surface-3; }
+  .btn-ghost { @apply text-muted hover:text-ink hover:bg-surface-3; }
+  .btn-danger { @apply bg-rose-700 text-white hover:bg-rose-800; }
+  .btn-sm { @apply h-8 px-2.5 text-[13px] rounded-md; }
+  .btn-icon { @apply h-8 w-8 px-0; }
+
+  .chip { @apply inline-flex items-center gap-1 h-[22px] px-2 rounded-full text-[12px] font-medium whitespace-nowrap; }
+  .link { @apply text-link hover:underline underline-offset-2; }
+
+  .table-base { @apply w-full text-left text-[13px]; }
+  .table-base thead th {
+    @apply sticky top-0 z-10 bg-surface-2 text-[11px] font-semibold uppercase tracking-wide text-muted px-3 py-2.5 border-b border-line whitespace-nowrap;
+  }
+  .table-base tbody td { @apply px-3 py-2.5 border-b border-line align-middle; }
+  .table-base tbody tr { @apply transition-colors; }
+  .table-base tbody tr:hover { @apply bg-surface-2; }
+
+  .kbd { @apply inline-flex items-center h-5 min-w-5 px-1 rounded border border-line-strong bg-surface-2 text-[11px] font-mono text-muted; }
+
+  .skeleton { @apply rounded-md bg-surface-3 animate-pulse; }
+
+  .mono { @apply font-mono text-[12.5px] tracking-tight whitespace-nowrap; }
+}

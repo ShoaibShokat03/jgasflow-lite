@@ -1,0 +1,10 @@
+{
+  "name": "JGasFlow",
+  "short_name": "JGasFlow",
+  "description": "LPG gas cylinder shop management: sales, udhaar, stock and payments.",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#F4F5FA",
+  "theme_color": "#020033",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14b8a6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="JDent Admin" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="JDent — Platform Admin" />
+    <meta name="application-name" content="JDent Admin" />
+    <meta property="og:title" content="JDent — Platform Admin" />
+    <meta property="og:description" content="Dental clinic platform administration dashboard" />
+    <meta property="og:image" content="/icon.png" />
+    <title>JDent — Platform Admin</title>
+    <style>
+      a, button { cursor: pointer; }
+
+      /* ─── Initial loader ─────────────────────────────────────────────
+         Rendered inside #root so it's visible the moment the HTML
+         parses  no waiting on the JS bundle. When React mounts and
+         calls createRoot(...).render(<App/>) it replaces #root's
+         children, so this entire block disappears automatically.
+
+         Brand: lime (#14b8a6). Dark mode adapts via prefers-color-scheme. */
+
+      /* Minimal loader  matches the student portal: light lime background,
+         a pulsing logo, and a single muted line. No spinning ring, no box
+         shadow. */
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f0fdfa; /* primary-50 (light lime), same as student portal */
+        z-index: 9999;
+        animation: loader-fade-in 0.4s ease both;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #0f172a;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #initial-loader {
+          background: #0f172a;
+          color: #e5e7eb;
+        }
+      }
+
+      .il-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        text-align: center;
+        padding: 24px;
+      }
+
+      /* Pulsing logo  no ring, no box shadow. */
+      .il-logo {
+        width: 64px;
+        height: 64px;
+        object-fit: contain;
+        animation: il-breathe 1.6s ease-in-out infinite;
+      }
+
+      .il-title {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        margin: 0;
+      }
+
+      .il-subtitle {
+        font-size: 13px;
+        color: #64748b;
+        margin: 4px 0 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .il-subtitle { color: #9ca3af; }
+      }
+
+      /* Animated dots */
+      .il-dots span {
+        display: inline-block;
+        animation: il-dots 1.4s ease-in-out infinite both;
+      }
+      .il-dots span:nth-child(2) { animation-delay: 0.2s; }
+      .il-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+      @keyframes il-breathe {
+        0%, 100% { transform: scale(1);    opacity: 1;    }
+        50%      { transform: scale(0.92); opacity: 0.85; }
+      }
+      @keyframes il-dots {
+        0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+        40%           { opacity: 1;   transform: translateY(-2px); }
+      }
+      @keyframes loader-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+
+      /* Reduced-motion: kill the animations, keep the layout. */
+      @media (prefers-reduced-motion: reduce) {
+        .il-logo,
+        .il-dots span {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Pre-React loader. Removed automatically when React renders into
+           #root (createRoot replaces this subtree). -->
+      <div id="initial-loader" role="status" aria-live="polite" aria-label="Loading JDent">
+        <div class="il-stack">
+          <img src="/icon.png" alt="" class="il-logo" />
+          <div>
+            <h1 class="il-title">JDent</h1>
+            <p class="il-subtitle">
+              Loading platform admin<span class="il-dots"><span>.</span><span>.</span><span>.</span></span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
