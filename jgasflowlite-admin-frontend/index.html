@@ -3,21 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="icon" type="image/png" href="/icon.png" />
-    <link rel="apple-touch-icon" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#14b8a6" />
+    <meta name="theme-color" content="#020033" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="JDent Admin" />
+    <meta name="apple-mobile-web-app-title" content="JGasFlow Console" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="description" content="JDent — Platform Admin" />
-    <meta name="application-name" content="JDent Admin" />
-    <meta property="og:title" content="JDent — Platform Admin" />
-    <meta property="og:description" content="Dental clinic platform administration dashboard" />
-    <meta property="og:image" content="/icon.png" />
-    <title>JDent — Platform Admin</title>
+    <meta name="description" content="JGasFlow Console" />
+    <meta name="application-name" content="JGasFlow Console" />
+    <meta property="og:title" content="JGasFlow Console" />
+    <meta property="og:description" content="JGasFlow platform console for LPG shop subscriptions" />
+    <meta property="og:image" content="/icon.svg" />
+    <title>JGasFlow Console</title>
     <style>
       a, button { cursor: pointer; }
 
@@ -27,7 +26,7 @@
          calls createRoot(...).render(<App/>) it replaces #root's
          children, so this entire block disappears automatically.
 
-         Brand: lime (#14b8a6). Dark mode adapts via prefers-color-scheme. */
+         Brand: lime (#020033). Dark mode adapts via prefers-color-scheme. */
 
       /* Minimal loader  matches the student portal: light lime background,
          a pulsing logo, and a single muted line. No spinning ring, no box
@@ -38,7 +37,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #f0fdfa; /* primary-50 (light lime), same as student portal */
+        background: #f9fafb; /* primary-50 (light lime), same as student portal */
         z-index: 9999;
         animation: loader-fade-in 0.4s ease both;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -124,13 +123,13 @@
     <div id="root">
       <!-- Pre-React loader. Removed automatically when React renders into
            #root (createRoot replaces this subtree). -->
-      <div id="initial-loader" role="status" aria-live="polite" aria-label="Loading JDent">
+      <div id="initial-loader" role="status" aria-live="polite" aria-label="Loading JGasFlow">
         <div class="il-stack">
-          <img src="/icon.png" alt="" class="il-logo" />
+          <img src="/icon.svg" alt="" class="il-logo" />
           <div>
-            <h1 class="il-title">JDent</h1>
+            <h1 class="il-title">JGasFlow</h1>
             <p class="il-subtitle">
-              Loading platform admin<span class="il-dots"><span>.</span><span>.</span><span>.</span></span>
+              Loading console<span class="il-dots"><span>.</span><span>.</span><span>.</span></span>
             </p>
           </div>
         </div>

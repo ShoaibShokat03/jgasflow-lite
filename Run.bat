@@ -6,12 +6,14 @@ cd /d "%~dp0"
 set "ROOT=%~dp0"
 set "BACKEND=%ROOT%jgasflowlite-backend"
 set "FRONTEND=%ROOT%jgasflowlite-frontend"
+set "CONSOLE=%ROOT%jgasflowlite-admin-frontend"
 set "APP_URL=http://localhost:5002"
+set "CONSOLE_URL=http://localhost:5003"
 set "XAMPP=C:\xampp"
 
 echo.
 echo  =============================================
-echo     JGasFlow - starting backend + frontend
+echo     JGasFlow - backend, web app and console
 echo  =============================================
 echo.
 
@@ -52,6 +54,11 @@ if not exist "%FRONTEND%\node_modules" (
   echo  [..] Installing frontend packages - first run only...
   pushd "%FRONTEND%" && call npm install --no-audit --no-fund && popd
 )
+if not exist "%CONSOLE%
+ode_modules" (
+  echo  [..] Installing console packages - first run only...
+  pushd "%CONSOLE%" && call npm install --no-audit --no-fund && popd
+)
 if not exist "%BACKEND%\.env" (
   echo  [!] jgasflowlite-backend\.env is missing. Copying .env.example - review DB settings.
   copy /y "%BACKEND%\.env.example" "%BACKEND%\.env" >nul
@@ -76,15 +83,25 @@ if errorlevel 1 (
   echo  [OK] Frontend already running
 )
 
+rem ---- 4b. Admin console (port 5003) ------------------------------------------
+call :listening 5003
+if errorlevel 1 (
+  echo  [..] Starting admin console...
+  start "JGasFlow Console" /D "%CONSOLE%" cmd /k npm run dev
+) else (
+  echo  [OK] Console already running
+)
+
 call :wait 5000 120 "Backend API" || goto :fail
 call :wait 5002 60 Frontend || goto :fail
 
 rem ---- 5. Open the app ---------------------------------------------------------
 echo.
 echo  [OK] JGasFlow is ready: %APP_URL%
+echo  [OK] Admin console: %CONSOLE_URL%
 start "" "%APP_URL%"
 echo.
-echo  Close the "JGasFlow API" and "JGasFlow Frontend" windows to stop.
+echo  Close the "JGasFlow API", "JGasFlow Frontend" and "JGasFlow Console" windows to stop.
 timeout /t 5 >nul
 exit /b 0
 

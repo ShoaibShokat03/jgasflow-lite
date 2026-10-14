@@ -1,19 +1,14 @@
 // src/api/saasClient.js
 import axios from "axios";
-import { API_BASE_URL, BASE_URL } from "../config/app";
-import {
-  getAccessToken,
-  getRefreshToken,
-  storeTokens,
-  clearAuth,
-} from "../utils/saasAuth";
+import { API_BASE_URL, BASE_PATH } from "../config/app";
+import { getAccessToken, clearAuth } from "../utils/saasAuth";
 
 /**
- * Axios client for the SaaS platform-admin API.
+ * Axios client for the JGasFlow console API.
  *
- * - Attaches the saas admin Bearer token to every request.
- * - On 401: tries ONE refresh-token rotation; if that fails,
- *   clears auth and redirects to /login.
+ * Sessions are a single long-lived token (no refresh rotation). A 401 means
+ * the session ended (signed out elsewhere, password changed, admin removed),
+ * so the console clears it and goes back to the sign-in screen.
  */
 const saasClient = axios.create({
   baseURL: API_BASE_URL,
@@ -27,61 +22,29 @@ saasClient.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshPromise = null;
-
-const redirectToLogin = () => {
-  clearAuth();
-  window.location.href = `${BASE_URL}/login`;
-};
-
 saasClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const original = error.config;
+  (error) => {
     const status = error.response?.status;
-
-    // Never try to refresh the endpoints that MINT the session: login has no
-    // session yet, refresh would recurse, logout is already tearing it down.
-    // `/saas/auth/me` is an ordinary authenticated call and must NOT be in
-    // this list — excluding the whole `/saas/auth/` prefix meant a 401 there
-    // was swallowed, so an expired session sat unnoticed until some other
-    // request happened to fail.
-    const url = original?.url || "";
-    const isSessionCall =
-      url.includes("/saas/auth/login") ||
-      url.includes("/saas/auth/refresh") ||
-      url.includes("/saas/auth/logout");
-
-    if (status === 401 && !original._retried && !isSessionCall) {
-      original._retried = true;
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        redirectToLogin();
-        return Promise.reject(error);
-      }
-
-      try {
-        // De-dupe concurrent refreshes into a single call
-        refreshPromise =
-          refreshPromise ||
-          axios.post(`${API_BASE_URL}/saas/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-        const { data } = await refreshPromise;
-        refreshPromise = null;
-
-        storeTokens(data.access_token, data.refresh_token, data.admin);
-        original.headers.Authorization = `Bearer ${data.access_token}`;
-        return saasClient(original);
-      } catch (refreshError) {
-        refreshPromise = null;
-        redirectToLogin();
-        return Promise.reject(refreshError);
+    const url = error.config?.url || "";
+    if (status === 401 && !url.includes("/auth/login")) {
+      clearAuth();
+      if (!window.location.pathname.endsWith("/login")) {
+        window.location.href = `${BASE_PATH}/login`;
       }
     }
-
     return Promise.reject(error);
   },
 );
+
+/** The message the API gave, or a plain fallback. */
+export const errMsg = (err, fallback = "Something went wrong. Please try again.") => {
+  const m = err?.response?.data?.message;
+  if (Array.isArray(m)) return m.join(", ");
+  if (m) return String(m);
+  if (err?.code === "ECONNABORTED") return "The server took too long to answer.";
+  if (!err?.response) return "Cannot reach the server. Check the internet connection.";
+  return fallback;
+};
 
 export default saasClient;

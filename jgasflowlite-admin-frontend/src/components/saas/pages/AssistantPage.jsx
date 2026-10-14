@@ -1,8 +1,8 @@
 // src/components/saas/pages/AssistantPage.jsx
 // AI Assistant — ask questions about the whole platform in plain language.
 //
-// The assistant is READ-ONLY. It looks things up across every clinic and
-// reports what it found; it cannot suspend a clinic, approve a payment or
+// The assistant is READ-ONLY. It looks things up across every shop and
+// reports what it found; it cannot suspend a shop, approve a payment or
 // change a plan. That is enforced on the server (the platform agent has no
 // write tools registered), not here.
 //
@@ -39,11 +39,11 @@ import VoiceConversation from "./VoiceConversation";
  * succeeds instead of wandering into something the assistant cannot answer.
  */
 const STARTERS = [
-  "Which clinics are over their storage quota?",
-  "Which subscriptions expire in the next 30 days?",
-  "Show me the clinics that have gone dormant",
-  "What platform invoices are still open and overdue?",
-  "How many clinics signed up this month, and from which campaign?",
+  "Give me a short brief on the platform today",
+  "Which shops have a plan ending in the next 14 days?",
+  "Show me the shops that have gone quiet",
+  "Which payments are waiting for approval?",
+  "How many shops signed up this month, and how many are paying?",
 ];
 
 const HeaderButton = ({ icon: Icon, label, onClick, primary }) => (
@@ -267,7 +267,7 @@ const AssistantPage = () => {
             AI Assistant
           </h1>
           <p className="text-[12.5px] text-gray-500 dark:text-gray-400 truncate">
-            Ask about clinics, plans, subscriptions, billing and traffic
+            Ask about shops, plans, payments, income and usage
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -371,7 +371,7 @@ const AssistantPage = () => {
               <EmptyState
                 icon={Sparkles}
                 title="Ask about anything on the platform"
-                subtitle="It reads clinics, plans, subscriptions, billing and traffic — and reports. It cannot change anything."
+                subtitle="It reads shops, plans, payments, income and usage, and reports. It cannot change anything."
               />
               <div className="mt-3 flex flex-wrap justify-center gap-1.5 max-w-3xl">
                 {STARTERS.map((s) => (
@@ -511,7 +511,7 @@ const AssistantPage = () => {
               disabled={unavailable}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Ask about clinics, subscriptions, billing…"
+              placeholder="Ask about shops, payments, plans..."
               className="flex-1 resize-none max-h-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-[13.5px] text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500 disabled:bg-gray-50"
               onInput={(e) => {
                 e.target.style.height = "auto";
@@ -525,7 +525,7 @@ const AssistantPage = () => {
                   speaking
                     ? "Stop speaking"
                     : speakBack
-                      ? "Answers are read aloud — click to mute"
+                      ? "Answers are read aloud, click to mute"
                       : "Read answers aloud"
                 }
                 className={`shrink-0 h-[38px] w-[38px] rounded-lg grid place-items-center transition-colors ${

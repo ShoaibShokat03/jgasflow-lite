@@ -8,6 +8,7 @@ export const ADMIN_MODULES = [
   { key: 'plans', label: 'Plans' },
   { key: 'reports', label: 'Reports' },
   { key: 'activity', label: 'Activity log' },
+  { key: 'support', label: 'Support inbox' },
   { key: 'assistant', label: 'AI assistant' },
   { key: 'ai_settings', label: 'AI settings' },
   { key: 'settings', label: 'Platform settings' },

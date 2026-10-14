@@ -4,7 +4,7 @@ import { getLang, setLang, t, useLang } from '@/lib/i18n';
 import { Brand, Logo } from '@/ui/kit';
 
 /** Navy brand panel on the left (desktop), form card on the right. */
-export function AuthLayout({ title, sub, children, footer }) {
+export function AuthLayout({ title, sub, children, footer, wide }) {
   useLang();
   const ur = getLang() === 'ur';
   return (
@@ -36,7 +36,7 @@ export function AuthLayout({ title, sub, children, footer }) {
           </button>
         </div>
         <div className="flex-1 grid place-items-center px-4 pb-10">
-          <div className="w-full max-w-[440px]">
+          <div className={wide ? 'w-full max-w-[580px]' : 'w-full max-w-[440px]'}>
             <h1 className="text-[24px] font-black">{title}</h1>
             {sub && <p className="text-muted mt-1">{sub}</p>}
             <div className="card p-5 mt-5">{children}</div>

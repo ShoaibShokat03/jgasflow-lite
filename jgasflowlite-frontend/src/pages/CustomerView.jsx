@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Check, Cylinder, FileText, HandCoins, MapPin, Pencil, Phone, Plus, Settings2, Tag as TagIcon, Trash2, Undo2, X } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
+import { ledgerColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { useAuth } from '@/lib/auth';
-import { fDate, money, num0, parseNum } from '@/lib/format';
+import { fDate, MAX_UNIT_PRICE, money, num0, parseNum } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
 import { Async, Balance, Button, Card, cn, Empty, IconBox, Initials, PageHeader, Tag } from '@/ui/kit';
 import { Chips, MoneyInput } from '@/ui/form';
 import { toast, useConfirm } from '@/ui/overlay';
 import { PartyForm, ReceivePayment, ReturnEmpties, SetHeld } from './forms';
 import { printNow } from '@/lib/print';
-import { PrintCredit } from '@/ui/receipt';
+import { Statement } from '@/ui/statement';
 
 export default function CustomerView() {
   const { uid } = useParams();
@@ -24,6 +26,9 @@ function View({ c }) {
   const confirm = useConfirm();
   const [tab, setTab] = useState('ledger');
   const [dlg, setDlg] = useState(null);
+  const ledger = useGet(`/customers/${c.uid}/ledger`);
+  /** Always answers: with no cylinders out, say so instead of a dead button. */
+  const openReturn = () => (c.held_cylinders.length ? setDlg('return') : toast(t('no_cylinders_to_return'), 'info'));
   const del = useAct(() => api.delete(`/customers/${c.uid}`), {
     onSuccess: (r) => {
       toast(r.deleted ? t('deleted') : t('archived'));
@@ -40,6 +45,7 @@ function View({ c }) {
         sub={t(c.type)}
         actions={
           <>
+            <ExportMenu title={t('x_statement', { name: c.name })} columns={ledgerColumns} rows={ledger.data?.entries} />
             <Button variant="outline" icon={Pencil} onClick={() => setDlg('edit')}>
               {t('edit')}
             </Button>
@@ -61,23 +67,23 @@ function View({ c }) {
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <Initials name={c.name} size={48} tone={c.type === 'wholesale' ? 'purple' : 'navy'} />
-              <div className="min-w-0">
-                <div className="font-bold text-[16px] truncate">{c.name}</div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-[16px] break-words [overflow-wrap:anywhere] line-clamp-2">{c.name}</div>
                 <Tag tone={c.type === 'wholesale' ? 'purple' : 'navy'}>{t(c.type)}</Tag>
               </div>
             </div>
-            <div className="mt-3 space-y-1.5 text-[13.5px]">
+            <div className="mt-3 space-y-1.5 text-[13.5px] min-w-0">
               {c.phone && (
                 <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-primary font-semibold hover:underline">
                   <Phone className="size-4" /> {c.phone}
                 </a>
               )}
               {c.address && (
-                <div className="flex items-center gap-2 text-muted">
-                  <MapPin className="size-4 shrink-0" /> {c.address}
+                <div className="flex items-start gap-2 text-muted">
+                  <MapPin className="size-4 shrink-0 mt-0.5" /> <span className="min-w-0 [overflow-wrap:anywhere]">{c.address}</span>
                 </div>
               )}
-              {c.note && <div className="text-muted text-[12.5px]">{c.note}</div>}
+              {c.note && <div className="text-muted text-[12.5px] [overflow-wrap:anywhere] whitespace-pre-line">{c.note}</div>}
             </div>
             <div className="mt-4 rounded-[var(--radius-card)] bg-bg p-3 grid grid-cols-2 gap-2">
               <div>
@@ -97,10 +103,10 @@ function View({ c }) {
             <Button variant="good" icon={HandCoins} onClick={() => setDlg('pay')}>
               {t('receive_payment')}
             </Button>
-            <Button variant="outline" icon={Undo2} onClick={() => setDlg('return')} disabled={!c.held_cylinders.length}>
+            <Button variant="outline" icon={Undo2} onClick={openReturn}>
               {t('return_cylinders')}
             </Button>
-            <Button variant="outline" icon={FileText} onClick={() => (setTab('ledger'), setTimeout(() => printNow('doc'), 50))}>
+            <Button variant="outline" icon={FileText} onClick={() => printNow('doc')}>
               {t('statement')}
             </Button>
           </div>
@@ -118,11 +124,12 @@ function View({ c }) {
             ]}
           />
           {tab === 'ledger' && <Ledger c={c} />}
-          {tab === 'cyl' && <Held c={c} onSet={() => setDlg('held')} onReturn={() => setDlg('return')} canSet={auth.isManager} />}
+          {tab === 'cyl' && <Held c={c} onSet={() => setDlg('held')} onReturn={openReturn} canSet={auth.isManager} />}
           {tab === 'prices' && <SpecialPrices c={c} />}
         </div>
       </div>
 
+      <CustomerStatement c={c} />
       <PartyForm open={dlg === 'edit'} onClose={() => setDlg(null)} initial={c} />
       <ReceivePayment open={dlg === 'pay'} onClose={() => setDlg(null)} customer={c} />
       <ReturnEmpties open={dlg === 'return'} onClose={() => setDlg(null)} customer={c} />
@@ -134,20 +141,10 @@ function View({ c }) {
 function Ledger({ c }) {
   const q = useGet(`/customers/${c.uid}/ledger`);
   const navigate = useNavigate();
-  const { shop } = useAuth();
   return (
     <Async q={q}>
       {({ entries }) => (
-        <Card className="print-area overflow-hidden">
-          {/* statement header (print) */}
-          <div className="hidden print:block px-4 pt-4">
-            <div className="font-black text-[18px]">{shop?.name}</div>
-            <div className="text-[12px]">{[shop?.address, shop?.phone].filter(Boolean).join(' · ')}</div>
-            <div className="mt-2 font-bold">
-              {t('statement')}: {c.name} {c.phone ? `(${c.phone})` : ''}
-            </div>
-            <div className="text-[12px]">{fDate(new Date().toISOString().slice(0, 10))}</div>
-          </div>
+        <Card className="overflow-hidden">
           {entries.length <= 1 && !entries[0]?.debit && !entries[0]?.credit ? (
             <Empty title={t('no_transactions')} />
           ) : (
@@ -183,10 +180,39 @@ function Ledger({ c }) {
               </table>
             </div>
           )}
-          <PrintCredit className="hidden print:block mx-4 mb-3" />
         </Card>
       )}
     </Async>
+  );
+}
+
+/** What prints when Statement is pressed: header, account, summary and the full ledger. */
+function CustomerStatement({ c }) {
+  const q = useGet(`/customers/${c.uid}/ledger`);
+  const entries = q.data?.entries ?? [];
+  const sum = (k) => entries.filter((e) => e.kind !== 'opening').reduce((a, e) => a + (Number(e[k]) || 0), 0);
+  const opening = entries.find((e) => e.kind === 'opening');
+  return (
+    <Statement
+      title={t('customer_statement')}
+      party={{ kindLabel: t(c.type), name: c.name, phone: c.phone, address: c.address }}
+      entries={entries}
+      cols={{ debit: t('debit_sale'), credit: t('credit_paid') }}
+      summary={[
+        { label: t('opening_balance'), value: money((opening?.debit || 0) - (opening?.credit || 0)) },
+        { label: t('total_sales'), value: money(sum('debit')) },
+        { label: t('total_received'), value: money(sum('credit')) },
+        { label: c.balance < -0.009 ? t('advance') : t('balance_due'), value: money(Math.abs(c.balance)), tone: c.balance > 0.009 ? 'red' : c.balance < -0.009 ? 'green' : undefined },
+        { label: t('cylinders_with_customer'), value: String(c.held) },
+      ]}
+      describe={(e) =>
+        e.kind === 'opening'
+          ? t('opening_balance')
+          : e.kind === 'sale'
+            ? `${t('sale')} ${e.ref}${e.detail ? `, ${e.detail}` : ''}`
+            : `${t('payment_received')} ${e.ref}, ${methodLabel(e.method)}`
+      }
+    />
   );
 }
 
@@ -212,7 +238,7 @@ function Held({ c, onSet, onReturn, canSet }) {
         </div>
       )}
       <div className="flex flex-wrap gap-2 px-4 py-3 bg-bg/60">
-        <Button size="sm" variant="outline" icon={Undo2} onClick={onReturn} disabled={!c.held_cylinders.length}>
+        <Button size="sm" variant="outline" icon={Undo2} onClick={onReturn}>
           {t('return_cylinders')}
         </Button>
         {canSet && (
@@ -258,7 +284,7 @@ function SpecialPrices({ c }) {
                   {editing ? (
                     <div className="flex items-center gap-1.5">
                       <MoneyInput value={val} onChange={setVal} autoFocus className="w-36" />
-                      <Button size="md" icon={Check} loading={save.isPending} onClick={() => save.mutate({ type_uid: ty.uid, price: parseNum(val) > 0 ? parseNum(val) : null })} aria-label={t('save')} />
+                      <Button size="md" icon={Check} loading={save.isPending} onClick={() => (parseNum(val) > MAX_UNIT_PRICE ? toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error') : save.mutate({ type_uid: ty.uid, price: parseNum(val) > 0 ? parseNum(val) : null }))} aria-label={t('save')} />
                       <Button size="md" variant="outline" icon={X} onClick={() => setEdit(null)} aria-label={t('cancel')} />
                     </div>
                   ) : (

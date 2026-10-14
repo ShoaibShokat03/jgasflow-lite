@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Check, Crown, Pencil, ShieldCheck, ShoppingCart, UserMinus, UserPlus, UsersRound } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
+import { teamColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { daysAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, cn, Initials, PageHeader, Tag } from '@/ui/kit';
@@ -16,7 +18,18 @@ export default function Team() {
   const remove = useAct((id) => api.delete(`/team/${id}`), { onSuccess: () => toast(t('staff_removed')), onError: (e) => toast(e.message, 'error') });
   return (
     <div>
-      <PageHeader title={t('team')} sub={t('team_sub')} actions={<Button icon={UserPlus} onClick={() => setForm('new')}>{t('add_staff')}</Button>} />
+      <PageHeader
+        title={t('team')}
+        sub={t('team_sub')}
+        actions={
+          <>
+            <ExportMenu title={t('x_team')} columns={() => teamColumns(daysAgo)} rows={q.data?.users} />
+            <Button icon={UserPlus} onClick={() => setForm('new')}>
+              {t('add_staff')}
+            </Button>
+          </>
+        }
+      />
       <Async q={q}>
         {({ users, limit }) => (
           <>

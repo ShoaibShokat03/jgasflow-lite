@@ -6,6 +6,9 @@ SaaS for LPG gas cylinder shops. It has a web app and syncs with the JGasFlow An
   - The schema lives in `src/db/schema.ts`.
   - The synced tables are defined in `src/db/tables.ts`, which must match `lib/sync/sync_tables.dart` in the app.
 - `jgasflowlite-frontend`: React 19, Vite, Tailwind 4, TanStack Query. Port 5002.
+- `jgasflowlite-admin-frontend`: the JGasFlow Console (platform admin), React 19, Vite, Tailwind 4. Port 5003. Talks to `/api/platform/*` and `/api/platform/ai/*`.
+  - Screens and grantable modules are in `src/constants/saasModules.js` and must match `ADMIN_MODULES` in `jgasflowlite-backend/src/platform/admin-modules.ts`.
+  - The API address is chosen at runtime in `src/config/app.js` (localhost uses the local API) and is never shown in the UI.
 - `Run.bat` starts MySQL (XAMPP), the API and the web app.
 - Old ChipsTrader code is in each project's `_archive/` folder. It is not used.
 
@@ -31,5 +34,5 @@ SaaS for LPG gas cylinder shops. It has a web app and syncs with the JGasFlow An
 
 - `npx tsc --noEmit -p tsconfig.json` (backend)
 - `node scripts/e2e.mjs` (backend, against the running API; 43 checks)
-- `npx vite build` (frontend)
+- `npx vite build` (frontend and console)
 - `flutter analyze` and `flutter test test_store/sync_online_test.dart --dart-define=API=http://<pc-ip>:5000` (app, on oldboy)

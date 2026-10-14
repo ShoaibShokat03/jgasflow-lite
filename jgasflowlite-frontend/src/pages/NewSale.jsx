@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Banknote, Building2, Check, ChevronsUpDown, CircleCheck, CircleDashed, Cylinder, FileText, Footprints, Pencil, Smartphone, Wallet } from 'lucide-react';
+import { Banknote, Building2, Check, ChevronsUpDown, CircleCheck, CircleDashed, Cylinder, FileText, Footprints, Pencil, Smartphone, UserPlus, Wallet } from 'lucide-react';
 import { api, queryClient, useGet } from '@/lib/api';
-import { dayKey, money, numInput, parseNum, PAYMENT_METHODS } from '@/lib/format';
+import { dayKey, MAX_UNIT_PRICE, money, numInput, parseNum, PAYMENT_METHODS } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
 import { Async, Balance, Button, Card, cn, Initials, KV, PageHeader, SectionHeader } from '@/ui/kit';
 import { DateInput, Dropdown, MoneyInput, QtyStepper, Switch, Textarea } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { CustomerPicker, useLeaveGuard } from '@/ui/pickers';
+import { PartyForm } from './forms';
 
 export const METHOD_ICONS = { cash: Banknote, bank: Building2, jazzcash: Smartphone, easypaisa: Smartphone, cheque: FileText };
 
@@ -38,6 +39,10 @@ function SaleForm({ types }) {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(dayKey());
   const [picker, setPicker] = useState(false);
+  // New customer from the sale: null = closed, else the name typed in the search.
+  const [addCust, setAddCust] = useState(null);
+  // Udhaar or partial chosen before a customer: applied once one is picked.
+  const [wantMode, setWantMode] = useState(null);
   const [editPrice, setEditPrice] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +60,19 @@ function SaleForm({ types }) {
     if (!c) {
       setPayMode('full');
       setChargeDeposit(false);
+    } else if (wantMode) setPayMode(wantMode);
+    setWantMode(null);
+  };
+
+  /** Credit needs a customer: ask for one instead of refusing the choice. */
+  const pickPayMode = (m) => {
+    if (m !== 'full' && !customer) {
+      setWantMode(m);
+      toast(t('credit_needs_customer'), 'error');
+      setPicker(true);
+      return;
     }
+    setPayMode(m);
   };
 
   useEffect(() => {
@@ -81,14 +98,16 @@ function SaleForm({ types }) {
     if (!lines.some((l) => l.qty > 0)) return toast(t('add_qty_first'), 'error');
     if (disc > subtotal + deposit) return toast(t('discount_too_big'), 'error');
     if (paidAmount > total + 0.009) return toast(t('paid_more_than_total'), 'error');
-    const short = lines.filter((l) => l.qty > l.type.full_qty);
+    // No sale of cylinders the shop does not have: record the purchase first.
+    const short = lines.filter((l) => l.qty > Math.max(0, l.type.full_qty));
     if (short.length) {
-      const ok = await confirm({
-        title: t('stock_low_title'),
-        message: `${short.map((l) => `${l.type.name}: ${t('in_stock')} ${l.type.full_qty}, ${t('selling')} ${l.qty}`).join('\n')}\n\n${t('stock_low_msg')}`,
-        okLabel: t('save_sale'),
+      await confirm({
+        title: t('stock_short_title'),
+        message: `${short.map((l) => `${l.type.name}: ${t('in_stock')} ${Math.max(0, l.type.full_qty)}, ${t('selling')} ${l.qty}`).join('\n')}\n\n${t('stock_short_msg')}`,
+        okLabel: t('ok'),
+        cancelLabel: false,
       });
-      if (!ok) return;
+      return;
     }
     setSaving(true);
     try {
@@ -124,7 +143,8 @@ function SaleForm({ types }) {
       <div className="grid lg:grid-cols-[1fr_380px] gap-5 items-start">
         <div className="min-w-0">
           {/* customer */}
-          <Card as="button" onClick={() => setPicker(true)} className="w-full text-left p-3 flex items-center gap-3 hover:border-[#cfd2e6] transition">
+          <div className="flex gap-2.5 items-stretch">
+          <Card as="button" onClick={() => setPicker(true)} className="flex-1 min-w-0 text-left p-3 flex items-center gap-3 hover:border-[#cfd2e6] transition">
             {customer ? (
               <Initials name={customer.name} size={42} tone={customer.type === 'wholesale' ? 'purple' : 'navy'} />
             ) : (
@@ -145,20 +165,26 @@ function SaleForm({ types }) {
             {customer && <Balance value={customer.balance} className="text-[13px]" />}
             <ChevronsUpDown className="size-5 text-muted shrink-0" />
           </Card>
+            <Button variant="outline" icon={UserPlus} className="!h-auto" onClick={() => setAddCust('')} aria-label={t('add_new_customer')} title={t('add_new_customer')}>
+              <span className="hidden sm:inline">{t('add_customer')}</span>
+            </Button>
+          </div>
 
           <SectionHeader title={t('cylinders')} action={<span className="text-[11.5px] text-muted">{t('tap_price_to_change')}</span>} />
           <div className="grid sm:grid-cols-2 gap-2.5">
             {lines.map((l, i) => {
               const active = l.qty > 0 || l.empty > 0;
-              const short = l.qty > l.type.full_qty;
+              const inStock = Math.max(0, l.type.full_qty);
+              const short = l.qty > inStock;
+              const out = inStock === 0;
               return (
                 <div key={l.type.uid} className={cn('bg-white rounded-[var(--radius-card)] p-3 transition border', active ? 'border-primary ring-1 ring-primary/30 shadow-[var(--shadow-card)]' : 'border-line')}>
                   <div className="flex items-center gap-2">
                     <Cylinder className={cn('size-5 shrink-0', active ? 'text-primary' : 'text-muted')} />
                     <div className="min-w-0 flex-1">
                       <div className="font-extrabold text-[14.5px] truncate">{l.type.name}</div>
-                      <div className={cn('text-[11.5px] truncate', short ? 'text-bad font-bold' : 'text-muted')}>
-                        {t('full')}: {l.type.full_qty} · {t('empty')}: {l.type.empty_qty}
+                      <div className={cn('text-[11.5px] truncate', short || out ? 'text-bad font-bold' : 'text-muted')}>
+                        {out ? t('out_of_stock') : `${t('full')}: ${inStock}`} · {t('empty')}: {l.type.empty_qty}
                       </div>
                     </div>
                     <button type="button" onClick={() => setEditPrice(i)} className="inline-flex items-center gap-1 h-8 px-2 rounded-[var(--radius-xs)] bg-[#fff0e6] text-accent-dark font-extrabold text-[13px] whitespace-nowrap num hover:bg-[#ffe2cf]">
@@ -169,7 +195,7 @@ function SaleForm({ types }) {
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <span className="text-[13px] font-semibold">{t('qty')}</span>
-                    <QtyStepper value={l.qty} onChange={(v) => set(i, { qty: v })} />
+                    <QtyStepper value={l.qty} onChange={(v) => set(i, { qty: v })} max={inStock} />
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <span className="text-[13px] font-semibold">{t('empty_recv')}</span>
@@ -204,8 +230,7 @@ function SaleForm({ types }) {
               <Dropdown
                 label={t('payment')}
                 value={customer ? payMode : 'full'}
-                onChange={setPayMode}
-                disabled={!customer}
+                onChange={pickPayMode}
                 options={[
                   { value: 'full', label: t('paid'), icon: CircleCheck, sub: t('pay_full_sub') },
                   { value: 'partial', label: t('partial'), icon: CircleDashed, sub: t('pay_partial_sub') },
@@ -254,8 +279,21 @@ function SaleForm({ types }) {
       </div>
       <div className="h-24 lg:hidden" />
 
-      <CustomerPicker open={picker} onClose={() => setPicker(false)} onPick={choose} />
-      <PriceDialog line={editPrice != null ? lines[editPrice] : null} onClose={() => setEditPrice(null)} onSave={(p) => (set(editPrice, { price: p }), setEditPrice(null))} />
+      <CustomerPicker
+        open={picker}
+        onClose={() => setPicker(false)}
+        onPick={choose}
+        onAddNew={(name) => {
+          setPicker(false);
+          setAddCust(name);
+        }}
+      />
+      <PartyForm open={addCust !== null} prefill={addCust ?? ''} onClose={() => setAddCust(null)} onSaved={(res) => res?.uid && choose({ uid: res.uid })} />
+      <PriceDialog
+        line={editPrice != null ? lines[editPrice] : null}
+        onClose={() => setEditPrice(null)}
+        onSave={(p) => (p > MAX_UNIT_PRICE ? toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error') : (set(editPrice, { price: p }), setEditPrice(null)))}
+      />
     </div>
   );
 }

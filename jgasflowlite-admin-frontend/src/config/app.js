@@ -1,53 +1,31 @@
 // src/config/app.js
 
 /**
- * JDent SaaS Admin — application configuration.
+ * JGasFlow Console: where the API lives.
  *
- * Switch environments with a single flag:
- *   - hostType = "local" → localhost URLs (backend on :5001)
- *   - hostType = "live"  → production URLs
- *
- * Everything is hardcoded here. No .env / VITE_* env vars.
+ * On localhost the console talks to the local API (Run.bat starts it on :5000).
+ * Anywhere else it talks to production. Nothing here is shown in the UI.
  */
-
-// ─── SWITCH ME ───────────────────────────────────────────────
-export const hostType = "live"; // "local" | "live"
-// ─────────────────────────────────────────────────────────────
+const isLocal =
+  typeof window !== "undefined" &&
+  /^(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+)$/.test(window.location.hostname);
 
 const URLS = {
   local: {
-    API_BASE_URL: "http://localhost:5000/api",
-    BASE_URL: "http://localhost:5001",
-    BASE_PATH: "",
-    // Clinic portal — where "Open clinic as owner" hands off to.
-    CLINIC_APP_URL: "http://localhost:5002",
+    API_BASE_URL: `http://${typeof window !== "undefined" ? window.location.hostname : "localhost"}:5000/api`,
+    SHOP_APP_URL: "http://localhost:5002",
   },
   live: {
-    API_BASE_URL: "https://api.jdentclinic.com/api",
-    BASE_URL: "https://admin.jdentclinic.com",
-    BASE_PATH: "",
-    CLINIC_APP_URL: "https://app.jdentclinic.com",
+    API_BASE_URL: "https://lite.jgasflow.com/backend/api",
+    SHOP_APP_URL: "https://lite.jgasflow.com",
   },
 };
 
-const active = URLS[hostType] || URLS.live;
+const active = isLocal ? URLS.local : URLS.live;
 
 export const API_BASE_URL = active.API_BASE_URL;
-export const BASE_PATH = active.BASE_PATH;
-export const BASE_URL = active.BASE_URL;
-export const CLINIC_APP_URL = active.CLINIC_APP_URL;
+export const SHOP_APP_URL = active.SHOP_APP_URL;
+/** The console is served from the domain root. */
+export const BASE_PATH = "";
 
-/** Server origin (API base without /api) — for /uploads/* asset paths. */
-export const SERVER_ORIGIN = active.API_BASE_URL.replace(/\/api\/?$/, "");
-
-/** Resolve a stored asset path (e.g. "/uploads/…") to a full URL. */
-export const assetUrl = (p) =>
-  p && p.startsWith("/uploads") ? `${SERVER_ORIGIN}${p}` : p;
-
-export default {
-  hostType,
-  API_BASE_URL,
-  BASE_PATH,
-  BASE_URL,
-  CLINIC_APP_URL,
-};
+export default { API_BASE_URL, SHOP_APP_URL, BASE_PATH };

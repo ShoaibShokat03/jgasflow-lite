@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ChevronsUpDown, CircleCheck, CircleDashed, Cylinder, Truck, Wallet } from 'lucide-react';
+import { Check, ChevronsUpDown, CircleCheck, CircleDashed, Cylinder, Plus, Truck, Wallet } from 'lucide-react';
 import { api, queryClient, useGet } from '@/lib/api';
 import { dayKey, money, numInput, parseNum, PAYMENT_METHODS } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
@@ -9,6 +9,8 @@ import { DateInput, Dropdown, MoneyInput, QtyStepper, Switch, Textarea } from '@
 import { METHOD_ICONS } from './NewSale';
 import { toast, useConfirm } from '@/ui/overlay';
 import { SupplierPicker, useLeaveGuard } from '@/ui/pickers';
+import { PartyForm } from './forms';
+import { TypeForm } from './Stock';
 
 export default function NewPurchase() {
   const types = useGet('/types');
@@ -20,6 +22,11 @@ function Form({ types }) {
   const confirm = useConfirm();
   const [supplier, setSupplier] = useState(null);
   const [picker, setPicker] = useState(false);
+  // New supplier from the purchase: null = closed, else the name typed in the search.
+  const [addSup, setAddSup] = useState(null);
+  const [addType, setAddType] = useState(false);
+  // Partial or payable chosen before a supplier: applied once one is picked.
+  const [wantMode, setWantMode] = useState(null);
   const [lines, setLines] = useState(() => types.map((ty) => ({ type: ty, price: numInput(ty.purchase_price), qty: 0, sent: 0 })));
   const [payMode, setPayMode] = useState('full');
   const [paid, setPaid] = useState('');
@@ -34,6 +41,36 @@ function Form({ types }) {
   const paidAmount = !supplier || payMode === 'full' ? total : payMode === 'udhaar' ? 0 : parseNum(paid);
   const dirty = lines.some((l) => l.qty || l.sent) || !!note;
   useLeaveGuard(dirty && !saving);
+
+  const pickSupplier = (s) => {
+    setSupplier(s);
+    setPicker(false);
+    setPayMode(s ? wantMode || payMode : 'full');
+    setWantMode(null);
+  };
+  /** A supplier added here: load it (with its balance) and select it. */
+  const supplierAdded = async (res) => {
+    if (!res?.uid) return;
+    try {
+      pickSupplier(await api.get(`/suppliers/${res.uid}`));
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+  /** A cylinder type added here: add its line to this purchase. */
+  const typeAdded = async (res) => {
+    if (!res?.uid) return;
+    try {
+      const all = await queryClient.fetchQuery({ queryKey: ['/types', {}], queryFn: () => api.get('/types'), staleTime: 0 });
+      const ty = all.find((x) => x.uid === res.uid);
+      if (ty) {
+        setLines((ls) => (ls.some((l) => l.type.uid === ty.uid) ? ls : [...ls, { type: ty, price: numInput(ty.purchase_price), qty: 0, sent: 0 }]));
+        toast(t('type_added_to_purchase', { name: ty.name }));
+      }
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
 
   const save = async () => {
     if (!lines.some((l) => l.qty || l.sent)) return toast(t('add_qty_first'), 'error');
@@ -73,7 +110,8 @@ function Form({ types }) {
       <PageHeader title={t('new_purchase')} back />
       <div className="grid lg:grid-cols-[1fr_360px] gap-5 items-start">
         <div className="min-w-0">
-          <Card as="button" onClick={() => setPicker(true)} className="w-full text-left p-3 flex items-center gap-3">
+          <div className="flex gap-2.5 items-stretch">
+          <Card as="button" onClick={() => setPicker(true)} className="flex-1 min-w-0 text-left p-3 flex items-center gap-3">
             {supplier ? <Initials name={supplier.name} tone="blue" size={42} /> : <div className="grid place-items-center size-[42px] rounded-[var(--radius-ctl)] bg-bg text-muted"><Truck className="size-5" /></div>}
             <div className="min-w-0 flex-1">
               <div className="text-[11.5px] font-semibold text-muted">{t('supplier')}</div>
@@ -82,8 +120,19 @@ function Form({ types }) {
             {supplier && <Balance value={supplier.balance} />}
             <ChevronsUpDown className="size-5 text-muted" />
           </Card>
+            <Button variant="outline" icon={Plus} className="!h-auto" onClick={() => setAddSup('')} aria-label={t('add_new_supplier')} title={t('add_new_supplier')}>
+              <span className="hidden sm:inline">{t('add_supplier')}</span>
+            </Button>
+          </div>
 
-          <SectionHeader title={t('cylinders_received')} />
+          <SectionHeader
+            title={t('cylinders_received')}
+            action={
+              <Button size="sm" variant="outline" icon={Plus} onClick={() => setAddType(true)}>
+                {t('add_cylinder_type')}
+              </Button>
+            }
+          />
           <div className="grid sm:grid-cols-2 gap-2.5">
             {lines.map((l, i) => {
               const active = l.qty || l.sent;
@@ -130,8 +179,16 @@ function Form({ types }) {
               <Dropdown
                 label={t('payment')}
                 value={supplier ? payMode : 'full'}
-                onChange={setPayMode}
-                disabled={!supplier}
+                onChange={(m) => {
+                  // Credit needs a supplier: ask for one instead of refusing the choice.
+                  if (m !== 'full' && !supplier) {
+                    setWantMode(m);
+                    toast(t('credit_needs_supplier'), 'error');
+                    setPicker(true);
+                    return;
+                  }
+                  setPayMode(m);
+                }}
                 options={[
                   { value: 'full', label: t('paid'), icon: CircleCheck },
                   { value: 'partial', label: t('partial'), icon: CircleDashed },
@@ -159,7 +216,17 @@ function Form({ types }) {
           </Card>
         </div>
       </div>
-      <SupplierPicker open={picker} onClose={() => setPicker(false)} onPick={(s) => (setSupplier(s), setPicker(false), !s && setPayMode('full'))} />
+      <SupplierPicker
+        open={picker}
+        onClose={() => (setPicker(false), setWantMode(null))}
+        onPick={pickSupplier}
+        onAddNew={(name) => {
+          setPicker(false);
+          setAddSup(name);
+        }}
+      />
+      <PartyForm kind="supplier" open={addSup !== null} prefill={addSup ?? ''} onClose={() => setAddSup(null)} onSaved={supplierAdded} />
+      <TypeForm open={addType} noOpening onClose={() => setAddType(false)} onSaved={typeAdded} />
     </div>
   );
 }

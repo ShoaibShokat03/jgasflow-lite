@@ -9,7 +9,9 @@ import { normPhone } from '../common/rules';
 import { addDays, round2, todayKey } from '../common/util';
 import type { AuthUser } from '../auth/auth.decorators';
 import { ADMIN_MODULES, isSuperAdmin, parsePerms } from './admin-modules';
+import { fileKeys } from '../common/uploads';
 import { PlatformConfig } from './platform-config.service';
+import { SupportService } from '../support/support.service';
 
 /** How long ago something happened, as an activity bucket. */
 export function activityOf(last: string | null): 'active' | 'low' | 'idle' | 'dormant' | 'never' {
@@ -27,6 +29,7 @@ export interface ShopQuery {
   q?: string;
   status?: string;
   plan?: string;
+  mode?: string;
   activity?: string;
   sort?: string;
   page?: number;
@@ -48,6 +51,7 @@ export class PlatformService {
     private readonly db: Db,
     private readonly billing: BillingService,
     private readonly config: PlatformConfig,
+    private readonly support: SupportService,
   ) {}
 
   // ─────────────────────────── shops ───────────────────────────
@@ -56,7 +60,9 @@ export class PlatformService {
   async allShops() {
     const since = addDays(todayKey(), -29);
     const rows = await this.db.all<any>(
-      `SELECT t.id, t.name, t.owner_name, t.phone, t.address, t.plan, t.status, t.trial_ends_at, t.paid_until, t.created_at, t.last_active_at, t.admin_note,
+      `SELECT t.id, t.name, t.owner_name, t.phone, t.address, t.plan, t.status, t.mode, t.trial_ends_at, t.paid_until, t.created_at, t.last_active_at, t.admin_note,
+         (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.status = 'active') AS devices,
+         (SELECT MAX(d.last_seen) FROM devices d WHERE d.tenant_id = t.id) AS device_seen_at,
          (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.active = 1) AS users,
          (SELECT COUNT(*) FROM customers c WHERE c.tenant_id = t.id AND c.deleted = 0) AS customers,
          (SELECT COUNT(*) FROM sales s WHERE s.tenant_id = t.id AND s.deleted = 0) AS sales,
@@ -77,6 +83,9 @@ export class PlatformService {
         phone: t.phone,
         address: t.address,
         plan: t.plan,
+        mode: t.mode === 'offline' ? 'offline' : 'online',
+        devices: n(t.devices),
+        device_seen_at: t.device_seen_at,
         created_at: t.created_at,
         last_active_at: t.last_active_at,
         last_sale_at: t.last_sale_at,
@@ -100,6 +109,7 @@ export class PlatformService {
     const term = (q.q ?? '').trim().toLowerCase();
     if (term) list = list.filter((s) => [s.name, s.owner_name, s.phone, String(s.id)].some((x) => String(x ?? '').toLowerCase().includes(term)));
     if (q.plan) list = list.filter((s) => s.plan === q.plan);
+    if (q.mode === 'offline' || q.mode === 'online') list = list.filter((s) => s.mode === q.mode);
     if (q.activity) list = list.filter((s) => s.activity === q.activity);
     if (q.created_from) list = list.filter((s) => String(s.created_at) >= q.created_from!);
     if (q.created_to) list = list.filter((s) => String(s.created_at).slice(0, 10) <= q.created_to!);
@@ -136,7 +146,7 @@ export class PlatformService {
     const t = await this.db.one<any>('SELECT * FROM tenants WHERE id = ?', [id]);
     if (!t) throw new NotFoundException('Shop not found');
     const since = addDays(todayKey(), -29);
-    const [users, requests, events, counts, daily, phones] = await Promise.all([
+    const [users, requests, events, counts, daily, phones, devices] = await Promise.all([
       this.db.all<any>(
         `SELECT u.id, u.name, u.phone, u.email, u.role, u.active, u.last_login_at, u.created_at,
            (SELECT MAX(s.last_seen_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at,
@@ -167,6 +177,11 @@ export class PlatformService {
          WHERE u.tenant_id = ? AND s.client = 'mobile' AND s.revoked = 0 AND s.expires_at > NOW() ORDER BY s.last_sync_at DESC`,
         [id],
       ),
+      this.db.all<any>(
+        `SELECT d.id, d.device_id, d.model, d.app_version, d.status, d.first_seen, d.last_seen, d.released_at, u.name AS user_name
+         FROM devices d LEFT JOIN users u ON u.id = d.user_id WHERE d.tenant_id = ? ORDER BY d.status = 'active' DESC, d.last_seen DESC`,
+        [id],
+      ),
     ]);
     const byDay = new Map(daily.map((d) => [d.day, d]));
     const series = Array.from({ length: 30 }, (_, i) => {
@@ -179,11 +194,12 @@ export class PlatformService {
       shop: { ...shop, activity: activityOf(t.last_active_at) },
       subscription: subscriptionOf(t),
       users: users.map((u) => ({ ...u, active: !!u.active, devices: n(u.devices) })),
-      requests,
+      requests: requests.map(({ proof_files, ...r }: any) => ({ ...r, proofs: fileKeys(proof_files).length })),
       events,
       counts: Object.fromEntries(Object.entries(counts ?? {}).map(([k, v]) => [k, k.endsWith('_at') ? v : n(v)])),
       series,
       phones,
+      devices,
     };
   }
 
@@ -300,7 +316,13 @@ export class PlatformService {
        ${w} ORDER BY b.status = 'pending' DESC, b.id DESC LIMIT ? OFFSET ?`,
       [...args, limit, (page - 1) * limit],
     );
-    return { items: items.map((i) => ({ ...i, amount: n(i.amount) })), total: n(total?.n), amount: n(total?.amount), page, total_pages: Math.max(1, Math.ceil(n(total?.n) / limit)) };
+    return {
+      items: items.map(({ proof_files, ...i }) => ({ ...i, amount: n(i.amount), proofs: fileKeys(proof_files).length })),
+      total: n(total?.n),
+      amount: n(total?.amount),
+      page,
+      total_pages: Math.max(1, Math.ceil(n(total?.n) / limit)),
+    };
   }
 
   async approve(id: number, note: string, by: number) {
@@ -347,9 +369,9 @@ export class PlatformService {
     const today = todayKey();
     const since30 = addDays(today, -29);
     const active = shops.filter((s) => s.subscription.status === 'active');
-    const [pending, revenue, months, signupsDaily, salesDaily, users, recentEvents] = await Promise.all([
+    const [pending, revenue, months, signupsDaily, salesDaily, users, recentEvents, openSupport] = await Promise.all([
       this.db.all<any>(
-        `SELECT b.id, b.plan, b.months, b.amount, b.method, b.txn_ref, b.created_at, t.id AS shop_id, t.name AS shop_name
+        `SELECT b.id, b.plan, b.months, b.amount, b.method, b.txn_ref, b.proof_files, b.created_at, t.id AS shop_id, t.name AS shop_name
          FROM billing_requests b JOIN tenants t ON t.id = b.tenant_id WHERE b.status = 'pending' ORDER BY b.id`,
       ),
       this.db.one<any>(
@@ -368,6 +390,7 @@ export class PlatformService {
       ),
       this.db.one<any>("SELECT COUNT(*) AS n, SUM(role = 'owner') AS owners FROM users WHERE tenant_id IS NOT NULL AND active = 1"),
       this.recentEvents(12),
+      this.support.openCount(),
     ]);
     const sd = new Map(signupsDaily.map((r) => [String(r.day).slice(0, 10), n(r.n)]));
     const sl = new Map(salesDaily.map((r) => [r.day, r]));
@@ -385,6 +408,9 @@ export class PlatformService {
       shops: shops.length,
       active_paid: active.filter((s) => s.plan !== 'trial').length,
       on_trial: active.filter((s) => s.plan === 'trial').length,
+      offline_shops: shops.filter((s) => s.mode === 'offline').length,
+      online_shops: shops.filter((s) => s.mode === 'online').length,
+      offline_devices: shops.filter((s) => s.mode === 'offline').reduce((a, s) => a + s.devices, 0),
       expired: shops.filter((s) => s.subscription.status === 'expired').length,
       suspended: shops.filter((s) => s.subscription.status === 'suspended').length,
       expiring_7d: active.filter((s) => s.subscription.days_left <= 7).length,
@@ -394,6 +420,7 @@ export class PlatformService {
       phones: shops.reduce((a, s) => a + s.phones, 0),
       mrr: shops.reduce((a, s) => a + s.mrr, 0),
       pending_requests: pending.length,
+      open_support: openSupport,
       pending_amount: pending.reduce((a, p) => a + n(p.amount), 0),
       revenue_month: n(revenue?.month),
       revenue_last_month: n(revenue?.last_month),
@@ -405,7 +432,7 @@ export class PlatformService {
       signups_daily: days.map((day) => ({ day, n: sd.get(day) ?? 0 })),
       sales_daily: days.map((day) => ({ day, bills: n(sl.get(day)?.bills), total: n(sl.get(day)?.total) })),
       revenue_monthly: monthsList.map((m) => ({ month: m, amount: n(mm.get(m)?.amount), payments: n(mm.get(m)?.n) })),
-      pending: pending.slice(0, 8).map((p) => ({ ...p, amount: n(p.amount) })),
+      pending: pending.slice(0, 8).map(({ proof_files, ...p }) => ({ ...p, amount: n(p.amount), proofs: fileKeys(proof_files).length })),
       expiring: active
         .filter((s) => s.subscription.days_left <= 7)
         .sort((a, b) => a.subscription.days_left - b.subscription.days_left)

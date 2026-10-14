@@ -6,7 +6,7 @@ import { Col, TABLES } from './tables';
  * Schema is created and upgraded here on boot (idempotent). Bump SCHEMA_VERSION
  * and add a step to UPGRADES for any change after the first release.
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 5;
 
 const SAAS_DDL = [
   `CREATE TABLE IF NOT EXISTS meta (
@@ -25,6 +25,7 @@ const SAAS_DDL = [
     profile_updated_at BIGINT NOT NULL DEFAULT 0,
     plan VARCHAR(20) NOT NULL DEFAULT 'trial',
     status VARCHAR(20) NOT NULL DEFAULT 'active',
+    mode VARCHAR(10) NOT NULL DEFAULT 'online',
     trial_ends_at DATETIME NULL,
     paid_until DATETIME NULL,
     seq BIGINT NOT NULL DEFAULT 0,
@@ -43,6 +44,7 @@ const SAAS_DDL = [
     name VARCHAR(120) NOT NULL,
     phone VARCHAR(30) NULL,
     email VARCHAR(160) NULL,
+    email_verified_at DATETIME NULL,
     password_hash VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'owner',
     is_super TINYINT NOT NULL DEFAULT 0,
@@ -80,6 +82,7 @@ const SAAS_DDL = [
     method VARCHAR(20) NOT NULL,
     txn_ref VARCHAR(80) NOT NULL DEFAULT '',
     note VARCHAR(255) NOT NULL DEFAULT '',
+    proof_files TEXT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_by INT NULL,
     reviewed_by INT NULL,
@@ -98,6 +101,7 @@ const SAAS_DDL = [
     features TEXT NULL,
     is_active TINYINT NOT NULL DEFAULT 1,
     sort INT NOT NULL DEFAULT 0,
+    mode VARCHAR(10) NOT NULL DEFAULT 'online',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
@@ -171,6 +175,66 @@ const SAAS_DDL = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX ix_be_tenant (tenant_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // Phones registered to a shop. An Offline account may have one active phone.
+  `CREATE TABLE IF NOT EXISTS devices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    device_id VARCHAR(80) NOT NULL,
+    user_id INT NULL,
+    model VARCHAR(120) NOT NULL DEFAULT '',
+    platform VARCHAR(20) NOT NULL DEFAULT 'android',
+    app_version VARCHAR(20) NOT NULL DEFAULT '',
+    status VARCHAR(12) NOT NULL DEFAULT 'active',
+    first_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    released_at DATETIME NULL,
+    released_by INT NULL,
+    UNIQUE KEY ux_devices (tenant_id, device_id),
+    INDEX ix_devices_device (device_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // Help requests from shops to the JGasFlow team, with a message thread.
+  `CREATE TABLE IF NOT EXISTS support_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    created_by INT NULL,
+    subject VARCHAR(120) NOT NULL,
+    topic VARCHAR(20) NOT NULL DEFAULT 'other',
+    status VARCHAR(20) NOT NULL DEFAULT 'open',
+    last_from VARCHAR(10) NOT NULL DEFAULT 'shop',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX ix_sr_tenant (tenant_id),
+    INDEX ix_sr_status (status, updated_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS support_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL,
+    tenant_id INT NOT NULL,
+    user_id INT NULL,
+    from_admin TINYINT NOT NULL DEFAULT 0,
+    body TEXT NOT NULL,
+    files TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX ix_sm_request (request_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // One-time email codes: sign-up verification and password reset (only a hash is kept).
+  `CREATE TABLE IF NOT EXISTS email_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(160) NOT NULL,
+    purpose VARCHAR(20) NOT NULL,
+    code_hash CHAR(64) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    ip VARCHAR(64) NOT NULL DEFAULT '',
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX ix_ec_email (email, purpose, id),
+    INDEX ix_ec_ip (ip, created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 ];
 
 function colDdl(c: Col): string {
@@ -218,6 +282,16 @@ function gasDdl(): string[] {
 const UPGRADES: Record<number, string[]> = {
   // v2: platform admin permissions (NULL = every module).
   2: ['ALTER TABLE users ADD COLUMN admin_perms TEXT NULL AFTER is_super'],
+  // v3: payment screenshots (support tables are created above with IF NOT EXISTS).
+  3: ['ALTER TABLE billing_requests ADD COLUMN proof_files TEXT NULL AFTER note'],
+  // v4: Offline and Online plans and shops (devices table is created above).
+  4: [
+    "ALTER TABLE plans ADD COLUMN mode VARCHAR(10) NOT NULL DEFAULT 'online' AFTER sort",
+    "ALTER TABLE tenants ADD COLUMN mode VARCHAR(10) NOT NULL DEFAULT 'online' AFTER status",
+    "UPDATE plans SET mode = 'any' WHERE plan_key = 'trial'",
+  ],
+  // v5: when the email was confirmed with a code (email_codes is created above).
+  5: ['ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL AFTER email'],
 };
 
 export async function migrate(q: Q) {

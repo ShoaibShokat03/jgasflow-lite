@@ -12,6 +12,7 @@ import { AuthUser } from './auth.decorators';
 import { PlatformConfig } from '../platform/platform-config.service';
 import { parsePerms } from '../platform/admin-modules';
 import { hashToken } from './auth.guard';
+import { EmailCodesService } from './email-codes.service';
 
 export interface SessionInfo {
   client?: string;
@@ -19,36 +20,44 @@ export interface SessionInfo {
   ip?: string;
 }
 
-export const SHOP_FIELDS = 'id, name, owner_name, phone, address, currency, receipt_note, profile_updated_at, plan, status, trial_ends_at, paid_until, created_at';
+export const SHOP_FIELDS = 'id, name, owner_name, phone, address, currency, receipt_note, profile_updated_at, plan, status, mode, trial_ends_at, paid_until, created_at';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly db: Db,
     private readonly config: PlatformConfig,
+    private readonly codes: EmailCodesService,
   ) {}
 
-  async signup(b: { shop_name: string; owner_name: string; phone: string; email: string; password: string }, info: SessionInfo) {
+  async signup(b: { shop_name: string; owner_name: string; phone: string; email: string; password: string; mode?: 'offline' | 'online'; email_code?: string }, info: SessionInfo) {
+    const mode = b.mode === 'offline' ? 'offline' : 'online';
     const phone = normPhone(b.phone);
-    const email = b.email || null;
+    const email = b.email ? b.email.trim().toLowerCase() : null;
+    // The web sign-up needs an email, confirmed with a code when email is set up.
+    // The phone app (older versions too) signs up without one.
+    const web = info.client !== 'mobile';
+    if (web && !email) throw new BadRequestException('Enter your email');
     await this.assertFree(this.db, phone, email);
+    const verify = web && this.config.emailVerifyOn();
+    if (verify) await this.codes.consume(email!, 'signup', b.email_code ?? '');
     const hash = await bcrypt.hash(b.password, 10);
 
     const userId = await this.db.tx(async (q) => {
       const t = await q.run(
-        `INSERT INTO tenants (name, owner_name, phone, plan, status, trial_ends_at, profile_updated_at)
-         VALUES (?, ?, ?, 'trial', 'active', DATE_ADD(NOW(), INTERVAL ? DAY), ?)`,
-        [b.shop_name, b.owner_name, b.phone.trim(), this.config.trialDays(), Date.now()],
+        `INSERT INTO tenants (name, owner_name, phone, plan, status, mode, trial_ends_at, profile_updated_at)
+         VALUES (?, ?, ?, 'trial', 'active', ?, DATE_ADD(NOW(), INTERVAL ? DAY), ?)`,
+        [b.shop_name, b.owner_name, b.phone.trim(), mode, this.config.trialDays(), Date.now()],
       );
       const tenantId = t.insertId;
-      const u = await q.run(`INSERT INTO users (tenant_id, name, phone, email, password_hash, role, last_login_at) VALUES (?, ?, ?, ?, ?, 'owner', NOW())`, [
+      const u = await q.run(`INSERT INTO users (tenant_id, name, phone, email, email_verified_at, password_hash, role, last_login_at) VALUES (?, ?, ?, ?, ${verify ? 'NOW()' : 'NULL'}, ?, 'owner', NOW())`, [
         tenantId,
         b.owner_name,
         phone,
         email,
         hash,
       ]);
-      await q.run(`INSERT INTO billing_events (tenant_id, action, detail, by_user) VALUES (?, 'signup', ?, ?)`, [tenantId, `Trial started (${this.config.trialDays()} days)`, u.insertId]);
+      await q.run(`INSERT INTO billing_events (tenant_id, action, detail, by_user) VALUES (?, 'signup', ?, ?)`, [tenantId, `${mode === 'offline' ? 'Offline' : 'Online'} trial started (${this.config.trialDays()} days)`, u.insertId]);
       return { tenantId, userId: u.insertId };
     });
 
@@ -148,6 +157,18 @@ export class AuthService {
     await this.db.run('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(next, 10), u.id]);
     // Sign out every other device.
     await this.db.run('UPDATE sessions SET revoked = 1 WHERE user_id = ? AND id <> ?', [u.id, u.sessionId]);
+  }
+
+  /** Forgot password: a code from the email sets a new password and signs out every device. */
+  async resetPassword(rawEmail: string, code: string, next: string) {
+    const email = rawEmail.trim().toLowerCase();
+    const u = await this.db.one<any>('SELECT id, active FROM users WHERE email = ?', [email]);
+    // Unknown email: the same answer as a wrong code, so accounts cannot be guessed.
+    if (!u || !u.active) throw new BadRequestException({ message: 'This code has expired. Click Get code for a new one.', code: 'CODE_EXPIRED' });
+    await this.codes.consume(email, 'reset', code);
+    await this.db.run('UPDATE users SET password_hash = ?, email_verified_at = IFNULL(email_verified_at, NOW()) WHERE id = ?', [await bcrypt.hash(next, 10), u.id]);
+    await this.db.run('UPDATE sessions SET revoked = 1 WHERE user_id = ?', [u.id]);
+    return { ok: true };
   }
 
   async updateMe(u: AuthUser, b: { name: string; email: string }) {

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Footprints, UserPlus } from 'lucide-react';
+import { Footprints, Truck, UserPlus } from 'lucide-react';
 import { useGet } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { Balance, Button, Empty, Initials, Loading } from './kit';
+import { Balance, Empty, Initials, Loading } from './kit';
 import { SearchBox } from './form';
 import { Modal } from './overlay';
 
-/** Pick a customer (or walk-in). onPick(customer | null). */
+/** Pick a customer (or walk-in). onPick(customer | null). onAddNew(searchText) adds one on the spot. */
 export function CustomerPicker({ open, onClose, onPick, allowWalkIn = true, onAddNew }) {
   const [q, setQ] = useState('');
   const list = useGet(open ? '/customers' : null, { q });
@@ -14,6 +14,17 @@ export function CustomerPicker({ open, onClose, onPick, allowWalkIn = true, onAd
     <Modal open={open} onClose={onClose} title={t('select_customer')} size="md">
       <SearchBox value={q} onChange={setQ} placeholder={t('search_customer')} autoFocus />
       <div className="mt-3 card overflow-hidden max-h-[55vh] overflow-y-auto divide-rows">
+        {onAddNew && (
+          <button type="button" className="row-link w-full text-left" onClick={() => onAddNew(q.trim())}>
+            <div className="grid place-items-center size-[38px] rounded-[var(--radius-ctl)] bg-accent text-white">
+              <UserPlus className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-accent-dark truncate">{q.trim() ? t('add_as_new', { name: q.trim() }) : t('add_new_customer')}</div>
+              <div className="text-[12px] text-muted truncate">{t('add_new_customer_sub')}</div>
+            </div>
+          </button>
+        )}
         {allowWalkIn && !q && (
           <button type="button" className="row-link w-full text-left" onClick={() => onPick(null)}>
             <div className="grid place-items-center size-[38px] rounded-[var(--radius-ctl)] bg-[#fff0e6] text-accent-dark">
@@ -25,7 +36,7 @@ export function CustomerPicker({ open, onClose, onPick, allowWalkIn = true, onAd
         {list.isLoading ? (
           <Loading className="py-8" />
         ) : (list.data ?? []).length === 0 ? (
-          <Empty title={t('nothing_found')} className="py-6" />
+          !onAddNew && <Empty title={t('nothing_found')} className="py-6" />
         ) : (
           list.data.map((c) => (
             <button key={c.uid} type="button" className="row-link w-full text-left" onClick={() => onPick(c)}>
@@ -42,23 +53,29 @@ export function CustomerPicker({ open, onClose, onPick, allowWalkIn = true, onAd
           ))
         )}
       </div>
-      {onAddNew && (
-        <Button variant="soft" icon={UserPlus} className="mt-3" full onClick={onAddNew}>
-          {t('add_customer')}
-        </Button>
-      )}
     </Modal>
   );
 }
 
-/** Pick a supplier (or none). */
-export function SupplierPicker({ open, onClose, onPick }) {
+/** Pick a supplier (or none). onAddNew(searchText) adds one on the spot. */
+export function SupplierPicker({ open, onClose, onPick, onAddNew }) {
   const [q, setQ] = useState('');
   const list = useGet(open ? '/suppliers' : null, { q });
   return (
     <Modal open={open} onClose={onClose} title={t('select_supplier')}>
       <SearchBox value={q} onChange={setQ} autoFocus />
       <div className="mt-3 card overflow-hidden max-h-[55vh] overflow-y-auto divide-rows">
+        {onAddNew && (
+          <button type="button" className="row-link w-full text-left" onClick={() => onAddNew(q.trim())}>
+            <div className="grid place-items-center size-[38px] rounded-[var(--radius-ctl)] bg-accent text-white">
+              <Truck className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-accent-dark truncate">{q.trim() ? t('add_as_new', { name: q.trim() }) : t('add_new_supplier')}</div>
+              <div className="text-[12px] text-muted truncate">{t('add_new_supplier_sub')}</div>
+            </div>
+          </button>
+        )}
         {!q && (
           <button type="button" className="row-link w-full text-left" onClick={() => onPick(null)}>
             <Initials name="-" tone="gray" />

@@ -5,12 +5,12 @@ import { api, useAct, useGet } from '@/lib/api';
 import { dayKey, money, numInput, parseNum } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Balance, Button, Card, Initials, KV } from '@/ui/kit';
-import { businessNameError, Chips, DateInput, MethodPicker, MoneyInput, phoneError, QtyStepper, Select, Textarea, TextInput } from '@/ui/form';
+import { businessNameError, Chips, DateInput, MethodPicker, MoneyInput, phoneError, QtyStepper, Select, Textarea, textError, TextInput } from '@/ui/form';
 import { Modal, toast } from '@/ui/overlay';
 import { CustomerPicker } from '@/ui/pickers';
 
 /** Add / edit a customer or supplier (kind = 'customer' | 'supplier'). */
-export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved }) {
+export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved, prefill = '' }) {
   const isCust = kind === 'customer';
   const blank = { name: '', phone: '', address: '', type: 'retail', note: '', bal: '', side: 'udhaar' };
   const [f, setF] = useState(blank);
@@ -21,7 +21,7 @@ export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved }
     if (initial) {
       const ob = Number(initial.opening_balance) || 0;
       setF({ name: initial.name, phone: initial.phone || '', address: initial.address || '', type: initial.type || 'retail', note: initial.note || '', bal: numInput(Math.abs(ob)), side: ob < 0 ? 'advance' : 'udhaar' });
-    } else setF(blank);
+    } else setF({ ...blank, name: prefill });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
@@ -39,7 +39,7 @@ export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved }
   );
   const submit = (e) => {
     e?.preventDefault();
-    const es = { name: businessNameError(f.name), phone: phoneError(f.phone, false) };
+    const es = { name: businessNameError(f.name), phone: phoneError(f.phone, false), address: textError(f.address) };
     setErrs(es);
     if (Object.values(es).some(Boolean)) return;
     const amt = parseNum(f.bal);
@@ -72,7 +72,7 @@ export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved }
             </div>
           )}
         </div>
-        <TextInput label={t('address')} value={f.address} onChange={set('address')} maxLength={255} />
+        <TextInput label={t('address')} value={f.address} onChange={set('address')} maxLength={255} error={errs.address} />
         <div>
           <div className="label">{t(isCust ? 'previous_balance' : 'previous_payable')}</div>
           <div className="grid grid-cols-[auto_1fr] gap-2">

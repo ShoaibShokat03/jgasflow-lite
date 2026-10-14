@@ -70,9 +70,11 @@ export function ConfirmProvider({ children }) {
         iconColor={req?.danger ? '#C62828' : '#020033'}
         footer={
           <>
-            <Button variant="outline" onClick={() => close(false)}>
-              {req?.cancelLabel || t('cancel')}
-            </Button>
+            {req?.cancelLabel !== false && (
+              <Button variant="outline" onClick={() => close(false)}>
+                {req?.cancelLabel || t('cancel')}
+              </Button>
+            )}
             <Button variant={req?.danger ? 'danger' : 'primary'} icon={req?.okIcon || (req?.danger ? Trash2 : undefined)} onClick={() => close(true)} autoFocus>
               {req?.okLabel || t('ok')}
             </Button>
@@ -85,7 +87,7 @@ export function ConfirmProvider({ children }) {
   );
 }
 
-/** await confirm({ title, message, okLabel, danger }) -> boolean */
+/** await confirm({ title, message, okLabel, danger, cancelLabel }) -> boolean. cancelLabel: false shows only OK (an alert). */
 export const useConfirm = () => useContext(ConfirmCtx);
 
 // ───────── toast

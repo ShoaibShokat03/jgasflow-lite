@@ -4,7 +4,7 @@ import { createHmac } from 'crypto';
 import { ENV } from '../config/env';
 import { Db } from '../db/db.service';
 import { subscriptionOf } from '../billing/plans';
-import { ADMIN_PERM, ALLOW_EXPIRED, ANY_USER, AuthUser, IS_PUBLIC, Role, ROLES, SUPER } from './auth.decorators';
+import { ADMIN_PERM, ALLOW_EXPIRED, ANY_USER, AuthUser, IS_PUBLIC, ONLINE_ONLY, Role, ROLES, SUPER } from './auth.decorators';
 import { adminCan, parsePerms } from '../platform/admin-modules';
 
 export const hashToken = (token: string) => createHmac('sha256', ENV.tokenSecret).update(token).digest('hex');
@@ -38,7 +38,7 @@ export class AuthGuard implements CanActivate {
 
     const row = await this.db.one<any>(
       `SELECT s.id AS sid, s.client, s.expires_at, s.revoked, s.last_seen_at, u.id, u.name, u.role, u.is_super, u.admin_perms, u.active, u.tenant_id,
-              t.plan, t.status, t.trial_ends_at, t.paid_until
+              t.plan, t.status, t.mode, t.trial_ends_at, t.paid_until
        FROM sessions s JOIN users u ON u.id = s.user_id LEFT JOIN tenants t ON t.id = u.tenant_id
        WHERE s.token_hash = ?`,
       [hashToken(token)],
@@ -74,7 +74,16 @@ export class AuthGuard implements CanActivate {
     }
 
     if (!user.tenantId || !user.sub) throw new ForbiddenException('This page is for shop accounts');
-    if (user.sub.status === 'suspended') throw new ForbiddenException('This shop account is suspended. Please contact JGasFlow support.');
+    if (user.sub.status === 'suspended') {
+      throw new ForbiddenException({ statusCode: 403, code: 'SHOP_SUSPENDED', message: 'This shop account is suspended. Please contact JGasFlow support.' });
+    }
+
+    if (user.sub.mode === 'offline' && this.meta<boolean>(ONLINE_ONLY, ctx)) {
+      throw new HttpException(
+        { statusCode: 403, error: 'Forbidden', code: 'OFFLINE_ACCOUNT', message: 'This shop is on the Offline plan. Upgrade to an Online plan to use the web app and sync.' },
+        403,
+      );
+    }
 
     const roles = this.meta<Role[]>(ROLES, ctx);
     if (roles && !roles.includes(user.role)) throw new ForbiddenException('You do not have permission for this');

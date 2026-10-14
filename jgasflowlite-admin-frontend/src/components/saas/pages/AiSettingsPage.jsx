@@ -241,7 +241,7 @@ const AiSettingsPage = () => {
         <Card
           icon={Sparkles}
           title="Language model"
-          subtitle="Google Gemini — what the assistant thinks with"
+          subtitle="Google Gemini: what the assistant thinks with"
         >
           <Field label="API key">
             <input
@@ -252,7 +252,7 @@ const AiSettingsPage = () => {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
                 saved?.configured
-                  ? `${saved.api_key_masked} — leave blank to keep it`
+                  ? `${saved.api_key_masked}, leave blank to keep it`
                   : "Paste the key from aistudio.google.com/apikey"
               }
             />
@@ -370,7 +370,7 @@ const AiSettingsPage = () => {
               onChange={(e) => setVoiceKey(e.target.value)}
               placeholder={
                 saved?.voice_configured
-                  ? `${saved.voice_api_key_masked} — leave blank to keep it`
+                  ? `${saved.voice_api_key_masked}, leave blank to keep it`
                   : "The key for the voice service"
               }
             />
@@ -397,7 +397,7 @@ const AiSettingsPage = () => {
                   {voices.map((v) => (
                     <option key={v.key} value={v.key}>
                       {v.language_name} · {v.name} ({v.quality})
-                      {v.installed ? "" : " — downloads on first use"}
+                      {v.installed ? "" : ", downloads on first use"}
                     </option>
                   ))}
                 </select>
@@ -425,7 +425,7 @@ const AiSettingsPage = () => {
             </div>
           </Field>
 
-          <Field label={`Speaking speed — ${Number(voiceSpeed).toFixed(2)}x`}>
+          <Field label={`Speaking speed: ${Number(voiceSpeed).toFixed(2)}x`}>
             <input
               type="range"
               min={0.5}
@@ -499,11 +499,6 @@ const AiSettingsPage = () => {
             )}
           </div>
 
-          {saved?.voice_api_url && (
-            <p className="text-[11.5px] text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-2">
-              Audio goes to {saved.voice_api_url} — set by VOICE_API_URL on the server, not here.
-            </p>
-          )}
         </Card>
       </div>
     </div>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Check, ClipboardList, Cylinder, History, PackagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
-import { fDateShort, fTime, money, num0, numInput, parseNum } from '@/lib/format';
+import { moveColumns, stockColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
+import { fDateShort, fTime, lossPerCylinder, MAX_UNIT_PRICE, money, num0, numInput, parseNum } from '@/lib/format';
 import { moveLabel, t } from '@/lib/i18n';
 import { Async, Button, Card, cn, Empty, IconBox, PageHeader, SectionHeader, StatTile, Tag } from '@/ui/kit';
 import { Chips, MoneyInput, QtyStepper, Switch, TextInput } from '@/ui/form';
@@ -28,6 +30,7 @@ export default function Stock() {
         title={t('stock_cylinders')}
         actions={
           <>
+            <ExportMenu title={t('x_stock')} columns={stockColumns} rows={types.data} />
             <Button variant="outline" icon={Plus} onClick={() => setForm('new')}>
               {t('add_cylinder_type')}
             </Button>
@@ -107,7 +110,10 @@ function Moves({ types }) {
   const moves = useGet('/stock/moves', { type });
   return (
     <>
-      <SectionHeader title={t('stock_history')} />
+      <SectionHeader
+        title={t('stock_history')}
+        action={<ExportMenu title={t('x_stock_history')} columns={moveColumns} rows={moves.data} all={() => api.get('/stock/moves', { params: { limit: 50000 } })} />}
+      />
       <Chips className="mb-3" size="sm" value={type} onChange={setType} options={[{ value: '', label: t('all') }, ...types.map((x) => ({ value: x.uid, label: x.name }))]} />
       <Async q={moves}>
         {(rows) => (
@@ -203,7 +209,9 @@ function AdjustStock({ type, onClose }) {
   );
 }
 
-export function TypeForm({ open, initial, onClose }) {
+/** noOpening: added from a purchase, so the purchase brings the stock (no opening counts). */
+export function TypeForm({ open, initial, onClose, onSaved, noOpening = false }) {
+  const confirm = useConfirm();
   const blank = { name: '', kg: '', price: '', wholesale_price: '', purchase_price: '', deposit: '', low_level: '5', sort: '', active: true, full_qty: 0, empty_qty: 0 };
   const [f, setF] = useState(blank);
   const [err, setErr] = useState('');
@@ -219,14 +227,20 @@ export function TypeForm({ open, initial, onClose }) {
   }, [open, initial]);
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const save = useAct((b) => (initial ? api.put(`/types/${initial.uid}`, b) : api.post('/types', b)), {
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast(t('saved'));
       onClose();
+      onSaved?.(res);
     },
     onError: (e) => toast(e.message, 'error'),
   });
-  const submit = () => {
+  const submit = async () => {
     if (!f.name.trim()) return setErr(t('required'));
+    const [sale, wholesale, purchase, deposit] = [f.price, f.wholesale_price, f.purchase_price, f.deposit].map(parseNum);
+    if ([sale, wholesale, purchase, deposit].some((v) => v > MAX_UNIT_PRICE)) return toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error');
+    if (parseNum(f.kg) > 1000) return toast(t('weight_too_big'), 'error');
+    const loss = Math.max(lossPerCylinder(sale, purchase), lossPerCylinder(wholesale, purchase));
+    if (loss > 0 && !(await confirm({ title: t('loss_title'), message: t('loss_msg', { loss: money(loss) }), okLabel: t('save_anyway'), danger: true }))) return;
     save.mutate({
       name: f.name.trim(),
       kg: parseNum(f.kg),
@@ -237,7 +251,7 @@ export function TypeForm({ open, initial, onClose }) {
       low_level: parseNum(f.low_level),
       sort: parseNum(f.sort),
       active: f.active,
-      ...(initial ? {} : { full_qty: f.full_qty, empty_qty: f.empty_qty }),
+      ...(initial ? {} : { full_qty: noOpening ? 0 : f.full_qty, empty_qty: noOpening ? 0 : f.empty_qty }),
     });
   };
   return (
@@ -266,7 +280,7 @@ export function TypeForm({ open, initial, onClose }) {
         <MoneyInput label={t('security_per_cyl')} value={f.deposit} onChange={set('deposit')} />
         <TextInput label={t('low_stock_alert')} value={f.low_level} onChange={set('low_level')} filter="int" hint={t('low_stock_help')} />
         <TextInput label={t('sort_order')} value={f.sort} onChange={set('sort')} filter="int" />
-        {!initial && (
+        {!initial && !noOpening && (
           <>
             <div className="col-span-2 flex items-center justify-between">
               <span className="font-semibold">{t('opening_full')}</span>
@@ -278,9 +292,11 @@ export function TypeForm({ open, initial, onClose }) {
             </div>
           </>
         )}
-        <div className="col-span-2">
-          <Switch checked={f.active} onChange={set('active')} label={t('active')} sub={t('active_help')} />
-        </div>
+        {!noOpening && (
+          <div className="col-span-2">
+            <Switch checked={f.active} onChange={set('active')} label={t('active')} sub={t('active_help')} />
+          </div>
+        )}
         {initial && <div className="col-span-2 text-[12px] text-muted">{t('price_change_logged')}</div>}
       </div>
     </Modal>

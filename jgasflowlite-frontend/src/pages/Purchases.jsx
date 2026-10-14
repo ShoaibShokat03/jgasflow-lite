@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PackagePlus, ShoppingCart } from 'lucide-react';
-import { useGet } from '@/lib/api';
+import { api, useGet } from '@/lib/api';
+import { purchaseColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { fDateShort, money, periodRange } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, Initials, PageHeader, Tag } from '@/ui/kit';
@@ -14,7 +16,17 @@ export default function Purchases() {
   const list = useGet('/purchases', periodRange(period));
   return (
     <div>
-      <PageHeader title={t('purchases')} actions={<Button icon={PackagePlus} to="/app/purchases/new">{t('new_purchase')}</Button>} />
+      <PageHeader
+        title={t('purchases')}
+        actions={
+          <>
+            <ExportMenu title={t('purchases')} columns={purchaseColumns} rows={list.data} all={() => api.get('/purchases', { params: { limit: 50000 } })} />
+            <Button icon={PackagePlus} to="/app/purchases/new">
+              {t('new_purchase')}
+            </Button>
+          </>
+        }
+      />
       <Chips className="mb-3" value={period} onChange={setPeriod} options={PERIODS()} />
       <Async q={list}>
         {(rows) => (

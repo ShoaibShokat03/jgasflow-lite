@@ -38,8 +38,8 @@ const ICONS = {
  */
 const OPENERS = [
   { who: "Omar", say: "Brief me on the platform" },
-  { who: "Ayesha", say: "Which clinics have gone quiet?" },
-  { who: "Bilal", say: "What is overdue?" },
+  { who: "Ayesha", say: "Which shops have gone quiet?" },
+  { who: "Bilal", say: "Which payments are waiting?" },
   { who: "Zara", say: "What should we do to grow?" },
 ];
 

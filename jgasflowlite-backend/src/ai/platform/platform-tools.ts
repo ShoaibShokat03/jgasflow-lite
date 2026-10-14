@@ -185,7 +185,7 @@ export class PlatformTools {
         name: 'list_payments',
         permission: 'payments',
         description:
-          'Subscription payments shops sent to JGasFlow (JazzCash, Easypaisa, bank) and payments recorded in the console. Status: pending = waiting for approval, approved, rejected. These are payments TO the platform, not sales made by shops.',
+          'Subscription payments shops sent to JGasFlow (bank transfers, with screenshots) and payments recorded in the console. Status: pending = waiting for approval, approved, rejected. These are payments TO the platform, not sales made by shops.',
         input_schema: obj({
           status: oneOf('Filter by status.', ['pending', 'approved', 'rejected', 'all']),
           shop_id: int('Only this shop.'),

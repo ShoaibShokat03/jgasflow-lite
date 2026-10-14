@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { parse, z } from '../common/util';
-import { AllowExpired, AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
+import { AllowExpired, AuthUser, CurrentUser, OnlineOnly, Roles } from '../auth/auth.decorators';
 import { SyncService } from './sync.service';
 
+@OnlineOnly()
 @Controller('sync')
 export class SyncController {
   constructor(private readonly sync: SyncService) {}

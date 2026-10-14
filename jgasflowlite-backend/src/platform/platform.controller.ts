@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { BillingService } from '../billing/billing.service';
 import { parse, z } from '../common/util';
 import { zBusinessName, zEmailOpt, zPassword, zPersonName, zPhone, zPhoneOpt, zText } from '../common/rules';
 import { AdminPerm, AuthUser, CurrentUser, Public, SuperAdmin } from '../auth/auth.decorators';
@@ -6,6 +8,7 @@ import { PLAN } from '../billing/plans';
 import { ADMIN_MODULES, adminCan, isSuperAdmin } from './admin-modules';
 import { PlatformConfig } from './platform-config.service';
 import { PlatformService } from './platform.service';
+import { MailService } from './mail.service';
 
 const zPlanKey = z.string().refine((k) => !!PLAN[k], 'Unknown plan');
 const zDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-12-31');
@@ -17,6 +20,8 @@ export class PlatformController {
   constructor(
     private readonly svc: PlatformService,
     private readonly config: PlatformConfig,
+    private readonly billing: BillingService,
+    private readonly mail: MailService,
   ) {}
 
   /** Who am I in the console, and what may I open. */
@@ -111,6 +116,13 @@ export class PlatformController {
     return this.svc.payments(q);
   }
 
+  /** A screenshot a shop attached to its payment. */
+  @AdminPerm('payments')
+  @Get('payments/:id/proof/:n')
+  proof(@Param('id', ParseIntPipe) id: number, @Param('n', ParseIntPipe) n: number, @Res() res: Response) {
+    return this.billing.sendProof(res, id, n);
+  }
+
   @AdminPerm('payments')
   @HttpCode(200)
   @Post('payments')
@@ -121,7 +133,7 @@ export class PlatformController {
         plan: zPlanKey,
         months: z.coerce.number().int().min(1).max(36),
         amount: z.coerce.number().min(0).max(10000000).optional(),
-        method: z.enum(['jazzcash', 'easypaisa', 'bank', 'cash', 'other']),
+        method: z.enum(['bank', 'cash', 'other']),
         txn_ref: zText(80),
         note: zText(255),
       }),
@@ -162,10 +174,13 @@ export class PlatformController {
         features: z.array(z.string().trim().min(1).max(120)).max(12).default([]),
         is_active: z.boolean().default(true),
         sort: z.coerce.number().int().min(0).max(999).default(0),
+        mode: z.enum(['offline', 'online']).optional(),
       }),
       body,
     );
-    return { ...b, key: key ?? b.key ?? '' };
+    // An update without a type keeps the plan's type; a new plan is Online unless chosen.
+    const mode = b.mode ?? (key && PLAN[key]?.mode !== 'any' ? PLAN[key]?.mode : undefined) ?? 'online';
+    return { ...b, mode, key: key ?? b.key ?? '' };
   }
 
   @AdminPerm('plans')
@@ -204,7 +219,7 @@ export class PlatformController {
   @AdminPerm('settings')
   @Get('settings')
   settings() {
-    return this.config.all();
+    return this.config.forConsole();
   }
 
   @AdminPerm('settings')
@@ -218,15 +233,54 @@ export class PlatformController {
         support_whatsapp: z.string().trim().regex(/^\d{10,15}$/, 'WhatsApp number in digits, like 923001234567').optional(),
         support_email: zEmailOpt.optional(),
         support_hours: s,
-        pay_jazzcash: s,
-        pay_easypaisa: s,
-        pay_bank: s,
+        bank_name: s,
+        bank_title: s,
+        bank_account: z.string().trim().max(40).optional(),
+        bank_iban: z
+          .string()
+          .trim()
+          .toUpperCase()
+          .transform((v) => v.replace(/\s+/g, ''))
+          .refine((v) => v === '' || /^PK\d{2}[A-Z]{4}\d{16}$/.test(v), 'IBAN looks like PK36MEZN0001234567890123')
+          .optional(),
+        bank_branch: s,
         trial_days: z.coerce.number().int().min(1).max(90).transform(String).optional(),
         shop_app_url: z.string().trim().url('Enter the full address, like https://app.jgasflow.com').optional(),
+        smtp_host: z
+          .string()
+          .trim()
+          .max(160)
+          .refine((v) => v === '' || /^[a-z0-9.-]+$/i.test(v), 'Server name like smtp.gmail.com')
+          .optional(),
+        smtp_port: z.coerce.number().int().min(1, 'Port 1 to 65535').max(65535, 'Port 1 to 65535').transform(String).optional(),
+        smtp_secure: z.enum(['ssl', 'starttls', 'none']).optional(),
+        smtp_user: z.string().trim().max(160).optional(),
+        smtp_pass: z.string().max(200).optional(),
+        smtp_from_email: zEmailOpt.optional(),
+        smtp_from_name: z.string().trim().max(80).optional(),
+        signup_email_verify: z.enum(['0', '1']).optional(),
       }),
       body,
     );
     return this.config.saveSettings(b as any, u.id);
+  }
+
+  @AdminPerm('settings')
+  @HttpCode(200)
+  @Post('settings/smtp-clear')
+  clearSmtpPass(@CurrentUser() u: AuthUser) {
+    return this.config.clearSecret('smtp_pass', u.id);
+  }
+
+  /** Sends a test email with the saved SMTP settings. */
+  @AdminPerm('settings')
+  @HttpCode(200)
+  @Post('settings/smtp-test')
+  async testSmtp(@Body() body: unknown) {
+    const b = parse(z.object({ to: z.string().trim().toLowerCase().max(160).email('Enter a valid email') }), body);
+    const m = this.mail.layout('Test email', ['Your JGasFlow email settings work.', 'Sign-up codes and password reset codes will be sent from this address.']);
+    await this.mail.send(b.to, 'JGasFlow test email', m.html, m.text);
+    return { ok: true };
   }
 
   // ───── admins (super admin only, checked in the service)

@@ -3,7 +3,7 @@
  * English (en) and Roman Urdu (ur). Steps quote on-screen labels in **bold**.
  * Keep it current when a screen changes. No em or en dashes.
  */
-export const MANUAL_UPDATED = '12 Oct 2026';
+export const MANUAL_UPDATED = '14 Oct 2026';
 
 export const MANUAL = [
   {
@@ -16,7 +16,10 @@ export const MANUAL = [
       intro: 'Create your shop, check the shop details and set up the basics. This takes about 5 minutes.',
       steps: [
         'Open the website and click **Start free trial**.',
-        'Enter **Shop name**, **Owner / profile name**, **Phone** and a **Password**, then click **Start free trial**. You get 14 days free.',
+        'Under **How will you use JGasFlow?** choose **Online** (web app and phones, synced) or **Offline** (one Android phone, works without internet).',
+        'Enter **Shop name**, **Owner / profile name**, **Phone** and **Email**. Click **Get code**, then type the 6-digit code from your email in **Email code** (check Spam too).',
+        'Enter a **Password** twice and click **Start free trial**. You get 14 days free.',
+        'On **Choose your plan**, click **Continue with free trial**, or **Choose plan** under Basic or Pro to pay now.',
         'Go to **Settings** and check **Shop profile**: address, phone and the **Receipt footer note**. These print on every receipt.',
         'Choose your **Language**: English or Roman Urdu. You can switch any time from the top bar.',
         'Open **Cylinder types** and check the sizes and prices (5 kg, 11.8 kg, 15 kg and 45.4 kg are ready for you).',
@@ -30,7 +33,10 @@ export const MANUAL = [
       intro: 'Apni dukaan banayein, maloomat check karein aur buniyadi setting karein. Takreeban 5 minute lagte hain.',
       steps: [
         'Website kholein aur **Start free trial** dabayein.',
-        '**Shop name**, **Owner / profile name**, **Phone** aur **Password** likh kar **Start free trial** dabayein. 14 din free milte hain.',
+        '**How will you use JGasFlow?** mein **Online** (web app aur phones, sync ke sath) ya **Offline** (aik Android phone, internet ke baghair) chunein.',
+        '**Shop name**, **Owner / profile name**, **Phone** aur **Email** likhein. **Get code** dabayein, phir email wala 6 hindson ka code **Email code** mein likhein (Spam bhi dekhein).',
+        '**Password** do dafa likh kar **Start free trial** dabayein. 14 din free milte hain.',
+        '**Choose your plan** par **Continue with free trial** dabayein, ya abhi adaigi ke liye Basic ya Pro ke neeche **Choose plan** dabayein.',
         '**Settings** mein **Shop profile** check karein: pata, phone aur **Receipt footer note**. Yeh har raseed par chhapte hain.',
         '**Language** chunein: English ya Roman Urdu. Upar wali bar se kabhi bhi badal sakte hain.',
         '**Cylinder types** khol kar size aur qeematein check karein (5 kg, 11.8 kg, 15 kg aur 45.4 kg pehle se mojood hain).',
@@ -146,7 +152,8 @@ export const MANUAL = [
       intro: 'Record full cylinders received from the plant and empties sent for refilling.',
       steps: [
         'Add your plant or dealer once: **Suppliers** > **Add supplier**.',
-        'Click **New purchase**. Choose the **Supplier** (or keep **No supplier** for a cash purchase).',
+        'Click **New purchase**. Choose the **Supplier** (or keep **No supplier** for a cash purchase). A new supplier? Click **Add supplier** next to the supplier box; it is picked for this purchase.',
+        'A new cylinder size? Click **Add cylinder type** above the cylinders. It is added to this purchase, and the purchase brings its stock.',
         'For each size set **Rate**, **Full in** (cylinders received) and **Empty out** (empties you sent).',
         'In **Payment** choose **Paid**, **Partial** or **Payable** (on credit, needs a supplier), and the **Payment method**.',
         'Keep **Update purchase prices** on to save these rates as the new purchase price. Click **Save**.',
@@ -159,7 +166,8 @@ export const MANUAL = [
       intro: 'Plant se aaye bhare cylinder aur bharne ke liye bheje khali darj karein.',
       steps: [
         'Apna plant ya dealer aik dafa shamil karein: **Suppliers** > **Add supplier**.',
-        '**New purchase** dabayein. **Supplier** chunein (cash khareed ke liye **No supplier** rehne dein).',
+        '**New purchase** dabayein. **Supplier** chunein (cash khareed ke liye **No supplier** rehne dein). Naya supplier? Supplier box ke sath **Add supplier** dabayein; woh isi khareed ke liye chun liya jata hai.',
+        'Naya cylinder size? Cylinders ke upar **Add cylinder type** dabayein. Woh isi khareed mein aa jata hai aur stock isi khareed se aata hai.',
         'Har size ke liye **Rate**, **Full in** (aaye cylinder) aur **Empty out** (bheje khali) likhein.',
         '**Payment** mein **Paid**, **Partial** ya **Payable** (udhaar, supplier zaroori) aur **Payment method** chunein.',
         '**Update purchase prices** on rakhein taake yeh rate nayi khareed qeemat ban jaye. **Save** dabayein.',
@@ -181,7 +189,7 @@ export const MANUAL = [
         'If the customer already owes you, set **Previous balance (udhaar)**. If they paid in advance, choose **Advance**.',
         'Use the chips **All**, **Retail**, **Wholesale** and **Udhaar**, or the search box, to find a customer.',
         'Open a customer to see their **Ledger** (every sale and payment with running balance), **Cylinders** they hold and **Special price**.',
-        'On the customer page: **New Sale**, **Receive** (payment), **Return empties** and **Statement** (print the ledger).',
+        'On the customer page: **New Sale**, **Receive** (payment), **Return empties** and **Statement**. **Statement** prints your shop details, the customer, a summary (opening balance, total sales, total received, balance due, cylinders) and every entry.',
         '**Special price** (owner and manager): set a fixed price for this customer. It is used automatically in new sales. Enter 0 to remove it.',
         '**Set cylinders** (owner and manager): enter cylinders the customer had before you started using JGasFlow. This does not change stock.',
       ],
@@ -195,7 +203,7 @@ export const MANUAL = [
         'Agar gahak pehle se deta hai to **Previous balance (udhaar)** likhein. Agar advance diya hai to **Advance** chunein.',
         'Gahak dhoondne ke liye **All**, **Retail**, **Wholesale** aur **Udhaar** chips ya search istemal karein.',
         'Gahak kholein: **Ledger** (har sale aur wasooli baqaye ke sath), us ke paas **Cylinders** aur **Special price**.',
-        'Gahak ke page par: **New Sale**, **Receive** (wasooli), **Return empties** aur **Statement** (khata print).',
+        'Gahak ke page par: **New Sale**, **Receive** (wasooli), **Return empties** aur **Statement**. **Statement** dukaan ki maloomat, gahak, khulasa (pichla baqaya, kul sale, kul wasooli, baqi raqam, cylinder) aur har entry print karta hai.',
         '**Special price** (malik aur manager): is gahak ki khaas qeemat. Nayi sale mein khud lagti hai. Hatane ke liye 0 likhein.',
         '**Set cylinders** (malik aur manager): JGasFlow se pehle gahak ke paas jo cylinder thay woh likhein. Stock par asar nahi.',
       ],
@@ -213,6 +221,7 @@ export const MANUAL = [
       steps: [
         'Click **New Sale** (orange button at the top, or the round button on phones).',
         'Click **Customer** and choose one, or keep **Walk-in customer** for cash sales. Special and wholesale prices fill in by themselves.',
+        'New customer at the counter? Click **Add customer** next to the customer box (or **Add new customer** in the list). Save, and the customer is picked for this bill.',
         'For each size use **+** and **-** to set **Qty** (full cylinders given) and **Empty in** (empties received back).',
         'To change a price for this bill, click the orange price on the card and enter the new rate.',
         'For a customer who keeps cylinders, turn on **Charge security for unreturned cylinders**.',
@@ -222,7 +231,8 @@ export const MANUAL = [
       ],
       tips: [
         'Walk-in sales are cash only. Select a customer to give udhaar.',
-        'If you sell more full cylinders than in stock, JGasFlow asks before saving.',
+        'You cannot sell more full cylinders than you have. The **+** button stops at the stock count, and a size with none left shows **Out of stock**. Record the purchase first.',
+        'Choosing **Partial** or **Udhaar** for a walk-in opens the customer list so you can pick who takes the udhaar.',
       ],
     },
     ur: {
@@ -231,6 +241,7 @@ export const MANUAL = [
       steps: [
         '**New Sale** dabayein (upar orange button, ya phone par gol button).',
         '**Customer** dabakar gahak chunein, ya cash ke liye **Walk-in customer** rehne dein. Khaas aur wholesale qeemat khud lag jati hai.',
+        'Naya gahak? Customer box ke sath **Add customer** (ya list mein **Add new customer**) dabayein. Save karte hi woh isi bill ke liye chun liya jata hai.',
         'Har size ke liye **+** aur **-** se **Qty** (diye bhare cylinder) aur **Empty in** (wapas aaye khali) set karein.',
         'Is bill ki qeemat badalne ke liye card par orange qeemat dabayein aur naya rate likhein.',
         'Jo gahak cylinder rakhta hai us ke liye **Charge security for unreturned cylinders** on karein.',
@@ -240,7 +251,8 @@ export const MANUAL = [
       ],
       tips: [
         'Walk-in sirf cash hai. Udhaar ke liye gahak chunein.',
-        'Agar stock se zyada bhare cylinder bechein to save se pehle poocha jata hai.',
+        'Stock se zyada bhare cylinder nahi bech sakte. **+** button stock ki ginti par ruk jata hai, aur jo size khatam ho us par **Out of stock** likha aata hai. Pehle khareedari darj karein.',
+        'Walk-in par **Partial** ya **Udhaar** chunein to gahak ki list khulti hai taake udhaar lene wala chun sakein.',
       ],
     },
   },
@@ -316,7 +328,10 @@ export const MANUAL = [
         'When the customer brings empties later: open the customer, click **Return empties**, choose the **Cylinder type**, set the quantity, and enter the **Security refund** if you give money back.',
         'The empties are added to your stock and removed from the customer.',
       ],
-      tips: ['The customer page **Cylinders** tab shows how many of each size they hold and the security for them.'],
+      tips: [
+        'The customer page **Cylinders** tab shows how many of each size they hold and the security for them.',
+        'If the customer holds no cylinders, **Return empties** tells you so instead of opening.',
+      ],
     },
     ur: {
       title: 'Khali wapsi aur zamanat',
@@ -327,7 +342,10 @@ export const MANUAL = [
         'Jab gahak baad mein khali laye: gahak kholein, **Return empties** dabayein, **Cylinder type** chunein, tadaad set karein, aur paise wapas dein to **Security refund** likhein.',
         'Khali aap ke stock mein aate hain aur gahak se hat jate hain.',
       ],
-      tips: ['Gahak ke page par **Cylinders** tab har size ki tadaad aur zamanat dikhata hai.'],
+      tips: [
+        'Gahak ke page par **Cylinders** tab har size ki tadaad aur zamanat dikhata hai.',
+        'Agar gahak ke paas koi cylinder nahi to **Return empties** yeh bata deta hai.',
+      ],
     },
   },
   {
@@ -344,7 +362,11 @@ export const MANUAL = [
         '**History** shows every change with old and new price and the date.',
         '**Special** lists all customers with their own prices.',
       ],
-      tips: ['New prices apply to new sales only. Old bills keep the price they were sold at.'],
+      tips: [
+        'New prices apply to new sales only. Old bills keep the price they were sold at.',
+        'If the purchase price is higher than the sale price, the margin shows in red with **Selling at a loss**, and saving asks you to confirm with **Save anyway**.',
+        'A cylinder price can be up to Rs 500,000.',
+      ],
     },
     ur: {
       title: 'Qeematein',
@@ -355,7 +377,11 @@ export const MANUAL = [
         '**History** har tabdeeli purani aur nayi qeemat aur tareekh ke sath dikhati hai.',
         '**Special** mein khaas qeemat wale tamam gahak hain.',
       ],
-      tips: ['Nayi qeemat sirf nayi sale par lagti hai. Purane bill apni qeemat par rehte hain.'],
+      tips: [
+        'Nayi qeemat sirf nayi sale par lagti hai. Purane bill apni qeemat par rehte hain.',
+        'Agar khareed qeemat sale qeemat se zyada ho to munafa laal mein **Selling at a loss** ke sath dikhta hai, aur save karte waqt **Save anyway** se tasdeeq poochi jati hai.',
+        'Cylinder ki qeemat Rs 500,000 tak ho sakti hai.',
+      ],
     },
   },
   {
@@ -430,7 +456,7 @@ export const MANUAL = [
         'Online, every sale syncs within seconds; the chip shows **Online**, **Syncing** or **Not synced**. Without internet the app keeps working and syncs later.',
         'To work alone again turn **Online mode** off. Your data stays on the phone.',
       ],
-      tips: ['The web page **Data & sync** lists every phone and when it last synced.'],
+      tips: ['The web page **Data & sync** lists every phone and when it last synced.', 'For a shop computer use **Download for Windows** on the home page: open **JGasFlow Setup** and click **Install**; it adds JGasFlow to the Start menu and desktop. It has the same screens with a sidebar like this website, and **F2** starts a new sale.'],
     },
     ur: {
       title: 'Phone app, online aur offline',
@@ -443,7 +469,35 @@ export const MANUAL = [
         'Online har sale chand second mein sync hoti hai; chip **Online**, **Syncing** ya **Not synced** dikhati hai. Internet na ho to app chalti rehti hai aur baad mein sync karti hai.',
         'Akele kaam ke liye **Online mode** band karein. Data phone mein rehta hai.',
       ],
-      tips: ['Web ka **Data & sync** page har phone aur us ki aakhri sync dikhata hai.'],
+      tips: ['Web ka **Data & sync** page har phone aur us ki aakhri sync dikhata hai.', 'Dukaan ke computer ke liye home page par **Download for Windows** dabayein: **JGasFlow Setup** khol kar **Install** dabayein; JGasFlow Start menu aur desktop par aa jati hai. Wohi screens is website jaisi sidebar ke sath, aur **F2** se nayi sale.'],
+    },
+  },
+  {
+    id: 'export-lists',
+    icon: 'sheet',
+    roles: ['owner', 'manager', 'salesman'],
+    to: '/app/sales',
+    en: {
+      title: 'Download lists to CSV or Excel',
+      intro: 'Every list has an **Export** button: sales, customers, udhaar, payments, purchases, suppliers, stock, prices, statements, team and reports.',
+      steps: [
+        'Open the list and set the period, filter or search you want.',
+        'Click **Export**. Under **This list** you get exactly what is on the screen; under **All records** you get everything, with no filters.',
+        'Click **CSV** (opens in any spreadsheet) or **Excel** (amounts stay as numbers, with a filter on every column).',
+        'The file is saved in your Downloads folder, named like "JGasFlow Sales 2026-10-15".',
+      ],
+      tips: ['Files hold only readable details: names, phones, dates, bill numbers and amounts.', 'A customer or supplier page exports its full statement.'],
+    },
+    ur: {
+      title: 'Lists CSV ya Excel mein download karein',
+      intro: 'Har list par **Export** button hai: sales, customers, udhaar, payments, kharidari, suppliers, stock, qeematein, statement, team aur reports.',
+      steps: [
+        'List kholein aur muddat, filter ya search lagayein.',
+        '**Export** dabayein. **This list** mein bilkul wohi milta hai jo screen par hai; **All records** mein sab kuch, baghair filter.',
+        '**CSV** (har spreadsheet mein khulti hai) ya **Excel** (raqam number rehti hai, har column par filter) dabayein.',
+        'File aap ke Downloads folder mein "JGasFlow Sales 2026-10-15" jaise naam se save hoti hai.',
+      ],
+      tips: ['File mein sirf parhne wali maloomat hoti hai: naam, phone, tareekh, bill number aur raqam.', 'Customer ya supplier ke page se us ka poora statement export hota hai.'],
     },
   },
   {
@@ -481,27 +535,33 @@ export const MANUAL = [
     to: '/app/billing',
     en: {
       title: 'Subscription and renewal',
-      intro: 'Start free, then pay monthly by JazzCash, Easypaisa or bank.',
+      intro: 'Start free, then pay monthly by bank transfer. Offline (one phone) or Online (web and every phone).',
       steps: [
         'Open **Subscription** to see your **Plan** and days left. A yellow bar appears 5 days before it ends.',
         'Choose a plan (**Basic** or **Pro**) and **Months**. 6 months save 10% and 12 months save 20%.',
-        'Send the **Amount to pay** to the account shown in **Send to**.',
-        'Enter the **Transaction ID** from the SMS or bank slip and click **Send payment details**.',
+        'Under **Pay by bank transfer**, transfer the **Amount to pay** to the bank account shown. Use **Copy** to copy the account number or IBAN.',
+        'Attach a **Screenshot of the transfer** (up to 3 pictures, or paste with Ctrl+V), add the reference number if you have it, and click **Send payment proof**.',
         'We check and activate your plan, usually within a few hours. **Payment history** shows the status.',
       ],
-      tips: ['If the plan ends you can still view and export everything, but cannot add records until renewal.'],
+      tips: [
+        'If the plan ends you can still view and export everything, but cannot add records until renewal.',
+        'An **Offline** shop keeps its records on one phone. On the web it can renew, get help, or choose **Upgrade now** for an Online plan; after approval, switch the phone app to Online and its data is uploaded.',
+      ],
     },
     ur: {
       title: 'Subscription aur renewal',
-      intro: 'Free shuru karein, phir mahana JazzCash, Easypaisa ya bank se ada karein.',
+      intro: 'Free shuru karein, phir mahana bank transfer se ada karein. Offline (aik phone) ya Online (web aur sab phones).',
       steps: [
         '**Subscription** khol kar **Plan** aur baqi din dekhein. Khatam hone se 5 din pehle peeli bar aati hai.',
         'Plan (**Basic** ya **Pro**) aur **Months** chunein. 6 mahine par 10% aur 12 par 20% bachat.',
-        '**Amount to pay** **Send to** wale account mein bhejein.',
-        'SMS ya bank slip se **Transaction ID** likh kar **Send payment details** dabayein.',
+        '**Pay by bank transfer** mein diye bank account mein **Amount to pay** transfer karein. Account number ya IBAN **Copy** se copy karein.',
+        '**Screenshot of the transfer** lagayein (3 tasveer tak, ya Ctrl+V se paste), reference number ho to likhein, aur **Send payment proof** dabayein.',
         'Hum check kar ke plan chalu karte hain, aam tor par chand ghanton mein. **Payment history** mein status hai.',
       ],
-      tips: ['Plan khatam ho to sab dekh aur export kar sakte hain, magar renewal tak naya record nahi.'],
+      tips: [
+        'Plan khatam ho to sab dekh aur export kar sakte hain, magar renewal tak naya record nahi.',
+        '**Offline** dukaan ka record aik phone par rehta hai. Web par renew, madad, ya Online plan ke liye **Upgrade now**; approval ke baad phone app Online karein to data upload ho jata hai.',
+      ],
     },
   },
   {
@@ -548,7 +608,7 @@ export const MANUAL = [
         '**Signed-in devices** lists every browser and phone using your login. Click **Log out** next to any device you do not know.',
         'Use **Log out** in the account menu (top right) on shared computers.',
       ],
-      tips: ['Never share your password. Give each staff member their own login from **Team**.'],
+      tips: ['Never share your password. Give each staff member their own login from **Team**.', 'Forgot your password? On the log in page click **Forgot password?**, enter the email on your account, click **Get code**, then enter the code and a new password. Every device is signed out.'],
     },
     ur: {
       title: 'Account aur hifazat',
@@ -559,7 +619,7 @@ export const MANUAL = [
         '**Signed-in devices** har browser aur phone dikhata hai. Anjaan device ke sath **Log out** dabayein.',
         'Saanjhe computer par upar daayein account menu se **Log out** karein.',
       ],
-      tips: ['Password kisi ko na batayein. Har staff ko **Team** se apna login dein.'],
+      tips: ['Password kisi ko na batayein. Har staff ko **Team** se apna login dein.', 'Password bhool gaye? Log in page par **Forgot password?** dabayein, account wala email likhein, **Get code** dabayein, phir code aur naya password likhein. Har device se log out ho jata hai.'],
     },
   },
   {
@@ -578,7 +638,10 @@ export const MANUAL = [
         '**The phone shows Not synced.** Check the internet; changes are kept and sent automatically when the phone is back online.',
         '**I forgot my password.** Staff: ask the owner. Owner: contact support from your registered number.',
       ],
-      tips: ['Support: Jantrah Tech, +92 303 3203444 (WhatsApp or call).'],
+      tips: [
+        'Support: Jantrah Tech, +92 303 3203444 (WhatsApp or call).',
+        'To write to us, open **Help & support** > **New message**, choose a **Topic**, write the **Subject** and **Message**, add screenshots and click **Send**. Our reply appears in the same message; an orange dot shows a **New reply**.',
+      ],
     },
     ur: {
       title: 'Aam sawal',
@@ -591,7 +654,10 @@ export const MANUAL = [
         '**Phone par Not synced aa raha hai.** Internet check karein; tabdeeliyan mehfooz hain aur internet aate hi khud chali jati hain.',
         '**Password bhool gaya.** Staff: malik se poochein. Malik: registered number se support se rabta karein.',
       ],
-      tips: ['Support: Jantrah Tech, +92 303 3203444 (WhatsApp ya call).'],
+      tips: [
+        'Support: Jantrah Tech, +92 303 3203444 (WhatsApp ya call).',
+        'Humein likhne ke liye **Help & support** > **New message** kholein, **Topic** chunein, **Subject** aur **Message** likhein, screenshot lagayein aur **Send** dabayein. Jawab usi paigham mein aata hai; orange nuqta **New reply** dikhata hai.',
+      ],
     },
   },
 ];

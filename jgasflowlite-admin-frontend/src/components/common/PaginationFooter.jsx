@@ -60,7 +60,7 @@ const PaginationFooter = React.memo(({
     <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 transition-colors">
       <span>
         {total > 0
-          ? `Showing ${startItem}–${endItem} of ${total} ${itemName}`
+          ? `Showing ${startItem} to ${endItem} of ${total} ${itemName}`
           : `No ${itemName} found`}
       </span>
       {onPageSizeChange && total > 0 && (

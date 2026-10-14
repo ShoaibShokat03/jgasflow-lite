@@ -5,7 +5,10 @@ import { parse, z } from '../common/util';
 import { zBusinessName, zEmailOpt, zPassword, zPersonName, zPhone } from '../common/rules';
 import { AllowExpired, AnyUser, AuthUser, CurrentUser, Public } from './auth.decorators';
 import { AuthService, SessionInfo } from './auth.service';
+import { EmailCodesService } from './email-codes.service';
 import { PlatformService } from '../platform/platform.service';
+
+const zEmail = z.string().trim().toLowerCase().max(160).email('Enter a valid email');
 
 const zClient = { client: z.enum(['web', 'mobile']).optional().default('web'), device: z.string().trim().max(120).optional().default('') };
 
@@ -20,6 +23,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly platform: PlatformService,
+    private readonly codes: EmailCodesService,
   ) {}
 
   @Public()
@@ -27,10 +31,38 @@ export class AuthController {
   @Post('signup')
   signup(@Body() body: unknown, @Req() req: Request) {
     const b = parse(
-      z.object({ shop_name: zBusinessName, owner_name: zPersonName, phone: zPhone, email: zEmailOpt, password: zPassword, ...zClient }),
+      z.object({
+        shop_name: zBusinessName,
+        owner_name: zPersonName,
+        phone: zPhone,
+        email: zEmailOpt,
+        password: zPassword,
+        mode: z.enum(['offline', 'online']).default('online'),
+        email_code: z.string().trim().max(12).optional(),
+        ...zClient,
+      }),
       body,
     );
     return this.auth.signup(b, info(req, b));
+  }
+
+  /** Sends a 6-digit code: purpose signup (confirm the email) or reset (forgot password). */
+  @Public()
+  @Throttle({ default: { limit: 6, ttl: 60000 } })
+  @HttpCode(200)
+  @Post('email-code')
+  emailCode(@Body() body: unknown, @Req() req: Request) {
+    const b = parse(z.object({ email: zEmail, purpose: z.enum(['signup', 'reset']) }), body);
+    return this.codes.request(b.email, b.purpose, String(req.ip || ''));
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(200)
+  @Post('reset-password')
+  resetPassword(@Body() body: unknown) {
+    const b = parse(z.object({ email: zEmail, code: z.string().trim().min(1, 'Enter the code').max(12), password: zPassword }), body);
+    return this.auth.resetPassword(b.email, b.code, b.password);
   }
 
   @Public()

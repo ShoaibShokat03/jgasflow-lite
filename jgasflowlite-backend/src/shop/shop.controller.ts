@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Db } from '../db/db.service';
 import { parse, z } from '../common/util';
 import { normPhone, zBusinessName, zEmailOpt, zPassword, zPersonName, zPhone, zPhoneOpt, zText } from '../common/rules';
-import { AuthUser, CurrentUser, Roles, tid } from '../auth/auth.decorators';
+import { AuthUser, CurrentUser, OnlineOnly, Roles, tid } from '../auth/auth.decorators';
 import { AuthService, SHOP_FIELDS, shopOut } from '../auth/auth.service';
 
 const zStaff = z.object({
@@ -56,6 +56,7 @@ export class ShopController {
 
   // ───── team (owner only)
 
+  @OnlineOnly()
   @Roles('owner')
   @Get('team')
   async team(@CurrentUser() u: AuthUser) {
@@ -75,6 +76,7 @@ export class ShopController {
     if (Number(r?.n ?? 0) >= limit) throw new ForbiddenException(`Your plan allows ${limit} users. Upgrade the plan to add more.`);
   }
 
+  @OnlineOnly()
   @Roles('owner')
   @Post('team')
   async addStaff(@CurrentUser() u: AuthUser, @Body() body: unknown) {

@@ -470,21 +470,22 @@ export function residualQuestion(text, persona) {
 /**
  * What each tool is doing, in words an admin would use.
  *
- * The raw keys are database-shaped - `clinic_activity`, `storage_summary` -
+ * The raw keys are database-shaped - `shop_activity`, `revenue_report` -
  * and putting one on screen tells the reader nothing except that something
  * technical is happening. Naming the work is most of what makes a long wait
  * tolerable.
  */
 const TOOL_WORK = {
-  find_clinics: "Going through the clinics",
-  get_clinic: "Opening the clinic record",
-  clinic_activity: "Checking how much they use it",
-  clinic_storage: "Measuring their data",
-  storage_summary: "Adding up storage",
+  platform_summary: "Reading the platform figures",
+  find_shops: "Going through the shops",
+  get_shop: "Opening the shop record",
+  shop_activity: "Checking how much they use it",
+  expiring_shops: "Finding plans that end soon",
+  list_payments: "Going through payments",
+  revenue_report: "Adding up the income",
+  platform_sales: "Adding up gas sales",
   list_plans: "Reading the plans",
-  list_subscriptions: "Going through subscriptions",
-  list_platform_invoices: "Checking what is owed",
-  traffic_summary: "Looking at traffic",
+  recent_events: "Reading the activity log",
 };
 
 const STATUS = {
@@ -1875,7 +1876,7 @@ const VoiceConversation = ({ open, onClose, origin, ask, personas = [], live = f
         <header className="shrink-0 h-9 flex items-center gap-2.5 px-3 border-b border-white/10 bg-white/[0.03] backdrop-blur-xl">
           <span className={`w-1.5 h-1.5 rounded-full ${theme.badge}`} />
           <span className="font-mono text-[10px] tracking-[0.22em] text-gray-400">
-            JDENT
+            JGASFLOW
           </span>
           <span className="hidden sm:inline font-mono text-[10px] tracking-[0.22em] text-gray-600">
             PLATFORM ASSISTANT

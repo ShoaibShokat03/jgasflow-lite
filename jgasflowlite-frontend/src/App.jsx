@@ -6,6 +6,9 @@ import { Shell } from '@/ui/Shell';
 import Landing from '@/pages/public/Landing';
 import Login from '@/pages/public/Login';
 import Signup from '@/pages/public/Signup';
+import ForgotPassword from '@/pages/public/ForgotPassword';
+import Impersonate from '@/pages/public/Impersonate';
+import Legal, { Contact } from '@/pages/public/Legal';
 import Dashboard from '@/pages/Dashboard';
 import NewSale from '@/pages/NewSale';
 import Sales from '@/pages/Sales';
@@ -34,6 +37,7 @@ import AdminShops from '@/pages/admin/AdminShops';
 import AdminShop from '@/pages/admin/AdminShop';
 import AdminPayments from '@/pages/admin/AdminPayments';
 import Account from '@/pages/Account';
+import Welcome from '@/pages/Welcome';
 
 /** Only for logged-in shop users; `who` limits by role. */
 function ShopOnly({ children, who = 'all' }) {
@@ -64,9 +68,17 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/impersonate" element={<Impersonate />} />
+      <Route path="/terms" element={<Legal page="terms" />} />
+      <Route path="/privacy" element={<Legal page="privacy" />} />
+      <Route path="/refund-policy" element={<Legal page="refund" />} />
+      <Route path="/disclaimer" element={<Legal page="disclaimer" />} />
+      <Route path="/contact" element={<Contact />} />
 
       <Route path="/app" element={<ShopOnly><Shell /></ShopOnly>}>
         <Route index element={<Dashboard />} />
+        <Route path="welcome" element={<Welcome />} />
         <Route path="sales" element={<Sales />} />
         <Route path="sales/new" element={<NewSale />} />
         <Route path="sales/:uid" element={<SaleView />} />

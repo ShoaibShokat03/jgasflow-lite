@@ -5,6 +5,7 @@ import { DbModule } from './db/db.module';
 import { Public } from './auth/auth.decorators';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
+import { EmailCodesService } from './auth/email-codes.service';
 import { AuthController } from './auth/auth.controller';
 import { ShopController } from './shop/shop.controller';
 import { BillingController } from './billing/billing.controller';
@@ -31,6 +32,7 @@ class HealthController {
   controllers: [HealthController, AuthController, ShopController, BillingController, AdminController, GasController, SyncController],
   providers: [
     AuthService,
+    EmailCodesService,
     GasService,
     SyncService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },

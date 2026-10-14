@@ -4,6 +4,8 @@ import { SUPPORT } from '@/lib/print';
 import { t } from '@/lib/i18n';
 import { Button, Card, IconBox, KV, PageHeader, SectionHeader } from '@/ui/kit';
 import { toast } from '@/ui/overlay';
+import SupportRequests from './SupportRequests';
+import { AppDownloadCard } from '@/ui/AppDownload';
 
 const TOPICS = ['sale', 'udhaar', 'stock', 'phone', 'print', 'staff', 'renew', 'password', 'backup'];
 
@@ -65,6 +67,10 @@ export default function Support() {
           </div>
         </Card>
       </div>
+
+      <AppDownloadCard className="mt-5" />
+
+      <SupportRequests />
 
       <SectionHeader title={t('help_topics')} />
       <div className="grid lg:grid-cols-2 gap-3 items-start">

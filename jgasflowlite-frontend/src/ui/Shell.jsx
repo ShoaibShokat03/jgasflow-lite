@@ -37,6 +37,7 @@ import { useAuth } from '@/lib/auth';
 import { getLang, setLang, t, useLang } from '@/lib/i18n';
 import { fDay } from '@/lib/format';
 import { Brand, Button, cn, Initials } from './kit';
+import OfflineAccount, { OFFLINE_ALLOWED } from '@/pages/OfflineAccount';
 
 /** Sidebar items. `who`: all | mgr (owner + manager) | owner. */
 function shopNav() {
@@ -131,6 +132,7 @@ function LangToggle({ dark }) {
 }
 
 function SideBody({ admin, onPick, footer = true }) {
+  useLang();
   const auth = useAuth();
   const navigate = useNavigate();
   const sub = auth.sub;
@@ -381,7 +383,8 @@ export function Shell({ admin = false }) {
 
       <main className={cn('px-4 sm:px-6 py-5 lg:py-6 max-w-[1240px] mx-auto', !admin && 'pb-28 lg:pb-10')}>
         {!admin && <ExpiryBanner />}
-        <Outlet />
+        {/* An Offline shop keeps its data on the phone: on the web it can renew, upgrade and get help. */}
+        {!admin && auth.sub?.mode === 'offline' && !OFFLINE_ALLOWED.some((p) => loc.pathname.startsWith(p)) ? <OfflineAccount /> : <Outlet />}
       </main>
 
       {!admin && auth.role && <BottomBar />}

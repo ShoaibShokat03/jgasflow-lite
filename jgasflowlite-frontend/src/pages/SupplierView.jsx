@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, HandCoins, MapPin, PackagePlus, Pencil, Phone, Trash2 } from 'lucide-react';
+import { Check, FileText, HandCoins, MapPin, PackagePlus, Pencil, Phone, ReceiptText, Trash2, Truck, Wallet } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
+import { supplierLedgerColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { dayKey, fDate, money, num0, parseNum } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
-import { Async, Balance, Button, Card, cn, Empty, Initials, PageHeader } from '@/ui/kit';
+import { Async, Button, Card, cn, Empty, PageHeader } from '@/ui/kit';
 import { DateInput, MethodPicker, MoneyInput, Textarea } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { PartyForm } from './forms';
+import { printNow } from '@/lib/print';
+import { Statement } from '@/ui/statement';
 
 export default function SupplierView() {
   const { uid } = useParams();
@@ -33,6 +37,7 @@ export default function SupplierView() {
             title={s.name}
             actions={
               <>
+                <ExportMenu title={t('x_statement', { name: s.name })} columns={supplierLedgerColumns} rows={entries} />
                 <Button variant="outline" icon={Pencil} onClick={() => setDlg('edit')}>
                   {t('edit')}
                 </Button>
@@ -48,34 +53,16 @@ export default function SupplierView() {
           />
           <div className="grid lg:grid-cols-[320px_1fr] gap-5 items-start">
             <div className="space-y-3">
-              <Card className="p-4">
-                <div className="flex items-center gap-3">
-                  <Initials name={s.name} size={46} tone="blue" />
-                  <div className="font-bold text-[16px] truncate">{s.name}</div>
-                </div>
-                <div className="mt-3 space-y-1.5 text-[13.5px]">
-                  {s.phone && (
-                    <a href={`tel:${s.phone}`} className="flex items-center gap-2 text-primary font-semibold">
-                      <Phone className="size-4" /> {s.phone}
-                    </a>
-                  )}
-                  {s.address && (
-                    <div className="flex items-center gap-2 text-muted">
-                      <MapPin className="size-4" /> {s.address}
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 rounded-[var(--radius-card)] bg-bg p-3">
-                  <div className="text-[12px] text-muted font-medium">{s.balance < -0.009 ? t('advance') : t('payable')}</div>
-                  <Balance value={s.balance} label={false} className="text-[20px]" />
-                </div>
-              </Card>
+              <SupplierCard s={s} entries={entries} />
               <div className="grid grid-cols-2 gap-2">
                 <Button icon={PackagePlus} to="/app/purchases/new">
                   {t('purchase')}
                 </Button>
                 <Button variant="good" icon={HandCoins} onClick={() => setDlg('pay')}>
                   {t('pay_supplier')}
+                </Button>
+                <Button variant="outline" icon={FileText} className="col-span-2" onClick={() => printNow('doc')}>
+                  {t('statement')}
                 </Button>
               </div>
             </div>
@@ -128,6 +115,20 @@ export default function SupplierView() {
               )}
             </Card>
           </div>
+          <Statement
+            title={t('supplier_statement')}
+            party={{ kindLabel: t('supplier'), name: s.name, phone: s.phone, address: s.address }}
+            entries={entries}
+            cols={{ debit: t('purchase'), credit: t('paid') }}
+            summary={summaryOf(s, entries)}
+            describe={(e) =>
+              e.kind === 'opening'
+                ? t('opening_balance')
+                : e.kind === 'purchase'
+                  ? `${t('purchase')} ${e.ref}${e.detail ? `, ${e.detail}` : ''}`
+                  : `${t('paid_to_supplier')}, ${methodLabel(e.method)}`
+            }
+          />
           <PartyForm open={dlg === 'edit'} kind="supplier" initial={s} onClose={() => setDlg(null)} />
           <PaySupplier open={dlg === 'pay'} supplier={s} onClose={() => setDlg(null)} />
         </div>
@@ -189,5 +190,77 @@ function PaySupplier({ open, supplier, onClose }) {
         <Textarea label={t('note')} value={note} onChange={setNote} />
       </div>
     </Modal>
+  );
+}
+
+/** Totals for the card and the printed statement. */
+function summaryOf(s, entries) {
+  const sum = (k) => entries.filter((e) => e.kind !== 'opening').reduce((a, e) => a + (Number(e[k]) || 0), 0);
+  const opening = entries.find((e) => e.kind === 'opening');
+  return [
+    { label: t('opening_balance'), value: money((opening?.debit || 0) - (opening?.credit || 0)) },
+    { label: t('total_purchases'), value: money(sum('debit')) },
+    { label: t('total_paid'), value: money(sum('credit')) },
+    { label: s.balance < -0.009 ? t('advance') : t('payable'), value: money(Math.abs(s.balance)), tone: s.balance > 0.009 ? 'red' : s.balance < -0.009 ? 'green' : undefined },
+  ];
+}
+
+/** The supplier at a glance: contact, what is owed, and how much business is done. */
+function SupplierCard({ s, entries }) {
+  const purchases = entries.filter((e) => e.kind === 'purchase');
+  const last = purchases.reduce((a, e) => (!a || String(e.date) > String(a) ? e.date : a), null);
+  const sum = (k) => entries.filter((e) => e.kind !== 'opening').reduce((a, e) => a + (Number(e[k]) || 0), 0);
+  return (
+    <Card className="overflow-hidden">
+      <div className="bg-gradient-to-br from-primary to-primary-2 text-white p-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="grid place-items-center size-12 rounded-[var(--radius-card)] bg-white/12 shrink-0">
+            <Truck className="size-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-wider text-white/60 font-bold">{t('supplier')}</div>
+            <div className="font-black text-[17px] leading-tight [overflow-wrap:anywhere] line-clamp-2">{s.name}</div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-[12px] text-white/65 font-medium">{s.balance < -0.009 ? t('advance') : t('payable')}</div>
+          <div className={cn('text-[26px] font-black num leading-tight', s.balance > 0.009 ? 'text-[#FFB4A8]' : 'text-white')}>{money(Math.abs(s.balance))}</div>
+        </div>
+      </div>
+      <div className="p-4 space-y-2.5 text-[13.5px]">
+        {s.phone ? (
+          <a href={`tel:${s.phone}`} className="flex items-center gap-2.5 text-primary font-semibold hover:underline">
+            <span className="grid place-items-center size-8 rounded-[var(--radius-xs)] bg-soft shrink-0">
+              <Phone className="size-4" />
+            </span>
+            {s.phone}
+          </a>
+        ) : null}
+        {s.address ? (
+          <div className="flex items-start gap-2.5 text-muted">
+            <span className="grid place-items-center size-8 rounded-[var(--radius-xs)] bg-soft shrink-0">
+              <MapPin className="size-4 text-primary" />
+            </span>
+            <span className="min-w-0 pt-1.5 [overflow-wrap:anywhere]">{s.address}</span>
+          </div>
+        ) : null}
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          {[
+            [ReceiptText, t('purchases'), String(purchases.length)],
+            [PackagePlus, t('total_purchases'), money(sum('debit'))],
+            [Wallet, t('total_paid'), money(sum('credit'))],
+          ].map(([Icon, label, value]) => (
+            <div key={label} className="rounded-[var(--radius-ctl)] bg-bg px-2.5 py-2 min-w-0">
+              <Icon className="size-4 text-muted" />
+              <div className="text-[11px] text-muted mt-1 truncate">{label}</div>
+              <div className="font-bold num truncate">{value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="text-[12px] text-muted">
+          {t('last_purchase')}: {last ? fDate(last) : t('none_yet')}
+        </div>
+      </div>
+    </Card>
   );
 }

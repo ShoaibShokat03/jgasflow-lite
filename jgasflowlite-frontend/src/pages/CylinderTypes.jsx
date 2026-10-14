@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Cylinder, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
+import { stockColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { money, num0 } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, cn, Empty, IconBox, PageHeader, Tag } from '@/ui/kit';
@@ -27,7 +29,18 @@ export default function CylinderTypes() {
 
   return (
     <div>
-      <PageHeader title={t('manage_cylinder_types')} sub={t('manage_cylinder_types_sub')} actions={<Button icon={Plus} onClick={() => setForm('new')}>{t('add_cylinder_type')}</Button>} />
+      <PageHeader
+        title={t('manage_cylinder_types')}
+        sub={t('manage_cylinder_types_sub')}
+        actions={
+          <>
+            <ExportMenu title={t('manage_cylinder_types')} columns={stockColumns} rows={q.data} />
+            <Button icon={Plus} onClick={() => setForm('new')}>
+              {t('add_cylinder_type')}
+            </Button>
+          </>
+        }
+      />
       <Async q={q}>
         {(list) =>
           list.length === 0 ? (

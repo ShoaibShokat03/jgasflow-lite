@@ -1,4 +1,4 @@
-/*  JDent  platform admin service worker
+/*  JGasFlow Console service worker
  *
  *  Strategy:
  *    - App shell (HTML / JS / CSS / images / fonts) → cache-first.
@@ -12,7 +12,7 @@
  *  Bump CACHE_VERSION when you change this file so old workers retire.
  */
 
-const CACHE_VERSION = "jdent-admin-v2";
+const CACHE_VERSION = "jgasflow-console-v1";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -21,7 +21,7 @@ const SHELL_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/icon.png",
+  "/icon.svg",
 ];
 
 // ── Dev kill-switch ──────────────────────────────────────────────────────

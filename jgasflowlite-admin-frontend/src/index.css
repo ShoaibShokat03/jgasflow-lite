@@ -2,66 +2,75 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * JDent SaaS theme (teal)
+ * JGasFlow Console theme: navy #020033 with the orange accent #F26B1D.
  *
- *  - Primary palette is "lime"  a green/yellow blend.
- *  - The Tailwind `purple-*` palette is **remapped** to the same lime values,
- *    so every existing `bg-purple-50`, `text-purple-600`, `from-purple-600` …
- *    utility class automatically renders the new colour. No JSX edits needed.
- *  - Border radius scale is reduced one notch so all `rounded-*` utilities
- *    feel less rounded.
- *
- * To change the theme, edit only the variables below.
+ *  - `primary-*` is the orange scale. `purple-*` is remapped to the same
+ *    values so older template classes render in the brand colour.
+ *  - `navy-*` is the dark brand colour (sidebar, headings).
+ *  - Radius scale is Tailwind's default: cards use rounded-xl (12px).
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 @theme {
   /* ── Primary palette (lime / green-yellow) ────────────────────────────── */
-  --color-primary-50:  #f0fdfa;
-  --color-primary-100: #ccfbf1;
-  --color-primary-200: #99f6e4;
-  --color-primary-300: #5eead4;
-  --color-primary-400: #2dd4bf;
-  --color-primary-500: #14b8a6;   /* brand accent */
-  --color-primary-600: #0d9488;   /* primary action */
-  --color-primary-700: #0f766e;
-  --color-primary-800: #115e59;
-  --color-primary-900: #134e4a;
-  --color-primary-950: #042f2e;
+  --color-primary-50:  #fff5ee;
+  --color-primary-100: #ffe8d9;
+  --color-primary-200: #fdcdae;
+  --color-primary-300: #fbaa78;
+  --color-primary-400: #f78744;
+  --color-primary-500: #f26b1d;   /* brand accent */
+  --color-primary-600: #e0570b;   /* primary action */
+  --color-primary-700: #b9450b;
+  --color-primary-800: #933811;
+  --color-primary-900: #772f11;
+  --color-primary-950: #401606;
 
   /* ── Remap Tailwind's `purple-*` palette to the same values ───────────
    * This makes the entire existing UI green-yellow without renaming
    * any class in any component. */
-  --color-purple-50:  #f0fdfa;
-  --color-purple-100: #ccfbf1;
-  --color-purple-200: #99f6e4;
-  --color-purple-300: #5eead4;
-  --color-purple-400: #2dd4bf;
-  --color-purple-500: #14b8a6;
-  --color-purple-600: #0d9488;
-  --color-purple-700: #0f766e;
-  --color-purple-800: #115e59;
-  --color-purple-900: #134e4a;
-  --color-purple-950: #042f2e;
+  --color-purple-50:  #fff5ee;
+  --color-purple-100: #ffe8d9;
+  --color-purple-200: #fdcdae;
+  --color-purple-300: #fbaa78;
+  --color-purple-400: #f78744;
+  --color-purple-500: #f26b1d;
+  --color-purple-600: #e0570b;
+  --color-purple-700: #b9450b;
+  --color-purple-800: #933811;
+  --color-purple-900: #772f11;
+  --color-purple-950: #401606;
 
   /* Surfaces */
-  --color-background: var(--color-primary-50);
+  --color-background: var(--color-gray-50);
   --color-foreground: var(--color-gray-900);
   --color-card: var(--color-white);
   --color-card-foreground: var(--color-gray-900);
-  --color-border: var(--color-primary-200);
+  --color-border: var(--color-gray-200);
   --color-input: var(--color-primary-100);
   --color-ring: var(--color-primary-500);
 
   /* ── Border radius  one notch tighter across the scale ──────────────
    * Tailwind defaults are commented for reference. */
-  --radius-xs:  0.0625rem;  /* was 0.125rem  */
-  --radius-sm:  0.125rem;   /* was 0.25rem   */
-  --radius-md:  0.25rem;    /* was 0.375rem  */
-  --radius-lg:  0.375rem;   /* was 0.5rem    */
-  --radius-xl:  0.5rem;     /* was 0.75rem   */
-  --radius-2xl: 0.625rem;   /* was 1rem      */
-  --radius-3xl: 0.875rem;   /* was 1.5rem    */
-  --radius-4xl: 1.25rem;    /* was 2rem      */
+  --radius-xs:  0.125rem;
+  --radius-sm:  0.25rem;
+  --radius-md:  0.375rem;
+  --radius-lg:  0.5rem;
+  --radius-xl:  0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+
+  /* Navy: the JGasFlow dark brand colour */
+  --color-navy-50:  #eef0fb;
+  --color-navy-100: #d9ddf5;
+  --color-navy-200: #b3b9e8;
+  --color-navy-300: #7f86cf;
+  --color-navy-400: #4c53ad;
+  --color-navy-500: #2a2f86;
+  --color-navy-600: #1a1d66;
+  --color-navy-700: #10124d;
+  --color-navy-800: #080a3d;
+  --color-navy-900: #020033;
+  --color-navy-950: #01001f;
 }
 
 /* ── Brand gradient / glow helpers ─────────────────────────────────────────
@@ -733,3 +742,7 @@ html, body, #root {
 .vc-light .vc-strip {
   opacity: 0.55;
 }
+
+/* Scrolls, but shows no bar and takes no space (sidebar menu). */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownLeft, HandCoins, PartyPopper, Wallet } from 'lucide-react';
-import { useGet } from '@/lib/api';
+import { api, useGet } from '@/lib/api';
+import { customerColumns, paymentColumns } from '@/features/exports';
 import { fDateShort, fTime, money, periodRange } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
 import { Async, Balance, Button, Card, Empty, Initials, PageHeader } from '@/ui/kit';
 import { Chips, SearchBox } from '@/ui/form';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { ReceivePayment } from './forms';
 import { PERIODS, Summary } from './Sales';
 
@@ -38,7 +40,10 @@ function UdhaarList() {
   const list = useGet('/customers', { filter: 'udhaar', q });
   return (
     <>
-      <SearchBox value={q} onChange={setQ} placeholder={t('search_customer')} className="mb-3 sm:w-80" />
+      <div className="flex flex-wrap items-center gap-2.5 mb-3">
+        <SearchBox value={q} onChange={setQ} placeholder={t('search_customer')} className="w-full sm:w-80" />
+        <ExportMenu className="ml-auto" title={t('x_udhaar_list')} columns={customerColumns} rows={list.data} all={() => api.get('/customers', { params: { filter: 'udhaar' } })} />
+      </div>
       <Async q={list}>
         {(rows) =>
           rows.length === 0 ? (
@@ -77,7 +82,10 @@ function History() {
   const list = useGet('/payments', periodRange(period));
   return (
     <>
-      <Chips className="mb-3" value={period} onChange={setPeriod} options={PERIODS()} />
+      <div className="flex flex-wrap items-center gap-2.5 mb-3">
+        <Chips value={period} onChange={setPeriod} options={PERIODS()} />
+        <ExportMenu className="ml-auto" title={t('x_payments')} columns={paymentColumns} rows={list.data} all={() => api.get('/payments', { params: { limit: 50000 } })} />
+      </div>
       <Async q={list}>
         {(rows) =>
           rows.length === 0 ? (

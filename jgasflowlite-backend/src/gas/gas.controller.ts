@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { parse, z } from '../common/util';
-import { zBusinessName, zMethod, zMoney, zMoneySigned, zPhoneOpt, zQty, zText, zUid } from '../common/rules';
-import { AuthUser, CurrentUser, Roles, tid } from '../auth/auth.decorators';
+import { zBusinessName, zMethod, zMoney, zMoneySigned, zPhoneOpt, zPlainText, zQty, zText, zUid, zUnitPrice } from '../common/rules';
+import { AuthUser, CurrentUser, OnlineOnly, Roles, tid } from '../auth/auth.decorators';
 import { GasService } from './gas.service';
 
 const MGR = ['owner', 'manager'] as const;
@@ -9,10 +9,10 @@ const MGR = ['owner', 'manager'] as const;
 const zType = z.object({
   name: z.string().trim().min(1, 'Enter a name').max(60),
   kg: z.coerce.number().min(0).max(1000).default(0),
-  price: zMoney.default(0),
-  wholesale_price: zMoney.default(0),
-  purchase_price: zMoney.default(0),
-  deposit: zMoney.default(0),
+  price: zUnitPrice.default(0),
+  wholesale_price: zUnitPrice.default(0),
+  purchase_price: zUnitPrice.default(0),
+  deposit: zUnitPrice.default(0),
   low_level: zQty.default(5),
   sort: z.coerce.number().int().min(0).max(9999).default(0),
   active: z.boolean().default(true),
@@ -23,7 +23,7 @@ const zType = z.object({
 const zParty = z.object({
   name: zBusinessName,
   phone: zPhoneOpt,
-  address: zText(255),
+  address: zPlainText(255),
   type: z.enum(['retail', 'wholesale']).optional().default('retail'),
   opening_balance: zMoneySigned.default(0),
   note: zText(1000),
@@ -34,7 +34,7 @@ const zDateOpt = z.string().trim().max(19).optional();
 const zSale = z.object({
   customer_uid: zUid.nullable().optional(),
   date: zDateOpt,
-  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty: zQty.default(0), price: zMoney.default(0) })).min(1).max(50),
+  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty: zQty.default(0), price: zUnitPrice.default(0) })).min(1).max(50),
   charge_deposit: z.boolean().default(false),
   discount: zMoney.default(0),
   paid: zMoney.default(0),
@@ -45,7 +45,7 @@ const zSale = z.object({
 const zPurchase = z.object({
   supplier_uid: zUid.nullable().optional(),
   date: zDateOpt,
-  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty_sent: zQty.default(0), price: zMoney.default(0) })).min(1).max(50),
+  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty_sent: zQty.default(0), price: zUnitPrice.default(0) })).min(1).max(50),
   paid: zMoney.default(0),
   method: zMethod,
   note: zText(500),
@@ -57,6 +57,7 @@ const zPay = (key: 'customer_uid' | 'supplier_uid') =>
 
 const zRange = z.object({ from: z.string().optional(), to: z.string().optional(), q: z.string().max(80).optional().default(''), customer: z.string().optional(), supplier: z.string().optional(), type: z.string().optional(), filter: z.string().optional(), all: z.string().optional(), limit: z.coerce.number().optional() });
 
+@OnlineOnly()
 @Controller()
 export class GasController {
   constructor(private readonly gas: GasService) {}
@@ -107,19 +108,21 @@ export class GasController {
   @Roles(...MGR)
   @Post('types/:uid/prices')
   setPrices(@CurrentUser() u: AuthUser, @Param('uid') uid: string, @Body() body: unknown) {
-    const b = parse(z.object({ sale: zMoney.optional(), wholesale: zMoney.optional(), purchase: zMoney.optional(), note: zText(255), date: zDateOpt }), body);
+    const b = parse(z.object({ sale: zUnitPrice.optional(), wholesale: zUnitPrice.optional(), purchase: zUnitPrice.optional(), note: zText(255), date: zDateOpt }), body);
     return this.gas.setPrices(u, uid, b);
   }
 
   @Roles(...MGR)
   @Get('stock/moves')
-  moves(@CurrentUser() u: AuthUser, @Query('type') type?: string) {
-    return this.gas.stockMoves(tid(u), type || undefined);
+  moves(@CurrentUser() u: AuthUser, @Query() query: unknown) {
+    const p = parse(zRange, query);
+    return this.gas.stockMoves(tid(u), p.type || undefined, p.limit);
   }
 
   @Get('prices/history')
-  priceHistory(@CurrentUser() u: AuthUser, @Query('type') type?: string) {
-    return this.gas.priceHistory(tid(u), type || undefined);
+  priceHistory(@CurrentUser() u: AuthUser, @Query() query: unknown) {
+    const p = parse(zRange, query);
+    return this.gas.priceHistory(tid(u), p.type || undefined, p.limit);
   }
 
   @Get('prices/customers')
@@ -163,7 +166,7 @@ export class GasController {
   @Roles(...MGR)
   @Put('customers/:uid/prices')
   setCustomerPrice(@CurrentUser() u: AuthUser, @Param('uid') uid: string, @Body() body: unknown) {
-    const b = parse(z.object({ type_uid: zUid, price: zMoney.nullable() }), body);
+    const b = parse(z.object({ type_uid: zUid, price: zUnitPrice.nullable() }), body);
     return this.gas.setCustomerPrice(u, uid, b.type_uid, b.price);
   }
 
@@ -184,7 +187,7 @@ export class GasController {
   @Get('sales')
   sales(@CurrentUser() u: AuthUser, @Query() query: unknown) {
     const p = parse(zRange, query);
-    return this.gas.sales(tid(u), p.from, p.to, p.q, p.limit ?? 500, p.customer || undefined);
+    return this.gas.sales(tid(u), p.from, p.to, p.q, p.limit, p.customer || undefined);
   }
 
   @Get('sales/:uid')
@@ -207,7 +210,7 @@ export class GasController {
   @Get('payments')
   payments(@CurrentUser() u: AuthUser, @Query() query: unknown) {
     const p = parse(zRange, query);
-    return this.gas.payments(tid(u), p.from, p.to, p.customer || undefined);
+    return this.gas.payments(tid(u), p.from, p.to, p.customer || undefined, p.limit);
   }
 
   @Get('payments/:uid')
@@ -279,7 +282,7 @@ export class GasController {
   @Get('purchases')
   purchases(@CurrentUser() u: AuthUser, @Query() query: unknown) {
     const p = parse(zRange, query);
-    return this.gas.purchases(tid(u), p.from, p.to, p.supplier || undefined);
+    return this.gas.purchases(tid(u), p.from, p.to, p.supplier || undefined, p.limit);
   }
 
   @Roles(...MGR)

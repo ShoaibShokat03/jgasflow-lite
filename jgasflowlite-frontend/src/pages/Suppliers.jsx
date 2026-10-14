@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, UserPlus } from 'lucide-react';
-import { useGet } from '@/lib/api';
+import { api, useGet } from '@/lib/api';
+import { supplierColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { t } from '@/lib/i18n';
 import { Async, Balance, Button, Card, Empty, Initials, PageHeader } from '@/ui/kit';
 import { SearchBox } from '@/ui/form';
@@ -14,7 +16,17 @@ export default function Suppliers() {
   const list = useGet('/suppliers', { q });
   return (
     <div>
-      <PageHeader title={t('suppliers')} actions={<Button icon={UserPlus} onClick={() => setForm(true)}>{t('add_supplier')}</Button>} />
+      <PageHeader
+        title={t('suppliers')}
+        actions={
+          <>
+            <ExportMenu title={t('suppliers')} columns={supplierColumns} rows={list.data} all={() => api.get('/suppliers')} />
+            <Button icon={UserPlus} onClick={() => setForm(true)}>
+              {t('add_supplier')}
+            </Button>
+          </>
+        }
+      />
       <SearchBox value={q} onChange={setQ} className="mb-3 sm:w-80" />
       <Async q={list}>
         {(rows) => (

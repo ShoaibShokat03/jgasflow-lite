@@ -57,6 +57,9 @@ export function range(from?: string, to?: string): [string, string] {
  * The shop's business logic, ported from the mobile app's Repo (lib/data/repo.dart).
  * Same rules, so a record made on the web and one made on a phone look identical.
  */
+/** Rows per list: the screen default, or up to 50,000 for an export of all records. */
+const cap = (limit: number | undefined, def: number) => Math.min(Math.max(Math.trunc(limit ?? def) || def, 1), 50000);
+
 @Injectable()
 export class GasService {
   constructor(private readonly db: Db) {}
@@ -149,12 +152,12 @@ export class GasService {
     });
   }
 
-  async priceHistory(t: number, typeUid?: string) {
+  async priceHistory(t: number, typeUid?: string, limit?: number) {
     const rows = await this.db.all<any>(
       `SELECT h.*, t.name AS type_name FROM price_history h
        JOIN cylinder_types t ON t.tenant_id = h.tenant_id AND t.uid = h.type_uid
        WHERE h.tenant_id = ? AND h.deleted = 0 ${typeUid ? 'AND h.type_uid = ?' : ''}
-       ORDER BY h.date DESC, h.id DESC LIMIT 500`,
+       ORDER BY h.date DESC, h.id DESC LIMIT ${cap(limit, 500)}`,
       typeUid ? [t, typeUid] : [t],
     );
     return rows.map(out);
@@ -197,12 +200,12 @@ export class GasService {
     });
   }
 
-  async stockMoves(t: number, typeUid?: string) {
+  async stockMoves(t: number, typeUid?: string, limit?: number) {
     const rows = await this.db.all<any>(
       `SELECT m.*, t.name AS type_name FROM stock_moves m
        JOIN cylinder_types t ON t.tenant_id = m.tenant_id AND t.uid = m.type_uid
        WHERE m.tenant_id = ? AND m.deleted = 0 ${typeUid ? 'AND m.type_uid = ?' : ''}
-       ORDER BY m.date DESC, m.id DESC LIMIT 300`,
+       ORDER BY m.date DESC, m.id DESC LIMIT ${cap(limit, 300)}`,
       typeUid ? [t, typeUid] : [t],
     );
     return rows.map(out);
@@ -396,6 +399,11 @@ export class GasService {
       const lines: { l: SaleIn['lines'][number]; dep: number; amount: number }[] = [];
       for (const l of used) {
         const ty = await this.typeRow(w.q, t, l.type_uid);
+        // Never sell full cylinders the shop does not have.
+        if (l.qty > 0) {
+          const inStock = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).full);
+          if (l.qty > inStock) throw new BadRequestException(`Not enough full ${ty.name} cylinders: ${inStock} in stock, selling ${l.qty}. Record the purchase first.`);
+        }
         const unreturned = l.qty > l.empty ? l.qty - l.empty : 0;
         const dep = cid && b.charge_deposit ? round2(unreturned * Number(ty.deposit)) : 0;
         lines.push({ l, dep, amount: round2(l.qty * l.price) });
@@ -440,7 +448,7 @@ export class GasService {
          (SELECT IFNULL(SUM(si.qty),0) FROM sale_items si WHERE si.tenant_id = s.tenant_id AND si.sale_uid = s.uid AND si.deleted = 0) AS qty
        FROM sales s LEFT JOIN customers c ON c.tenant_id = s.tenant_id AND c.uid = s.customer_uid
        WHERE s.tenant_id = ? AND s.deleted = 0 AND s.date >= ? AND s.date < ?${extra}
-       ORDER BY s.date DESC, s.id DESC LIMIT ${Math.min(Math.max(limit, 1), 2000)}`,
+       ORDER BY s.date DESC, s.id DESC LIMIT ${cap(limit, 500)}`,
       args,
     );
     return rows.map((r) => ({ ...out(r), ref: docNo('S', r.no), qty: Number(r.qty), due: round2(r.total - r.paid) }));
@@ -502,14 +510,14 @@ export class GasService {
     });
   }
 
-  async payments(t: number, from?: string, to?: string, customerUid?: string) {
+  async payments(t: number, from?: string, to?: string, customerUid?: string, limit?: number) {
     const [f, tt] = range(from, to);
     const rows = await this.db.all<any>(
       `SELECT p.*, c.name AS customer_name, c.phone AS customer_phone, s.no AS sale_no FROM payments p
        LEFT JOIN customers c ON c.tenant_id = p.tenant_id AND c.uid = p.customer_uid
        LEFT JOIN sales s ON s.tenant_id = p.tenant_id AND s.uid = p.sale_uid
        WHERE p.tenant_id = ? AND p.deleted = 0 AND p.date >= ? AND p.date < ? ${customerUid ? 'AND p.customer_uid = ?' : ''}
-       ORDER BY p.date DESC, p.id DESC LIMIT 500`,
+       ORDER BY p.date DESC, p.id DESC LIMIT ${cap(limit, 500)}`,
       customerUid ? [t, f, tt, customerUid] : [t, f, tt],
     );
     return rows.map((r) => ({ ...out(r), ref: docNo('R', r.no), sale_ref: r.sale_uid ? docNo('S', r.sale_no) : null }));
@@ -613,13 +621,13 @@ export class GasService {
     });
   }
 
-  async purchases(t: number, from?: string, to?: string, supplierUid?: string) {
+  async purchases(t: number, from?: string, to?: string, supplierUid?: string, limit?: number) {
     const [f, tt] = range(from, to);
     const rows = await this.db.all<any>(
       `SELECT p.*, s.name AS supplier_name, ${PUR_ITEMS_TEXT} AS items_text
        FROM purchases p LEFT JOIN suppliers s ON s.tenant_id = p.tenant_id AND s.uid = p.supplier_uid
        WHERE p.tenant_id = ? AND p.deleted = 0 AND p.date >= ? AND p.date < ? ${supplierUid ? 'AND p.supplier_uid = ?' : ''}
-       ORDER BY p.date DESC, p.id DESC LIMIT 500`,
+       ORDER BY p.date DESC, p.id DESC LIMIT ${cap(limit, 500)}`,
       supplierUid ? [t, f, tt, supplierUid] : [t, f, tt],
     );
     return rows.map((r) => ({ ...out(r), ref: docNo('P', r.no), due: round2(r.total - r.paid) }));

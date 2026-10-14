@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Cylinder, UserPlus, Users } from 'lucide-react';
-import { useGet } from '@/lib/api';
+import { api, useGet } from '@/lib/api';
+import { customerColumns } from '@/features/exports';
 import { money } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Balance, Button, Card, Empty, Initials, PageHeader, Tag } from '@/ui/kit';
 import { Chips, SearchBox } from '@/ui/form';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { PartyForm } from './forms';
 
 export default function Customers() {
@@ -19,7 +21,17 @@ export default function Customers() {
 
   return (
     <div>
-      <PageHeader title={t('customers')} actions={<Button icon={UserPlus} onClick={() => setParams({ new: '1' })}>{t('add_customer')}</Button>} />
+      <PageHeader
+        title={t('customers')}
+        actions={
+          <>
+            <ExportMenu title={t('customers')} columns={customerColumns} rows={list.data} all={() => api.get('/customers')} />
+            <Button icon={UserPlus} onClick={() => setParams({ new: '1' })}>
+              {t('add_customer')}
+            </Button>
+          </>
+        }
+      />
       <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
         <Chips
           value={filter}

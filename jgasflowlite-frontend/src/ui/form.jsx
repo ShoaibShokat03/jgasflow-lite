@@ -25,17 +25,24 @@ const CLEAN = {
   int: (v) => v.replace(/\D/g, '').slice(0, 6),
 };
 
+/** The same character 4 or more times in a row, like "KKKK" or "1111". */
+const JUNK_RUN = /(.){3,}/u;
+
+/** Pakistani numbers: 03xx xxxxxxx, 0xx landlines, or +92 / 92 in front. */
 export function phoneError(v, required = true) {
   const s = (v || '').trim();
   if (!s) return required ? t('required') : null;
-  const n = s.replace(/[^0-9]/g, '').length;
-  return n < 10 || n > 13 ? t('phone_invalid') : null;
+  const d = s.replace(/[^0-9]/g, '');
+  if (d.length < 10 || d.length > 13) return t('phone_invalid');
+  if (!/^(0|92)/.test(d) || /^0+$/.test(d) || /^(\d)+$/.test(d) || /(\d){6,}/.test(d)) return t('phone_not_real');
+  return null;
 }
 export function personNameError(v) {
   const s = (v || '').trim().replace(/\s+/g, ' ');
   if (!s) return t('required');
   if (s.length < 2) return t('name_too_short');
   if (!/^[\p{L} .'-]+$/u.test(s)) return t('name_letters_only');
+  if (JUNK_RUN.test(s.replace(/\s/g, ''))) return t('name_not_real');
   return null;
 }
 export function businessNameError(v) {
@@ -44,12 +51,21 @@ export function businessNameError(v) {
   if (s.length < 2) return t('name_too_short');
   if (!/\p{L}/u.test(s)) return t('name_needs_letters');
   if (!/^[\p{L}\p{N} .,&'\-()/#]+$/u.test(s)) return t('name_bad_symbols');
+  if ((s.match(/\p{L}/gu) || []).length < 2 || JUNK_RUN.test(s.replace(/\s/g, ''))) return t('name_not_real');
   return null;
 }
+/** Optional free text such as an address: no runs of one character. */
+export const textError = (v) => (v && JUNK_RUN.test(v.replace(/\s/g, '')) ? t('text_not_real') : null);
 export const emailError = (v) => (!v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? null : t('email_invalid'));
 export const passwordError = (v) => (!v ? t('required') : v.length < 6 ? t('password_short') : null);
 
-export function Field({ label, error, hint, children, className, htmlFor }) {
+/**
+ * Label, control and one message line. With `reserve`, the message line always
+ * takes its space (empty until there is an error), so showing an error never
+ * pushes the fields below it down.
+ */
+export function Field({ label, error, hint, children, className, htmlFor, reserve }) {
+  const msg = error || hint;
   return (
     <div className={cn('min-w-0', className)}>
       {label && (
@@ -58,13 +74,17 @@ export function Field({ label, error, hint, children, className, htmlFor }) {
         </label>
       )}
       {children}
-      {error ? <div className="mt-1 text-[12px] font-medium text-bad">{error}</div> : hint ? <div className="mt-1 text-[12px] text-muted">{hint}</div> : null}
+      {msg || reserve ? (
+        <div className={cn('mt-1 text-[12px] leading-[16px] truncate', reserve && 'h-4', error ? 'font-medium text-bad' : 'text-muted')} title={msg || undefined}>
+          {msg}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 /** Text input with the app's character filters. onChange receives the string. */
-export function TextInput({ label, error, hint, value, onChange, filter, prefix, className, inputClassName, maxLength, ...rest }) {
+export function TextInput({ label, error, hint, value, onChange, filter, prefix, className, inputClassName, maxLength, reserve, ...rest }) {
   const id = useId();
   const input = (
     <div className="relative">
@@ -83,14 +103,18 @@ export function TextInput({ label, error, hint, value, onChange, filter, prefix,
           onChange?.(v);
         }}
         inputMode={filter === 'decimal' ? 'decimal' : filter === 'int' || filter === 'phone' ? 'numeric' : undefined}
+        // No browser typing history: React reuses the same input ids across
+        // screens, so the browser would offer one field's history in another
+        // (a login name in Discount). Sign-in and contact fields opt back in.
+        autoComplete="off"
         className={cn('ctl', prefix && 'pl-10', (filter === 'decimal' || filter === 'int') && 'num', inputClassName)}
         {...rest}
       />
     </div>
   );
-  if (!label && !error && !hint) return <div className={className}>{input}</div>;
+  if (!label && !error && !hint && !reserve) return <div className={className}>{input}</div>;
   return (
-    <Field label={label} error={error} hint={hint} className={className} htmlFor={id}>
+    <Field label={label} error={error} hint={hint} className={className} htmlFor={id} reserve={reserve}>
       {input}
     </Field>
   );
@@ -98,11 +122,11 @@ export function TextInput({ label, error, hint, value, onChange, filter, prefix,
 
 export const MoneyInput = (p) => <TextInput filter="decimal" prefix={getCurrency()} placeholder="0" {...p} />;
 
-export function PasswordInput({ label, error, hint, value, onChange, className, ...rest }) {
+export function PasswordInput({ label, error, hint, value, onChange, className, reserve, ...rest }) {
   const [show, setShow] = useState(false);
   const id = useId();
   return (
-    <Field label={label} error={error} hint={hint} className={className} htmlFor={id}>
+    <Field label={label} error={error} hint={hint} className={className} htmlFor={id} reserve={reserve}>
       <div className="relative">
         <input id={id} type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={!!error} className="ctl pr-11" {...rest} />
         <button type="button" onClick={() => setShow(!show)} className="absolute right-1 top-1/2 -translate-y-1/2 grid place-items-center size-8 rounded-md text-muted hover:text-primary" aria-label={show ? t('hide_password') : t('show_password')}>
@@ -117,7 +141,7 @@ export function Textarea({ label, error, value, onChange, className, rows = 2, .
   const id = useId();
   return (
     <Field label={label} error={error} className={className} htmlFor={id}>
-      <textarea id={id} rows={rows} value={value ?? ''} onChange={(e) => onChange(e.target.value)} className="ctl h-auto py-2 resize-y" {...rest} />
+      <textarea id={id} rows={rows} value={value ?? ''} onChange={(e) => onChange(e.target.value)} autoComplete="off" className="ctl h-auto py-2 resize-y" {...rest} />
     </Field>
   );
 }
@@ -191,7 +215,7 @@ export function SearchBox({ value, onChange, placeholder, className, autoFocus }
   return (
     <div className={cn('relative', className)}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-[18px] text-muted pointer-events-none" />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || t('search')} className="ctl pl-10 pr-9" autoFocus={autoFocus} />
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || t('search')} autoComplete="off" className="ctl pl-10 pr-9" autoFocus={autoFocus} />
       {value && (
         <button type="button" onClick={() => onChange('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center size-7 rounded-md text-muted hover:text-primary" aria-label={t('clear')}>
           <X className="size-4" />
@@ -214,6 +238,7 @@ export function QtyStepper({ value, onChange, min = 0, max = 99999, tone = 'navy
         value={v === 0 ? '' : v}
         placeholder="0"
         inputMode="numeric"
+        autoComplete="off"
         onChange={(e) => {
           const s = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
           onChange(Math.min(max, Number(s) || 0));

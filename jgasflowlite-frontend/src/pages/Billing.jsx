@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Check, Clock, Crown, Landmark, MessageCircle, Send, Smartphone } from 'lucide-react';
-import { api, useAct, useGet } from '@/lib/api';
+import { Check, Clock, Copy, Crown, Landmark, MessageCircle, Send } from 'lucide-react';
+import { postForm, useAct, useGet } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fDate, fDateTime, money } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, cn, IconBox, PageHeader, SectionHeader, Tag } from '@/ui/kit';
 import { Chips, TextInput } from '@/ui/form';
+import { ScreenshotPicker, SecureImage } from '@/ui/attach';
+import { PlanMode } from '@/ui/PlanMode';
 import { toast } from '@/ui/overlay';
 
 const STATUS_TONE = { pending: 'amber', approved: 'green', rejected: 'red' };
@@ -35,6 +37,13 @@ export default function Billing() {
                           {fDateTime(r.created_at)} · {t(`pm_${r.method}`)} {r.txn_ref}
                           {r.review_note ? ` · ${r.review_note}` : ''}
                         </div>
+                        {r.proofs > 0 && (
+                          <div className="mt-2 flex gap-2">
+                            {Array.from({ length: r.proofs }, (_, n) => (
+                              <SecureImage key={n} src={`/billing/requests/${r.id}/proof/${n}`} className="size-12" />
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <Tag tone={STATUS_TONE[r.status]}>{t(`req_${r.status}`)}</Tag>
                     </div>
@@ -78,22 +87,34 @@ function Current({ s }) {
 
 function PayForm({ b, onDone }) {
   const paid = b.plans.filter((p) => p.price > 0);
-  const [plan, setPlan] = useState(paid[0]?.key);
+  // ?plan=pro preselects a plan (from the welcome screen after sign up).
+  const wanted = new URLSearchParams(window.location.search).get('plan');
+  const [plan, setPlan] = useState(paid.find((x) => x.key === wanted)?.key ?? paid[0]?.key);
   const [months, setMonths] = useState(1);
-  const [method, setMethod] = useState('jazzcash');
   const [ref, setRef] = useState('');
+  const [shots, setShots] = useState([]);
+  const [shotErr, setShotErr] = useState('');
   const pending = b.requests.find((r) => r.status === 'pending');
   const p = paid.find((x) => x.key === plan);
   const amount = p?.prices.find((x) => x.months === months)?.amount ?? 0;
-  const send = useAct((body) => api.post('/billing/requests', body), {
+  const send = useAct(() => postForm('/billing/requests', { plan, months, txn_ref: ref.trim() }, shots), {
     onSuccess: () => {
       toast(t('payment_sent'));
       setRef('');
+      setShots([]);
       onDone?.();
     },
     onError: (e) => toast(e.message, 'error'),
   });
-  const payTo = { jazzcash: b.pay_to.jazzcash, easypaisa: b.pay_to.easypaisa, bank: b.pay_to.bank };
+  const submit = () => {
+    if (!shots.length) {
+      setShotErr(t('shot_needed'));
+      return toast(t('shot_needed'), 'error');
+    }
+    setShotErr('');
+    send.mutate();
+  };
+  const bank = b.pay_to.bank_details;
 
   return (
     <>
@@ -102,7 +123,9 @@ function PayForm({ b, onDone }) {
         {paid.map((x) => (
           <button key={x.key} type="button" onClick={() => setPlan(x.key)} className={cn('card p-4 text-left transition', plan === x.key ? '!border-primary ring-2 ring-primary/25' : 'hover:border-[#cfd2e6]')}>
             <div className="flex items-center justify-between">
-              <div className="font-bold text-[16px]">{x.name}</div>
+              <div className="font-bold text-[16px] flex items-center gap-2 min-w-0">
+                <span className="truncate">{x.name}</span> <PlanMode mode={x.mode} />
+              </div>
               <div className="font-black num">
                 Rs {x.price.toLocaleString('en-US')} <span className="text-[12px] text-muted font-semibold">{t('per_month')}</span>
               </div>
@@ -120,6 +143,72 @@ function PayForm({ b, onDone }) {
 
       <SectionHeader title={t('pay_and_activate')} />
       <div className="grid lg:grid-cols-2 gap-4 items-start">
+        {/* 1. where to send the money */}
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <IconBox icon={Landmark} color="#020033" />
+            <div className="min-w-0">
+              <div className="font-bold">{t('pay_by_bank')}</div>
+              <div className="text-[12.5px] text-muted">{t('pay_by_bank_sub')}</div>
+            </div>
+          </div>
+          <div className="mt-3 rounded-[var(--radius-ctl)] bg-bg px-3 py-2.5 flex items-center justify-between">
+            <span className="text-muted font-medium">{t('amount_to_pay')}</span>
+            <span className="text-[20px] font-black num">{money(amount)}</span>
+          </div>
+          {bank ? (
+            <div className="mt-3 rounded-[var(--radius-card)] border border-line divide-rows">
+              {[
+                ['bank_name', bank.bank],
+                ['account_title', bank.title],
+                ['account_number', bank.account],
+                ['iban', bank.iban],
+                ['branch', bank.branch],
+              ]
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-3 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11.5px] text-muted">{t(k)}</div>
+                      <div className="font-bold num [overflow-wrap:anywhere]">{v}</div>
+                    </div>
+                    {k !== 'bank_name' && k !== 'branch' && (
+                      <Button
+                        size="sm"
+                        variant="soft"
+                        icon={Copy}
+                        aria-label={t('copy')}
+                        title={t('copy')}
+                        onClick={() => navigator.clipboard?.writeText(v).then(() => toast(t('copied')), () => toast(v, 'info'))}
+                      />
+                    )}
+                  </div>
+                ))}
+            </div>
+          ) : b.pay_to.bank ? (
+            <div className="mt-3 rounded-[var(--radius-card)] border border-line p-3 font-bold [overflow-wrap:anywhere]">{b.pay_to.bank}</div>
+          ) : (
+            <div className="mt-3 rounded-[var(--radius-card)] bg-[#fff8e6] p-3 text-[13px]">{t('bank_ask_support')}</div>
+          )}
+          <ol className="mt-4 space-y-2.5 text-[13.5px]">
+            <li className="flex gap-3">
+              <Step n={1} /> <span>{t('bank_step1', { amount: money(amount) })}</span>
+            </li>
+            <li className="flex gap-3">
+              <Step n={2} /> <span>{t('bank_step2')}</span>
+            </li>
+            <li className="flex gap-3">
+              <Step n={3} /> <span>{t('bank_step3')}</span>
+            </li>
+          </ol>
+          {b.pay_to.whatsapp && (
+            <Button className="mt-4" variant="good" icon={MessageCircle} onClick={() => window.open(`https://wa.me/${b.pay_to.whatsapp.replace(/[^0-9]/g, '').replace(/^0/, '92')}`, '_blank', 'noopener')}>
+              {t('whatsapp_support')}
+            </Button>
+          )}
+        </Card>
+
+        {/* 2. the proof */}
         <Card className="p-4 space-y-3.5">
           <div>
             <div className="label">{t('months')}</div>
@@ -129,56 +218,15 @@ function PayForm({ b, onDone }) {
               options={(p?.prices ?? []).map((x) => ({ value: x.months, label: x.months === 12 ? t('one_year') : t('months_n', { n: x.months }) }))}
             />
           </div>
-          <div className="rounded-[var(--radius-ctl)] bg-bg px-3 py-2.5 flex items-center justify-between">
-            <span className="text-muted font-medium">{t('amount_to_pay')}</span>
-            <span className="text-[20px] font-black num">{money(amount)}</span>
-          </div>
-          <div>
-            <div className="label">{t('paid_by')}</div>
-            <Chips
-              value={method}
-              onChange={setMethod}
-              options={[
-                { value: 'jazzcash', label: 'JazzCash', icon: Smartphone },
-                { value: 'easypaisa', label: 'Easypaisa', icon: Smartphone },
-                { value: 'bank', label: t('pm_bank'), icon: Landmark },
-              ]}
-            />
-          </div>
-          <TextInput label={t('txn_id')} value={ref} onChange={setRef} maxLength={80} hint={t('txn_id_hint')} />
+          <ScreenshotPicker files={shots} onChange={(f) => (setShots(f), f.length && setShotErr(''))} label={t('payment_screenshots')} required error={shotErr} hint={t('payment_screenshots_hint')} />
+          <TextInput label={t('bank_ref_optional')} value={ref} onChange={setRef} maxLength={80} hint={t('bank_ref_hint')} />
           {pending ? (
             <div className="flex items-center gap-2 rounded-[var(--radius-ctl)] bg-[#fff8e6] px-3 py-2.5 text-[13px] font-medium">
-              <Clock className="size-4 text-warn" /> {t('payment_waiting')}
+              <Clock className="size-4 text-warn shrink-0" /> {t('payment_waiting')}
             </div>
           ) : (
-            <Button full size="lg" variant="accent" icon={Send} loading={send.isPending} onClick={() => (ref.trim().length < 4 ? toast(t('txn_id_needed'), 'error') : send.mutate({ plan, months, method, txn_ref: ref.trim(), note: '' }))}>
-              {t('send_payment_details')}
-            </Button>
-          )}
-        </Card>
-        <Card className="p-4">
-          <div className="font-bold mb-3">{t('how_to_pay')}</div>
-          <ol className="space-y-3 text-[13.5px]">
-            <li className="flex gap-3">
-              <Step n={1} /> <span>{t('pay_step1', { amount: money(amount) })}</span>
-            </li>
-            <li className="flex gap-3">
-              <Step n={2} /> <span>{t('pay_step2')}</span>
-            </li>
-            <li className="flex gap-3">
-              <Step n={3} /> <span>{t('pay_step3')}</span>
-            </li>
-          </ol>
-          <div className="mt-4 rounded-[var(--radius-card)] border border-line p-3 flex gap-3">
-            <IconBox icon={method === 'bank' ? Landmark : Smartphone} color="#020033" />
-            <div className="min-w-0">
-              <div className="text-[12px] text-muted">{t('send_to')}</div>
-              <div className="font-bold break-words">{payTo[method] || '-'}</div>
-            </div>
-          </div>
-          {b.pay_to.whatsapp && (
-            <Button className="mt-3" variant="good" icon={MessageCircle} onClick={() => window.open(`https://wa.me/${b.pay_to.whatsapp.replace(/[^0-9]/g, '').replace(/^0/, '92')}`, '_blank', 'noopener')}>
-              {t('whatsapp_support')}
+            <Button full size="lg" variant="accent" icon={Send} loading={send.isPending} onClick={submit}>
+              {t('send_payment_proof')}
             </Button>
           )}
         </Card>

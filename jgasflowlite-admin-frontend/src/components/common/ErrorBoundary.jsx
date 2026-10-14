@@ -16,11 +16,11 @@
 import React from "react";
 import { AlertTriangle, RefreshCw, LogIn } from "lucide-react";
 import { clearAuth, isAuthenticated } from "../../utils/saasAuth";
-import { BASE_URL } from "../../config/app";
+import { BASE_PATH } from "../../config/app";
 
 const toLogin = () => {
   clearAuth();
-  window.location.href = `${BASE_URL}/login`;
+  window.location.href = `${BASE_PATH}/login`;
 };
 
 class ErrorBoundary extends React.Component {

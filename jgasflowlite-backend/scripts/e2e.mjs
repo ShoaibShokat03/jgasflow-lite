@@ -34,6 +34,26 @@ async function call(method, path, token, body) {
   }
   return { status: res.status, data };
 }
+/** A multipart form (payment proofs, support): fields plus picture files. */
+async function form(path, token, fields, files = []) {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.append(k, String(v));
+  for (const f of files) fd.append('files', new Blob([f.data], { type: f.type }), f.name);
+  const res = await fetch(API + path, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+  return { status: res.status, data };
+}
+// The smallest real PNG (1x1), and a text file pretending to be a picture.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const png = { data: PNG, type: 'image/png', name: 'slip.png' };
+const fake = { data: Buffer.from('not a picture'), type: 'image/png', name: 'fake.png' };
+
 const must = async (method, path, token, body) => {
   const r = await call(method, path, token, body);
   if (r.status >= 300) fail(`${method} ${path} -> ${r.status} ${JSON.stringify(r.data)}`);
@@ -41,16 +61,20 @@ const must = async (method, path, token, body) => {
 };
 
 const rnd = () => `03${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`;
+const mail = () => `t${Date.now()}${Math.floor(Math.random() * 1e6)}@e2e.jgasflow.test`;
 const uid = () => randomBytes(16).toString('hex');
 const now = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
 
 console.log('Signup and profile');
 const ownerPhone = rnd();
-const sign = await must('POST', '/auth/signup', null, { shop_name: 'Test Gas Agency', owner_name: 'Ali Raza', phone: ownerPhone, password: 'secret123' });
+const sign = await must('POST', '/auth/signup', null, { shop_name: 'Test Gas Agency', owner_name: 'Ali Raza', phone: ownerPhone, email: mail(), password: 'secret123' });
 const T = sign.token;
 ok(sign.subscription.plan === 'trial' && sign.subscription.status === 'active' && sign.subscription.days_left >= 13, 'new shop is on an active 14 day trial');
-ok((await call('POST', '/auth/signup', null, { shop_name: 'Other', owner_name: 'Ali', phone: ownerPhone, password: 'secret123' })).status === 409, 'same phone cannot sign up twice');
-ok((await call('POST', '/auth/signup', null, { shop_name: 'Shop', owner_name: 'Ali 2', phone: rnd(), password: 'secret123' })).status === 400, 'owner name with digits is rejected');
+ok((await call('POST', '/auth/signup', null, { shop_name: 'Other', owner_name: 'Ali', phone: ownerPhone, email: mail(), password: 'secret123' })).status === 409, 'same phone cannot sign up twice');
+ok((await call('POST', '/auth/signup', null, { shop_name: 'No Mail Shop', owner_name: 'Ali Khan', phone: rnd(), password: 'secret123' })).status === 400, 'web sign-up needs an email');
+ok((await call('POST', '/auth/reset-password', null, { email: mail(), code: '123456', password: 'secret999' })).status === 400, 'reset with an unknown email is refused');
+ok([400, 429].includes((await call('POST', '/auth/email-code', null, { email: 'not-an-email', purpose: 'signup' })).status), 'email code needs a valid email');
+ok((await call('POST', '/auth/signup', null, { shop_name: 'Shop', owner_name: 'Ali 2', phone: rnd(), email: mail(), password: 'secret123' })).status === 400, 'owner name with digits is rejected');
 ok((await call('POST', '/auth/login', null, { login: ownerPhone, password: 'wrong' })).status === 401, 'wrong password is rejected');
 const login = await must('POST', '/auth/login', null, { login: `+92${ownerPhone.slice(1)}`, password: 'secret123' });
 ok(!!login.token && login.user.role === 'owner', 'login works with +92 form of the phone');
@@ -146,7 +170,7 @@ ok((await call('GET', '/team', S)).status === 403, 'salesman cannot see team');
 console.log('Export and import');
 const exp = await must('GET', '/sync/export', T);
 ok(exp.format === 'jgasflow-data' && exp.tables.sales.length === 3, 'export has all live sales');
-const sign2 = await must('POST', '/auth/signup', null, { shop_name: 'Second Shop', owner_name: 'Zara Khan', phone: rnd(), password: 'secret123' });
+const sign2 = await must('POST', '/auth/signup', null, { shop_name: 'Second Shop', owner_name: 'Zara Khan', phone: rnd(), email: mail(), password: 'secret123' });
 const T2 = sign2.token;
 const imp = await must('POST', '/sync/import', T2, { mode: 'replace', data: exp });
 ok(imp.ok && imp.accepted > 100, 'import replace into a second shop');
@@ -167,8 +191,16 @@ ok(expired.status === 402 && expired.data.code === 'SUBSCRIPTION_EXPIRED', 'expi
 ok((await call('GET', '/customers', T)).status === 200, 'expired plan can still view');
 ok((await call('GET', '/sync/export', T)).status === 200, 'expired plan can still export');
 ok((await call('POST', '/sync/push', T, { changes: {} })).status === 402, 'expired plan blocks phone uploads');
-const req = await must('POST', '/billing/requests', T, { plan: 'basic', months: 3, method: 'jazzcash', txn_ref: 'TX12345678' });
-ok(req.amount === 4500, 'payment request for Basic 3 months is Rs 4500');
+ok((await form('/billing/requests', T, { plan: 'basic', months: 3, txn_ref: 'TX12345678' })).status === 400, 'payment without a screenshot is refused');
+ok((await form('/billing/requests', T, { plan: 'basic', months: 3 }, [fake])).status === 400, 'a file that is not a picture is refused');
+const sent = await form('/billing/requests', T, { plan: 'basic', months: 3, txn_ref: 'TX12345678' }, [png]);
+if (sent.status >= 300) fail(`payment proof -> ${sent.status} ${JSON.stringify(sent.data)}`);
+const req = sent.data;
+ok(req.amount === 4500, 'payment request for Basic 3 months is Rs 4500, with a bank screenshot');
+const bill = await must('GET', '/billing', T);
+ok(bill.requests[0].method === 'bank' && bill.requests[0].proofs === 1, 'the payment is a bank transfer with 1 screenshot');
+const proofRes = await fetch(`${API}/billing/requests/${req.id}/proof/0`, { headers: { Authorization: `Bearer ${T}` } });
+ok(proofRes.status === 200 && proofRes.headers.get('content-type') === 'image/png', 'the shop can open its own screenshot');
 
 const creds = readFileSync('storage/super-admin.txt', 'utf8');
 const A = (
@@ -190,6 +222,52 @@ ok((await call('GET', '/customers', T)).status === 403, 'suspended shop is locke
 await must('POST', `/admin/shops/${sign.shop.id}/status`, A, { status: 'active', note: '' });
 const ov = await must('GET', '/admin/overview', A);
 ok(ov.shops >= 2 && ov.revenue_total >= 4500, 'Super Admin overview counts shops and revenue');
+ok((await fetch(`${API}/platform/payments/${req.id}/proof/0`, { headers: { Authorization: `Bearer ${A}` } })).status === 200, 'the console can open the payment screenshot');
+
+console.log('Support');
+const other = await must('POST', '/auth/signup', null, { shop_name: 'Other Gas Shop', owner_name: 'Bilal Khan', phone: rnd(), email: mail(), password: 'secret123' });
+ok((await fetch(`${API}/billing/requests/${req.id}/proof/0`, { headers: { Authorization: `Bearer ${other.token}` } })).status === 404, 'another shop cannot open the screenshot');
+const ticket = await form('/support/requests', T, { subject: 'Printer not printing', topic: 'problem', message: 'The 80 mm printer prints a blank slip.' }, [png]);
+ok(ticket.status === 201 && ticket.data.thread.length === 1 && ticket.data.thread[0].files === 1, 'shop opens a support request with a screenshot');
+const inbox = await must('GET', '/platform/support?status=open', A);
+ok(inbox.items.some((r) => r.id === ticket.data.id), 'the request is in the console inbox');
+const answered = await form(`/platform/support/${ticket.data.id}/messages`, A, { message: 'Set paper to 80 mm in Printer settings.' });
+ok(answered.status === 200 && answered.data.status === 'answered' && answered.data.thread.length === 2, 'the console replies and the request is answered');
+const seen = await must('GET', `/support/requests/${ticket.data.id}`, T);
+ok(seen.thread[1].from_admin === true, 'the shop sees the reply');
+ok((await call('GET', `/support/requests/${ticket.data.id}`, other.token)).status === 404, 'another shop cannot read the request');
+const msgId = seen.thread[0].id;
+ok((await fetch(`${API}/support/files/${msgId}/0`, { headers: { Authorization: `Bearer ${other.token}` } })).status === 404, 'another shop cannot open the support screenshot');
+
+console.log('Offline plan and devices');
+const off = await must('POST', '/auth/signup', null, { shop_name: 'Offline Gas Point', owner_name: 'Hamza Ali', phone: rnd(), password: 'secret123', mode: 'offline', client: 'mobile' });
+const O = off.token;
+ok(off.subscription.mode === 'offline' && off.subscription.plan === 'trial', 'offline sign up starts an Offline trial');
+const blocked = await call('GET', '/customers', O);
+ok(blocked.status === 403 && blocked.data.code === 'OFFLINE_ACCOUNT', 'an Offline shop cannot use the web data screens');
+ok((await call('POST', '/sync/push', O, { changes: {} })).data.code === 'OFFLINE_ACCOUNT', 'an Offline shop cannot sync');
+const lic = await must('POST', '/devices/register', O, { device_id: 'phone-aaaa-1111', model: 'Samsung A15', app_version: '1.2.0' });
+ok(lic.status === 'active' && lic.can_write && lic.mode === 'offline' && !!lic.check_by, 'first phone registers and gets a licence');
+const second = await call('POST', '/devices/register', O, { device_id: 'phone-bbbb-2222', model: 'Infinix Hot 40' });
+ok(second.status === 409 && second.data.code === 'DEVICE_LIMIT', 'a second phone is refused on an Offline account');
+const moved = await must('POST', '/devices/register', O, { device_id: 'phone-bbbb-2222', model: 'Infinix Hot 40', replace: true });
+ok(moved.status === 'active', 'the owner can move the account to the new phone');
+const oldPhone = await must('POST', '/devices/check', O, { device_id: 'phone-aaaa-1111' });
+ok(oldPhone.status === 'released' && !oldPhone.can_write, 'the old phone learns it was released and becomes read-only');
+ok((await call('POST', '/devices/check', O, { device_id: 'phone-unknown-9' })).status === 404, 'an unknown phone must sign in again');
+const offBill = await must('GET', '/billing', O);
+ok(offBill.plans.some((p) => p.mode === 'offline') && offBill.plans.some((p) => p.mode === 'online'), 'an Offline shop can renew Offline or upgrade to Online');
+const onBill = await must('GET', '/billing', T);
+ok(!onBill.plans.some((p) => p.mode === 'offline'), 'an Online shop is not offered the Offline plan');
+ok((await form('/billing/requests', T, { plan: 'offline', months: 1 }, [png])).status === 400, 'an Online shop cannot buy the Offline plan');
+const up = await form('/billing/requests', O, { plan: 'basic', months: 1 }, [png]);
+ok(up.status === 201, 'an Offline shop sends payment for an Online plan');
+await must('POST', `/platform/payments/${up.data.id}/approve`, A, { note: 'upgrade' });
+const upMe = await must('GET', '/auth/me', O);
+ok(upMe.subscription.mode === 'online' && upMe.subscription.plan === 'basic', 'approval upgrades the shop to Online');
+ok((await call('GET', '/customers', O)).status === 200, 'after the upgrade the web app works');
+const offShops = await must('GET', '/platform/shops?mode=online&q=Offline%20Gas%20Point', A);
+ok(offShops.items[0]?.devices === 1, 'the console sees the shop and its phone');
 
 await db.end();
 console.log(`\nAll ${passed} checks passed.`);

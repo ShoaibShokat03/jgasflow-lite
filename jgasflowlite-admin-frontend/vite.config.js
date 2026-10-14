@@ -18,9 +18,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5001,
+    port: 5003,
     strictPort: true, // fail instead of silently picking another port
-    host: true, // Allow access from network (192.168.18.99)
-    // Proxy removed - using direct URL or standalone proxy server instead
+    host: true, // reachable from the LAN
   },
 })

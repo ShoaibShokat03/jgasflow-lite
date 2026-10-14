@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Plus, ReceiptText } from 'lucide-react';
-import { useGet } from '@/lib/api';
+import { api, useGet } from '@/lib/api';
+import { salesColumns } from '@/features/exports';
 import { money, periodRange } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, PageHeader } from '@/ui/kit';
 import { Chips, SearchBox } from '@/ui/form';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { SaleRow } from './Dashboard';
 
 export const PERIODS = () => [
@@ -21,7 +23,17 @@ export default function Sales() {
   const sales = useGet('/sales', { ...range, q });
   return (
     <div>
-      <PageHeader title={t('sales')} actions={<Button variant="accent" icon={Plus} to="/app/sales/new">{t('new_sale')}</Button>} />
+      <PageHeader
+        title={t('sales')}
+        actions={
+          <>
+            <ExportMenu title={t('sales')} columns={salesColumns} rows={sales.data} all={() => api.get('/sales', { params: { limit: 50000 } })} />
+            <Button variant="accent" icon={Plus} to="/app/sales/new">
+              {t('new_sale')}
+            </Button>
+          </>
+        }
+      />
       <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
         <Chips value={period} onChange={setPeriod} options={PERIODS()} />
         <SearchBox value={q} onChange={setQ} placeholder={t('search_sale')} className="sm:ml-auto sm:w-72" />

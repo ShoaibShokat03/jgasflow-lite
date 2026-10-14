@@ -1,5 +1,5 @@
 // src/components/saas/common.jsx
-// Compact shared building blocks for the SaaS admin pages.
+// Shared building blocks for the JGasFlow console pages.
 import React, { useEffect } from "react";
 import { X } from "lucide-react";
 
@@ -27,7 +27,7 @@ export const fmtDuration = (planType, count = 1) => {
 };
 
 export const fmtDate = (value) => {
-  if (!value) return "—";
+  if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleDateString("en-GB", {
@@ -47,12 +47,14 @@ export const fmtBytes = (n) => {
   return `${v >= 100 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
 };
 
-/** Compact relative time for list columns — "today" / "3d ago" / "2mo ago". */
+/** Compact relative time for list columns: "today" / "3d ago" / "2mo ago". */
 export const fmtAgo = (value) => {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  // Calendar days, not 24 hour blocks: last night is "yesterday".
+  const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOf(new Date()) - startOf(d)) / 86400000);
   if (days <= 0) return "today";
   if (days === 1) return "yesterday";
   if (days < 30) return `${days}d ago`;
@@ -74,7 +76,7 @@ export const staleDot = (value) => {
 };
 
 export const fmtDateTime = (value) => {
-  if (!value) return "—";
+  if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString("en-GB", {
@@ -108,6 +110,13 @@ const STATUS_STYLES = {
   // companies / generic
   inactive: "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
   suspended: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  // JGasFlow shops: subscription and activity
+  trial: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+  low: "bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-300",
+  idle: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  dormant: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  never: "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+  admin: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
   // admin roles
   super_admin: "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300",
   support: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
@@ -121,7 +130,7 @@ export const StatusBadge = ({ value }) => (
       "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
     }`}
   >
-    {String(value || "—").replace(/_/g, " ")}
+    {String(value || "-").replace(/_/g, " ")}
   </span>
 );
 
@@ -222,13 +231,13 @@ export const Field = ({ label, required, children, hint }) => (
 export const inputCls =
   "w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition";
 
-// ── Toggle switch (instant active/inactive — no modal needed) ──
+// ── Toggle switch (instant active/inactive: no modal needed) ──
 export const ToggleSwitch = ({ checked, onChange, disabled = false, title }) => (
   <button
     type="button"
     role="switch"
     aria-checked={checked}
-    title={title || (checked ? "Active — click to deactivate" : "Inactive — click to activate")}
+    title={title || (checked ? "Active: click to deactivate" : "Inactive: click to activate")}
     disabled={disabled}
     onClick={(e) => {
       e.stopPropagation();
@@ -248,21 +257,21 @@ export const ToggleSwitch = ({ checked, onChange, disabled = false, title }) => 
 
 // ── Currency dropdown (PKR default) ────────────────────────────
 export const CURRENCIES = [
-  { code: "PKR", label: "PKR — Pakistani Rupee" },
-  { code: "USD", label: "USD — US Dollar" },
-  { code: "EUR", label: "EUR — Euro" },
-  { code: "GBP", label: "GBP — British Pound" },
-  { code: "AED", label: "AED — UAE Dirham" },
-  { code: "SAR", label: "SAR — Saudi Riyal" },
-  { code: "QAR", label: "QAR — Qatari Riyal" },
-  { code: "KWD", label: "KWD — Kuwaiti Dinar" },
-  { code: "OMR", label: "OMR — Omani Rial" },
-  { code: "BHD", label: "BHD — Bahraini Dinar" },
-  { code: "INR", label: "INR — Indian Rupee" },
-  { code: "BDT", label: "BDT — Bangladeshi Taka" },
-  { code: "TRY", label: "TRY — Turkish Lira" },
-  { code: "CAD", label: "CAD — Canadian Dollar" },
-  { code: "AUD", label: "AUD — Australian Dollar" },
+  { code: "PKR", label: "PKR: Pakistani Rupee" },
+  { code: "USD", label: "USD: US Dollar" },
+  { code: "EUR", label: "EUR: Euro" },
+  { code: "GBP", label: "GBP: British Pound" },
+  { code: "AED", label: "AED: UAE Dirham" },
+  { code: "SAR", label: "SAR: Saudi Riyal" },
+  { code: "QAR", label: "QAR: Qatari Riyal" },
+  { code: "KWD", label: "KWD: Kuwaiti Dinar" },
+  { code: "OMR", label: "OMR: Omani Rial" },
+  { code: "BHD", label: "BHD: Bahraini Dinar" },
+  { code: "INR", label: "INR: Indian Rupee" },
+  { code: "BDT", label: "BDT: Bangladeshi Taka" },
+  { code: "TRY", label: "TRY: Turkish Lira" },
+  { code: "CAD", label: "CAD: Canadian Dollar" },
+  { code: "AUD", label: "AUD: Australian Dollar" },
 ];
 
 export const CurrencySelect = ({ value = "PKR", onChange, className = "", ...props }) => (
@@ -281,7 +290,7 @@ export const CurrencySelect = ({ value = "PKR", onChange, className = "", ...pro
 );
 
 // ── Modal ──────────────────────────────────────────────────────
-/** Full-size image viewer — dark backdrop, close button, Esc / click-out. */
+/** Full-size image viewer: dark backdrop, close button, Esc / click-out. */
 export const ImageLightbox = ({ src, alt = "", onClose }) => {
   useEffect(() => {
     if (!src) return;
@@ -354,7 +363,7 @@ export const Modal = ({ open, onClose, title, children, footer, wide = false, si
 // ── Buttons (compact, theme-aware) ─────────────────────────────
 export const BtnPrimary = ({ children, className = "", ...props }) => (
   <button
-    className={`inline-flex items-center gap-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium px-3.5 py-2 transition disabled:opacity-50 disabled:pointer-events-none ${className}`}
+    className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium px-3.5 py-2 transition disabled:opacity-50 disabled:pointer-events-none ${className}`}
     {...props}
   >
     {children}
@@ -363,7 +372,7 @@ export const BtnPrimary = ({ children, className = "", ...props }) => (
 
 export const BtnGhost = ({ children, className = "", ...props }) => (
   <button
-    className={`inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium px-3.5 py-2 transition disabled:opacity-50 disabled:pointer-events-none ${className}`}
+    className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium px-3.5 py-2 transition disabled:opacity-50 disabled:pointer-events-none ${className}`}
     {...props}
   >
     {children}
@@ -372,7 +381,7 @@ export const BtnGhost = ({ children, className = "", ...props }) => (
 
 export const BtnDanger = ({ children, className = "", ...props }) => (
   <button
-    className={`inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3.5 py-2 transition disabled:opacity-50 disabled:pointer-events-none ${className}`}
+    className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3.5 py-2 transition disabled:opacity-50 disabled:pointer-events-none ${className}`}
     {...props}
   >
     {children}

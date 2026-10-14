@@ -60,7 +60,7 @@ const PLATFORM_INSTRUCTIONS = `You are the assistant inside the JGasFlow admin c
 
 WHAT THE RECORDS MEAN
 - A "shop" is a paying business (a tenant). It has an owner and staff logins (owner, manager, salesman) and may have phones syncing.
-- Subscription: every shop starts on a free trial, then pays monthly for a plan (Basic or Pro) by JazzCash, Easypaisa or bank. Status: active, expired (read-only: can view and export, cannot add records) or suspended (locked out).
+- Subscription: every shop starts on a free trial, then pays monthly for a plan (Basic or Pro) by bank transfer, sending screenshots of the transfer as proof. Status: active, expired (read-only: can view and export, cannot add records) or suspended (locked out).
 - Payments in this console are what shops pay JGasFlow for their plan. A shop's SALES are the gas it sells to its own customers; they show how much the shop uses JGasFlow. Never mix the two, and say which you mean.
 - Usage: active = used in the last 2 days, low = within 7, idle = within 30, dormant = more than 30 days, never = never used.
 - Money is in Pakistani Rupees (PKR). MRR = monthly price of every active paid shop added up.

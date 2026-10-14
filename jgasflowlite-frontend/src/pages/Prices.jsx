@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDown, ArrowRight, ArrowUp, Check, History, Tag as TagIcon, Users } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
-import { fDate, money, numInput, parseNum } from '@/lib/format';
+import { priceColumns, priceHistoryColumns, specialPriceColumns } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
+import { fDate, lossPerCylinder, MAX_UNIT_PRICE, money, numInput, parseNum } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, IconBox, Initials, PageHeader, Tag } from '@/ui/kit';
 import { Chips, MoneyInput, TextInput } from '@/ui/form';
-import { Modal, toast } from '@/ui/overlay';
+import { Modal, toast, useConfirm } from '@/ui/overlay';
 
 export default function Prices() {
   const [tab, setTab] = useState('current');
@@ -37,7 +39,10 @@ function Current() {
     <Async q={types}>
       {(list) => (
         <>
-          <p className="text-[13px] text-muted mb-3">{t('tap_to_update_price')}</p>
+          <div className="flex flex-wrap items-center gap-2.5 mb-3">
+            <p className="text-[13px] text-muted flex-1 min-w-[200px]">{t('tap_to_update_price')}</p>
+            <ExportMenu title={t('x_prices')} columns={priceColumns} rows={list} />
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             {list.map((ty) => (
               <Card key={ty.uid} as="button" onClick={() => setEdit(ty)} className="p-4 text-left hover:border-[#cfd2e6] transition">
@@ -55,7 +60,8 @@ function Current() {
                 </div>
                 {ty.price > 0 && ty.purchase_price > 0 && (
                   <div className="mt-2 text-[12px] text-muted">
-                    {t('margin')}: <b className="text-good">{money(ty.price - ty.purchase_price)}</b> / {t('cyl')}
+                    {t('margin')}: <b className={ty.price - ty.purchase_price < 0 ? 'text-bad' : 'text-good'}>{money(ty.price - ty.purchase_price)}</b> / {t('cyl')}
+                    {ty.price - ty.purchase_price < 0 && <span className="ml-1.5 font-bold text-bad">{t('selling_at_loss')}</span>}
                   </div>
                 )}
               </Card>
@@ -78,6 +84,7 @@ function PriceBox({ label, value, strong }) {
 }
 
 function UpdatePrice({ type, onClose }) {
+  const confirm = useConfirm();
   const [f, setF] = useState({ sale: '', wholesale: '', purchase: '', note: '' });
   useEffect(() => {
     if (type) setF({ sale: numInput(type.price), wholesale: numInput(type.wholesale_price), purchase: numInput(type.purchase_price), note: '' });
@@ -90,6 +97,17 @@ function UpdatePrice({ type, onClose }) {
     },
     onError: (e) => toast(e.message, 'error'),
   });
+  const submit = async () => {
+    const sale = parseNum(f.sale);
+    const wholesale = parseNum(f.wholesale);
+    const purchase = parseNum(f.purchase);
+    if ([sale, wholesale, purchase].some((v) => v > MAX_UNIT_PRICE)) return toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error');
+    // Selling below cost is allowed, but never by accident.
+    const loss = Math.max(lossPerCylinder(sale, purchase), lossPerCylinder(wholesale, purchase));
+    if (loss > 0 && !(await confirm({ title: t('loss_title'), message: t('loss_msg', { loss: money(loss) }), okLabel: t('save_anyway'), danger: true }))) return;
+    save.mutate({ sale, wholesale, purchase, note: f.note });
+  };
+  const live = Math.max(lossPerCylinder(parseNum(f.sale), parseNum(f.purchase)), lossPerCylinder(parseNum(f.wholesale), parseNum(f.purchase)));
   return (
     <Modal
       open={!!type}
@@ -102,7 +120,7 @@ function UpdatePrice({ type, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate({ sale: parseNum(f.sale), wholesale: parseNum(f.wholesale), purchase: parseNum(f.purchase), note: f.note })}>
+          <Button icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>
@@ -112,6 +130,7 @@ function UpdatePrice({ type, onClose }) {
         <MoneyInput label={t('sale_price')} value={f.sale} onChange={set('sale')} autoFocus />
         <MoneyInput label={t('wholesale_price')} value={f.wholesale} onChange={set('wholesale')} />
         <MoneyInput label={t('purchase_price')} value={f.purchase} onChange={set('purchase')} />
+        {live > 0 && <div className="text-[12.5px] font-semibold text-bad bg-[#fdecea] rounded-[var(--radius-ctl)] px-3 py-2">{t('loss_hint', { loss: money(live) })}</div>}
         <TextInput label={t('note')} value={f.note} onChange={set('note')} maxLength={255} placeholder={t('price_note_hint')} />
         <p className="text-[12px] text-muted">{t('price_change_logged')}</p>
       </div>
@@ -125,7 +144,10 @@ function PriceHistory() {
   const list = useGet('/prices/history', { type });
   return (
     <>
-      <Chips className="mb-3" size="sm" value={type} onChange={setType} options={[{ value: '', label: t('all') }, ...(types.data ?? []).map((x) => ({ value: x.uid, label: x.name }))]} />
+      <div className="flex flex-wrap items-center gap-2.5 mb-3">
+        <Chips size="sm" value={type} onChange={setType} options={[{ value: '', label: t('all') }, ...(types.data ?? []).map((x) => ({ value: x.uid, label: x.name }))]} />
+        <ExportMenu className="ml-auto" title={t('x_price_history')} columns={priceHistoryColumns} rows={list.data} all={() => api.get('/prices/history', { params: { limit: 50000 } })} />
+      </div>
       <Async q={list}>
         {(rows) => (
           <Card className="overflow-hidden">
@@ -170,7 +192,10 @@ function Special() {
   const navigate = useNavigate();
   return (
     <>
-      <p className="text-[13px] text-muted mb-3">{t('customer_prices_help')}</p>
+      <div className="flex flex-wrap items-center gap-2.5 mb-3">
+        <p className="text-[13px] text-muted flex-1 min-w-[200px]">{t('customer_prices_help')}</p>
+        <ExportMenu title={t('x_special_prices')} columns={specialPriceColumns} rows={list.data} />
+      </div>
       <Async q={list}>
         {(rows) => (
           <Card className="overflow-hidden">

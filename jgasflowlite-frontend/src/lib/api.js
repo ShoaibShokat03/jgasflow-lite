@@ -36,7 +36,8 @@ api.interceptors.response.use(
       setToken('');
       window.dispatchEvent(new CustomEvent('jgf:logout'));
     }
-    if (status === 402) window.dispatchEvent(new CustomEvent('jgf:expired'));
+    // Plan ended, or the shop is Offline: refresh the account so the screens follow.
+    if (status === 402 || data?.code === 'OFFLINE_ACCOUNT') window.dispatchEvent(new CustomEvent('jgf:expired'));
     const message = Array.isArray(data?.message) ? data.message[0] : data?.message || (err.code === 'ERR_NETWORK' ? 'Cannot reach the server. Check your internet.' : err.message);
     return Promise.reject(Object.assign(new Error(message), { status, code: data?.code }));
   },
@@ -47,6 +48,14 @@ export const queryClient = new QueryClient({
     queries: { staleTime: 15000, retry: (n, e) => n < 1 && !(e?.status >= 400 && e?.status < 500), refetchOnWindowFocus: true },
   },
 });
+
+/** POST a form with picture files (payment proofs, support messages). */
+export function postForm(path, fields, files = []) {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) if (v !== undefined && v !== null) fd.append(k, String(v));
+  for (const f of files) fd.append('files', f, f.name || 'screenshot.png');
+  return api.post(path, fd);
+}
 
 const clean = (params) => Object.fromEntries(Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== ''));
 

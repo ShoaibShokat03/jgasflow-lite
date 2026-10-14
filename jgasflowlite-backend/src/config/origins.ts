@@ -5,7 +5,7 @@
  *   CORS_ORIGINS=*            (any origin, development only)
  *   unset                     local development ports
  */
-const DEFAULT_ORIGINS = ['http://localhost:5002', 'http://127.0.0.1:5002', 'http://localhost:4173'];
+const DEFAULT_ORIGINS = ['http://localhost:5002', 'http://127.0.0.1:5002', 'http://localhost:5003', 'http://127.0.0.1:5003', 'http://localhost:4173'];
 
 export function getAllowedOrigins(envOrigins?: string): string[] {
   const raw = envOrigins?.trim();

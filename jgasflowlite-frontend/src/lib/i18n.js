@@ -39,7 +39,8 @@ export const useLang = () =>
 
 /** t('key') or t('key', {n: 3}) with {n} placeholders. */
 export function t(key, vars) {
-  const v = S[key];
+  // Singular wording when n is 1 and a `<key>_1` string exists ("1 month", not "1 months").
+  const v = (vars?.n === 1 || vars?.n === '1') && S[`${key}_1`] ? S[`${key}_1`] : S[key];
   let s = !v ? key : lang === 'ur' && v[1] ? v[1] : v[0];
   if (vars) for (const [k, x] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(x));
   return s;

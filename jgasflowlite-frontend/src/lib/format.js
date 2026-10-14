@@ -78,6 +78,11 @@ export const PAYMENT_METHODS = ['cash', 'bank', 'jazzcash', 'easypaisa', 'cheque
 export const numInput = (v) => (!v ? '' : String(v));
 export const parseNum = (s) => Number(String(s ?? '').replace(/,/g, '').trim()) || 0;
 
+/** One cylinder's price or deposit; the API refuses more (same limit). */
+export const MAX_UNIT_PRICE = 500000;
+/** Loss per cylinder when buying costs more than selling, else 0. */
+export const lossPerCylinder = (sale, purchase) => (sale > 0 && purchase > 0 && purchase > sale ? purchase - sale : 0);
+
 export const daysAgo = (s) => {
   if (!s) return '';
   const t = new Date(String(s).replace(' ', 'T')).getTime();

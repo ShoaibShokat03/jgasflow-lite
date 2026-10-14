@@ -50,12 +50,18 @@ export default function Login() {
     >
       <form onSubmit={submit} className="space-y-4" noValidate>
         <TextInput label={t('phone_or_email')} value={login} onChange={setLogin} autoComplete="username" placeholder="03xx-xxxxxxx" autoFocus />
-        <PasswordInput label={t('password')} value={password} onChange={setPassword} autoComplete="current-password" />
+        <div>
+          <PasswordInput label={t('password')} value={password} onChange={setPassword} autoComplete="current-password" />
+          <div className="flex justify-end mt-1.5">
+            <Link to="/forgot-password" className="text-[12.5px] font-semibold text-primary hover:underline">
+              {t('forgot_password_link')}
+            </Link>
+          </div>
+        </div>
         {err && <div className="text-[13px] font-medium text-bad bg-[#fdecea] rounded-[var(--radius-ctl)] px-3 py-2">{err}</div>}
         <Button type="submit" full size="lg" icon={LogIn} loading={busy}>
           {t('login')}
         </Button>
-        <p className="text-[12.5px] text-muted text-center">{t('forgot_password_help')}</p>
       </form>
     </AuthLayout>
   );

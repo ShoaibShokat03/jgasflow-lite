@@ -57,7 +57,7 @@
     overflow-x: hidden;
     scrollbar-gutter: stable;
   }
-  body { overflow-x: clip; max-width: 100%; }
+  body { overflow-x: clip; max-width: 100%; overflow-wrap: break-word; }
   body {
     @apply bg-bg text-ink font-sans antialiased;
     font-size: 14px;

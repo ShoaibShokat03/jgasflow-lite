@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { BarChart3, Printer } from 'lucide-react';
 import { useGet } from '@/lib/api';
+import { reportColumns, reportRows } from '@/features/exports';
+import { ExportMenu } from '@/ui/ExportMenu';
 import { useAuth } from '@/lib/auth';
 import { dayKey, fDate, fDateShort, money, num0, periodRange } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
@@ -18,7 +20,21 @@ export default function Reports() {
   const { shop } = useAuth();
   return (
     <div>
-      <PageHeader title={t('reports')} actions={<Button variant="outline" icon={Printer} onClick={() => printNow('doc')}>{t('print')}</Button>} />
+      <PageHeader
+        title={t('reports')}
+        actions={
+          <>
+            <ExportMenu
+              title={`${t('x_report')} ${range.from ? `${range.from} ${t('to')} ${range.to}` : t('all')}`}
+              columns={reportColumns}
+              rows={q.data ? reportRows(q.data, range.from ? `${fDate(range.from)} ${t('to')} ${fDate(range.to)}` : t('all')) : undefined}
+            />
+            <Button variant="outline" icon={Printer} onClick={() => printNow('doc')}>
+              {t('print')}
+            </Button>
+          </>
+        }
+      />
       <Chips
         className="mb-3 no-print"
         value={period}
