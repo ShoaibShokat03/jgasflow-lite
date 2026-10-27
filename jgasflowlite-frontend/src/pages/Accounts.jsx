@@ -10,7 +10,7 @@ import { Async, Button, Card, cn, Empty, PageHeader, SectionHeader, Tag } from '
 import { Chips, DateInput, MoneyInput, Select, TextInput } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { ExportMenu } from '@/ui/ExportMenu';
-import { PrintCredit } from '@/ui/receipt';
+import { PrintCredit, useShopLogo } from '@/ui/receipt';
 import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 import { Summary } from './Sales';
 
@@ -293,8 +293,10 @@ export default ChartPage;
 /** Printed header for a report. */
 function PrintHead({ title, sub }) {
   const { shop } = useAuth();
+  const logo = useShopLogo();
   return (
     <div className="hidden print:block mb-3">
+      {logo && <img src={logo} alt="" className="shop-logo max-h-12 max-w-[140px] object-contain mb-1" />}
       <div className="font-black text-[18px]">{shop?.name}</div>
       <div className="font-bold">{title}</div>
       <div className="text-[12px] text-muted">{sub}</div>

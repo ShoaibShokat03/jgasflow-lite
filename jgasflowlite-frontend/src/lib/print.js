@@ -63,7 +63,8 @@ export function printNow(kind = 'receipt') {
       #jgf-print-root .print-area { width: ${Math.floor((p.mm / z) * 10) / 10}mm !important; max-width: none !important; margin: 0 ${roll ? '0' : 'auto'} !important; padding: ${roll ? '0' : '4mm 0'} !important; zoom: ${z}; color: #000 !important; }
       #jgf-print-root .print-area .text-muted { color: #222 !important; }
       #jgf-print-root .print-area [class*="border-dashed"] { border-color: #000 !important; }
-      #jgf-print-root .print-area .print-logo { display: ${s.logo ? 'flex' : 'none'} !important; }`;
+      #jgf-print-root .print-area .print-logo { display: ${s.logo ? 'flex' : 'none'} !important; }
+      ${roll ? '#jgf-print-root .shop-logo { filter: grayscale(1) contrast(1.15); }' : ''}`;
   } else {
     const p = DOC_PAPERS.find((x) => x.value === s.doc) ?? DOC_PAPERS[0];
     css = `@page { size: ${p.page}; margin: 10mm; } #jgf-print-root .print-area { zoom: ${f.zoom}; }`;
@@ -97,7 +98,13 @@ export function printNow(kind = 'receipt') {
     if (left <= 0) cleanup();
   };
   window.addEventListener('afterprint', after);
-  // Extra copies are separate print jobs (browsers have no copies option for scripts).
-  for (let i = 0; i < copies; i++) window.print();
-  setTimeout(() => document.body.contains(root) && left <= 0 && cleanup(), 0);
+  const run = () => {
+    // Extra copies are separate print jobs (browsers have no copies option for scripts).
+    for (let i = 0; i < copies; i++) window.print();
+    setTimeout(() => document.body.contains(root) && left <= 0 && cleanup(), 0);
+  };
+  // Wait for the copied pictures (the shop logo) to be ready, so they are on the paper.
+  const imgs = [...root.querySelectorAll('img')];
+  if (!imgs.length) return run();
+  Promise.all(imgs.map((i) => (i.decode ? i.decode().catch(() => undefined) : undefined))).then(run);
 }

@@ -27,6 +27,37 @@ export class ShopController {
     return shopOut(await this.db.one(`SELECT ${SHOP_FIELDS} FROM tenants WHERE id = ?`, [tid(u)]));
   }
 
+  /** The shop logo as a data URL (kept out of the profile so logins and syncs stay small). */
+  @Get('shop/logo')
+  async logo(@CurrentUser() u: AuthUser) {
+    const r = await this.db.one<any>('SELECT logo, logo_at FROM tenants WHERE id = ?', [tid(u)]);
+    return { logo: r?.logo || null, logo_at: Number(r?.logo_at) || 0 };
+  }
+
+  /** Save the logo: a PNG, JPEG or WebP image, already made small by the web app. */
+  @Roles('owner', 'manager')
+  @Put('shop/logo')
+  async setLogo(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(
+      z.object({
+        logo: z
+          .string()
+          .max(400000, 'The picture is too big. Use a smaller one.')
+          .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, 'Use a PNG, JPG or WebP picture'),
+      }),
+      body,
+    );
+    await this.db.run('UPDATE tenants SET logo = ?, logo_at = ? WHERE id = ?', [b.logo, Date.now(), tid(u)]);
+    return this.shop(u);
+  }
+
+  @Roles('owner', 'manager')
+  @Delete('shop/logo')
+  async removeLogo(@CurrentUser() u: AuthUser) {
+    await this.db.run('UPDATE tenants SET logo = NULL, logo_at = 0 WHERE id = ?', [tid(u)]);
+    return this.shop(u);
+  }
+
   @Roles('owner', 'manager')
   @Put('shop')
   async updateShop(@CurrentUser() u: AuthUser, @Body() body: unknown) {

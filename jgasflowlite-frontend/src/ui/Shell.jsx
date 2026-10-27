@@ -47,6 +47,7 @@ import { getLang, setLang, t, useLang } from '@/lib/i18n';
 import { fDay } from '@/lib/format';
 import { Brand, Button, cn, Initials } from './kit';
 import OfflineAccount, { OFFLINE_ALLOWED } from '@/pages/OfflineAccount';
+import { useShopLogo } from './receipt';
 
 /** Sidebar items. `who`: all | mgr (owner + manager) | owner. */
 function shopNav() {
@@ -269,9 +270,15 @@ function FullscreenButton() {
 function TopBar({ admin }) {
   const loc = useLocation();
   const auth = useAuth();
+  const logo = useShopLogo();
   return (
     <header className="no-print hidden lg:block sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-line">
       <div className="h-16 px-6 max-w-[1240px] mx-auto flex items-center gap-4">
+        {!admin && logo && (
+          <span className="grid place-items-center size-10 shrink-0 rounded-[var(--radius-ctl)] border border-line bg-white overflow-hidden">
+            <img src={logo} alt="" className="max-h-9 max-w-9 object-contain" />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="text-[16px] font-bold truncate leading-tight">{admin ? t('super_admin') : auth.shop?.name}</div>
           <div className="text-[12px] text-muted truncate">{fDay(new Date())}</div>

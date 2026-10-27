@@ -2,6 +2,7 @@ import { MessageCircle, Phone, Printer } from 'lucide-react';
 import { printNow } from '@/lib/print';
 import { useSupport } from '@/lib/support';
 import { useAuth } from '@/lib/auth';
+import { useGet } from '@/lib/api';
 import { fDateTime, money, num0 } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
 import { Button, cn, Logo } from './kit';
@@ -11,12 +12,27 @@ export function Paper({ children, className }) {
   return <div className={cn('print-area bg-white mx-auto w-full max-w-[380px] rounded-[var(--radius-card)] border border-line shadow-[var(--shadow-card)] px-5 py-5 text-[13px]', className)}>{children}</div>;
 }
 
+/** The shop's own logo as a data URL, or null when it has none. Cached until the logo changes. */
+export function useShopLogo() {
+  const { shop } = useAuth();
+  const at = shop?.logo_at || 0;
+  const q = useGet(at ? '/shop/logo' : null, { v: at }, { staleTime: Infinity, refetchOnWindowFocus: false });
+  return at ? (q.data?.logo ?? null) : null;
+}
+
+/** The logo at the top of a print: the shop's logo, else the JGasFlow mark. */
+export function PrintLogo({ src, size = 'md' }) {
+  if (!src) return <Logo size={size === 'sm' ? 28 : 34} />;
+  return <img src={src} alt="" className={cn('shop-logo object-contain', size === 'sm' ? 'max-h-10 max-w-[120px]' : 'max-h-14 max-w-[160px]')} />;
+}
+
 export function ShopHead({ title }) {
   const { shop } = useAuth();
+  const logo = useShopLogo();
   return (
     <div className="text-center">
       <div className="print-logo flex justify-center">
-        <Logo size={34} />
+        <PrintLogo src={logo} />
       </div>
       <div className="font-black text-[16px] mt-1">{shop?.name}</div>
       {shop?.address && <div className="text-[12px] text-muted">{shop.address}</div>}

@@ -10,13 +10,14 @@ import { Async, Bars, Button, Card, Empty, KV, PageHeader, SectionHeader } from 
 import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 import { Summary } from './Sales';
 import { printNow } from '@/lib/print';
-import { PrintCredit } from '@/ui/receipt';
+import { PrintCredit, useShopLogo } from '@/ui/receipt';
 
 export default function Reports() {
   const p = usePeriod('reports', 'month');
   const range = p.range;
   const q = useGet('/reports/summary', range);
   const { shop } = useAuth();
+  const logo = useShopLogo();
   return (
     <div>
       <PageHeader
@@ -39,6 +40,7 @@ export default function Reports() {
         {(r) => (
           <div className="print-area">
             <div className="hidden print:block mb-3">
+              {logo && <img src={logo} alt="" className="shop-logo max-h-12 max-w-[140px] object-contain mb-1" />}
               <div className="font-black text-[18px]">{shop?.name}</div>
               <div className="text-[13px]">
                 {t('reports')}: {range.from ? `${fDate(range.from)} ${t('to')} ${fDate(range.to)}` : t('all')}

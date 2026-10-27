@@ -6,7 +6,7 @@ import { Col, TABLES } from './tables';
  * Schema is created and upgraded here on boot (idempotent). Bump SCHEMA_VERSION
  * and add a step to UPGRADES for any change after the first release.
  */
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 const SAAS_DDL = [
   `CREATE TABLE IF NOT EXISTS meta (
@@ -100,6 +100,8 @@ const SAAS_DDL = [
     currency VARCHAR(10) NOT NULL DEFAULT 'Rs',
     receipt_note VARCHAR(255) NOT NULL DEFAULT '',
     profile_updated_at BIGINT NOT NULL DEFAULT 0,
+    logo MEDIUMTEXT NULL,
+    logo_at BIGINT NOT NULL DEFAULT 0,
     plan VARCHAR(20) NOT NULL DEFAULT 'trial',
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     mode VARCHAR(10) NOT NULL DEFAULT 'online',
@@ -386,6 +388,8 @@ const UPGRADES: Record<number, string[]> = {
   8: ['ALTER TABLE acc_vouchers ADD COLUMN money_id INT NULL AFTER note', 'ALTER TABLE acc_vouchers ADD COLUMN to_id INT NULL AFTER money_id'],
   // v9: loans name the person or bank (acc_money_tags is created above).
   9: ["ALTER TABLE acc_vouchers ADD COLUMN party VARCHAR(120) NOT NULL DEFAULT '' AFTER to_id"],
+  // v10: the shop's own logo for receipts (a small image as a data URL).
+  10: ['ALTER TABLE tenants ADD COLUMN logo MEDIUMTEXT NULL AFTER profile_updated_at', 'ALTER TABLE tenants ADD COLUMN logo_at BIGINT NOT NULL DEFAULT 0 AFTER logo'],
 };
 
 export async function migrate(q: Q) {

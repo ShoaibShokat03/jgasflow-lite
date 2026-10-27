@@ -26,7 +26,7 @@ export interface SessionInfo {
 /** First phone/computer app build that sends the sign-up email code. */
 const MIN_APP_BUILD_EMAIL = 11;
 
-export const SHOP_FIELDS = 'id, name, owner_name, phone, address, currency, receipt_note, profile_updated_at, plan, status, mode, trial_ends_at, paid_until, lifetime, created_at';
+export const SHOP_FIELDS = 'id, name, owner_name, phone, address, currency, receipt_note, profile_updated_at, logo_at, plan, status, mode, trial_ends_at, paid_until, lifetime, created_at';
 
 @Injectable()
 export class AuthService {
@@ -186,7 +186,7 @@ export class AuthService {
       await q.run('DELETE s FROM sessions s JOIN users x ON x.id = s.user_id WHERE x.tenant_id = ?', [tid]);
       await q.run('DELETE FROM users WHERE tenant_id = ?', [tid]);
       await q.run(
-        "UPDATE tenants SET name = 'Deleted shop', owner_name = '', phone = '', address = '', receipt_note = '', status = 'suspended', admin_note = CONCAT('Deleted by the owner on ', NOW()) WHERE id = ?",
+        "UPDATE tenants SET name = 'Deleted shop', owner_name = '', phone = '', address = '', receipt_note = '', logo = NULL, logo_at = 0, status = 'suspended', admin_note = CONCAT('Deleted by the owner on ', NOW()) WHERE id = ?",
         [tid],
       );
       await q.run("INSERT INTO billing_events (tenant_id, action, detail, by_user) VALUES (?, 'account_deleted', 'Shop and all records deleted by the owner', NULL)", [tid]);
@@ -266,6 +266,8 @@ export function shopOut(t: any) {
     currency: t.currency,
     receipt_note: t.receipt_note,
     profile_updated_at: Number(t.profile_updated_at),
+    /** When the shop logo last changed (0 = none); the image itself is GET /shop/logo. */
+    logo_at: Number(t.logo_at) || 0,
     created_at: t.created_at,
   };
 }

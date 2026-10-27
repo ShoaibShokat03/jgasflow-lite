@@ -1,8 +1,7 @@
 import { useAuth } from '@/lib/auth';
 import { fDate, money, num0 } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import { Logo } from './kit';
-import { PrintCredit } from './receipt';
+import { PrintCredit, PrintLogo, useShopLogo } from './receipt';
 
 /**
  * A printed account statement (customer or supplier), for A4 / A5 / Letter.
@@ -14,6 +13,7 @@ import { PrintCredit } from './receipt';
  */
 export function Statement({ title, party, entries, cols, summary, describe }) {
   const { shop } = useAuth();
+  const logo = useShopLogo();
   const today = new Date().toISOString().slice(0, 10);
   const rows = entries.filter((e) => e.kind !== 'opening' || e.debit || e.credit);
   const cell = 'border border-[#c9ccd8] px-2 py-1.5';
@@ -23,7 +23,7 @@ export function Statement({ title, party, entries, cols, summary, describe }) {
       <div className="flex items-start justify-between gap-4 pb-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className="print-logo flex">
-            <Logo size={40} />
+            <PrintLogo src={logo} />
           </span>
           <div className="min-w-0">
             <div className="font-black text-[18px] leading-tight">{shop?.name}</div>
