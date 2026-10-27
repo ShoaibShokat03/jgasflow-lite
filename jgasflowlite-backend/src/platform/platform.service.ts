@@ -68,6 +68,7 @@ export class PlatformService {
          (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.status = 'active') AS devices,
          (SELECT MAX(d.last_seen) FROM devices d WHERE d.tenant_id = t.id) AS device_seen_at,
          (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.active = 1) AS users,
+         (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' AND u.email IS NOT NULL AND u.email <> '' ORDER BY u.id LIMIT 1) AS email,
          (SELECT COUNT(*) FROM customers c WHERE c.tenant_id = t.id AND c.deleted = 0) AS customers,
          (SELECT COUNT(*) FROM sales s WHERE s.tenant_id = t.id AND s.deleted = 0) AS sales,
          (SELECT IFNULL(SUM(s.total),0) FROM sales s WHERE s.tenant_id = t.id AND s.deleted = 0 AND s.date >= ?) AS sales_30d,
@@ -85,6 +86,7 @@ export class PlatformService {
         name: t.name,
         owner_name: t.owner_name,
         phone: t.phone,
+        email: t.email ?? '',
         address: t.address,
         plan: t.plan,
         mode: t.mode === 'offline' ? 'offline' : 'online',
@@ -119,7 +121,7 @@ export class PlatformService {
     };
     let list = all;
     const term = (q.q ?? '').trim().toLowerCase();
-    if (term) list = list.filter((s) => [s.name, s.owner_name, s.phone, String(s.id)].some((x) => String(x ?? '').toLowerCase().includes(term)));
+    if (term) list = list.filter((s) => [s.name, s.owner_name, s.phone, s.email, String(s.id)].some((x) => String(x ?? '').toLowerCase().includes(term)));
     if (q.active === '1' || q.active === 'true') list = list.filter(isRegularActive);
     if (q.plan) list = list.filter((s) => s.plan === q.plan);
     if (q.mode === 'offline' || q.mode === 'online') list = list.filter((s) => s.mode === q.mode);

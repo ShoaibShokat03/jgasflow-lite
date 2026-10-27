@@ -90,7 +90,7 @@ const ShopsPage = () => {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(5,minmax(0,1fr))] gap-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search name, owner, phone or ID" className={`${inputCls} pl-9 pr-9`} />
+          <input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search name, owner, phone, email or ID" className={`${inputCls} pl-9 pr-9`} />
           {term && (
             <button onClick={() => setTerm("")} title="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 inline-flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-4 h-4" />
@@ -151,6 +151,11 @@ const ShopsPage = () => {
                         <p className="text-[11px] text-gray-500 truncate max-w-[220px]">
                           #{s.id} {s.owner_name}, {s.phone}
                         </p>
+                        {s.email && (
+                          <p className="text-[11px] text-gray-500 truncate max-w-[220px]" title={s.email}>
+                            {s.email}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </Td>
