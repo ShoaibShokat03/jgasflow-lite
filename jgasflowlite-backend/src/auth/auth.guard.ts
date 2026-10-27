@@ -38,7 +38,7 @@ export class AuthGuard implements CanActivate {
 
     const row = await this.db.one<any>(
       `SELECT s.id AS sid, s.client, s.expires_at, s.revoked, s.last_seen_at, u.id, u.name, u.role, u.is_super, u.admin_perms, u.active, u.tenant_id,
-              t.plan, t.status, t.mode, t.trial_ends_at, t.paid_until
+              t.plan, t.status, t.mode, t.trial_ends_at, t.paid_until, t.lifetime
        FROM sessions s JOIN users u ON u.id = s.user_id LEFT JOIN tenants t ON t.id = u.tenant_id
        WHERE s.token_hash = ?`,
       [hashToken(token)],

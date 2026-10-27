@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, ClipboardList, Cylinder, History, PackagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, ClipboardList, Cylinder, Flame, History, PackagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
 import { moveColumns, stockColumns } from '@/features/exports';
 import { ExportMenu } from '@/ui/ExportMenu';
@@ -8,11 +8,13 @@ import { moveLabel, t } from '@/lib/i18n';
 import { Async, Button, Card, cn, Empty, IconBox, PageHeader, SectionHeader, StatTile, Tag } from '@/ui/kit';
 import { Chips, MoneyInput, QtyStepper, Switch, TextInput } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
+import { StockValueTiles } from '@/ui/StockValue';
 
 export default function Stock() {
   const types = useGet('/types', { all: 1 });
   const [form, setForm] = useState(null); // 'new' | type
   const [adjust, setAdjust] = useState(null);
+  const [fill, setFill] = useState(null);
   const confirm = useConfirm();
   const del = useAct((uid) => api.delete(`/types/${uid}`), {
     onSuccess: (r) => toast(r.deleted ? t('deleted') : t('type_hidden_web')),
@@ -51,6 +53,7 @@ export default function Stock() {
                 <StatTile label={t('with_customers')} value={num0(live.reduce((a, x) => a + x.with_customers, 0))} icon={Cylinder} color="#6A3FB5" />
                 <StatTile label={t('total_owned')} value={num0(live.reduce((a, x) => a + x.full_qty + x.empty_qty + x.with_customers, 0))} icon={ClipboardList} color="#2E7D32" />
               </div>
+              <StockValueTiles list={list} className="mt-2.5" />
               <SectionHeader title={t('manage_cylinder_types')} />
               <div className="grid md:grid-cols-2 gap-3">
                 {list.map((ty) => (
@@ -64,16 +67,34 @@ export default function Stock() {
                           {ty.active && ty.is_low && <Tag tone="red">{t('low')}</Tag>}
                         </div>
                         <div className="text-[12.5px] text-muted">
-                          {t('sale_price')} {money(ty.price)} · {t('security')} {money(ty.deposit)}
+                          {ty.unit === 'kg' ? `${t('sale_price')} ${money(ty.price)}/${t('kg')}` : `${t('sale_price')} ${money(ty.price)} · ${t('security')} ${money(ty.deposit)}`}
                         </div>
+                        {(ty.unit === 'kg' ? ty.gas_kg : ty.full_qty) > 0 && (
+                          <div className="text-[12.5px] text-muted whitespace-nowrap">
+                            {t('stock_value')}: <b className="text-ink num">{money((ty.unit === 'kg' ? ty.gas_kg : ty.full_qty) * (ty.purchase_price || 0))}</b>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      <Count label={t('full')} value={ty.full_qty} tone="text-primary" />
-                      <Count label={t('empty')} value={ty.empty_qty} tone="text-warn" />
-                      <Count label={t('with_customers')} value={ty.with_customers} tone="text-purple" />
-                    </div>
+                    {ty.unit === 'kg' ? (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <Count label={t('gas_kg_label')} value={ty.gas_kg} tone="text-primary" />
+                        <Count label={t('low_stock_alert')} value={ty.low_level} tone="text-muted" />
+                        <div />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <Count label={t('stock_full')} value={ty.full_qty} tone="text-primary" />
+                        <Count label={t('stock_empty')} value={ty.empty_qty} tone="text-warn" />
+                        <Count label={t('with_customers')} value={ty.with_customers} tone="text-purple" />
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-2 mt-3">
+                      {ty.unit === 'kg' && (
+                        <Button size="sm" icon={Flame} onClick={() => setFill(ty)}>
+                          {t('fill_from_cyl')}
+                        </Button>
+                      )}
                       <Button size="sm" variant="soft" icon={ClipboardList} onClick={() => setAdjust(ty)}>
                         {t('adjust_stock')}
                       </Button>
@@ -92,6 +113,7 @@ export default function Stock() {
       </Async>
       <TypeForm open={!!form} initial={form === 'new' ? null : form} onClose={() => setForm(null)} />
       <AdjustStock type={adjust} onClose={() => setAdjust(null)} />
+      <FillGas gas={fill} types={types.data ?? []} onClose={() => setFill(null)} />
     </div>
   );
 }
@@ -99,7 +121,7 @@ export default function Stock() {
 function Count({ label, value, tone }) {
   return (
     <div className="rounded-[var(--radius-ctl)] bg-bg px-2.5 py-2 min-w-0">
-      <div className={cn('text-[18px] font-extrabold num', tone)}>{num0(value)}</div>
+      <div className={cn('text-[18px] font-extrabold num whitespace-nowrap', tone)}>{num0(value)}</div>
       <div className="text-[11.5px] text-muted truncate">{label}</div>
     </div>
   );
@@ -134,6 +156,12 @@ function Moves({ types }) {
                       </div>
                     </div>
                     <div className="text-right text-[12.5px] num whitespace-nowrap">
+                      {Number(m.kg_delta) !== 0 && (
+                        <div className={m.kg_delta > 0 ? 'text-good font-bold' : 'text-bad font-bold'}>
+                          {m.kg_delta > 0 ? '+' : ''}
+                          {num0(m.kg_delta)} {t('kg')}
+                        </div>
+                      )}
                       {m.full_delta !== 0 && (
                         <div className={m.full_delta > 0 ? 'text-good font-bold' : 'text-bad font-bold'}>
                           {m.full_delta > 0 ? '+' : ''}
@@ -161,11 +189,14 @@ function Moves({ types }) {
 function AdjustStock({ type, onClose }) {
   const [full, setFull] = useState(0);
   const [empty, setEmpty] = useState(0);
+  const [kg, setKg] = useState('');
   const [note, setNote] = useState('');
+  const byKg = type?.unit === 'kg';
   useEffect(() => {
     if (type) {
       setFull(type.full_qty);
       setEmpty(type.empty_qty);
+      setKg(numInput(type.gas_kg));
       setNote('');
     }
   }, [type]);
@@ -187,7 +218,7 @@ function AdjustStock({ type, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate({ full, empty, note })}>
+          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate(byKg ? { kg: parseNum(kg), note } : { full, empty, note })}>
             {t('save')}
           </Button>
         </>
@@ -195,14 +226,20 @@ function AdjustStock({ type, onClose }) {
     >
       <div className="space-y-3.5">
         <p className="text-[13px] text-muted">{t('adjust_help')}</p>
-        <div className="flex items-center justify-between">
-          <span className="font-semibold">{t('full_cylinders')}</span>
-          <QtyStepper value={full} onChange={setFull} />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-semibold">{t('empty_cylinders')}</span>
-          <QtyStepper value={empty} onChange={setEmpty} tone="orange" />
-        </div>
+        {byKg ? (
+          <TextInput label={t('gas_in_stock')} value={kg} onChange={setKg} filter="decimal" />
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">{t('full_cylinders')}</span>
+              <QtyStepper value={full} onChange={setFull} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">{t('empty_cylinders')}</span>
+              <QtyStepper value={empty} onChange={setEmpty} tone="orange" />
+            </div>
+          </>
+        )}
         <TextInput label={t('reason')} value={note} onChange={setNote} maxLength={60} />
       </div>
     </Modal>
@@ -212,7 +249,7 @@ function AdjustStock({ type, onClose }) {
 /** noOpening: added from a purchase, so the purchase brings the stock (no opening counts). */
 export function TypeForm({ open, initial, onClose, onSaved, noOpening = false }) {
   const confirm = useConfirm();
-  const blank = { name: '', kg: '', price: '', wholesale_price: '', purchase_price: '', deposit: '', low_level: '5', sort: '', active: true, full_qty: 0, empty_qty: 0 };
+  const blank = { name: '', kg: '', price: '', wholesale_price: '', purchase_price: '', deposit: '', low_level: '5', sort: '', active: true, full_qty: 0, empty_qty: 0, unit: '', gas_kg: '' };
   const [f, setF] = useState(blank);
   const [err, setErr] = useState('');
   useEffect(() => {
@@ -226,6 +263,7 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
+  const byKg = f.unit === 'kg';
   const save = useAct((b) => (initial ? api.put(`/types/${initial.uid}`, b) : api.post('/types', b)), {
     onSuccess: (res) => {
       toast(t('saved'));
@@ -251,7 +289,7 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
       low_level: parseNum(f.low_level),
       sort: parseNum(f.sort),
       active: f.active,
-      ...(initial ? {} : { full_qty: noOpening ? 0 : f.full_qty, empty_qty: noOpening ? 0 : f.empty_qty }),
+      ...(initial ? {} : { full_qty: noOpening ? 0 : f.full_qty, empty_qty: noOpening ? 0 : f.empty_qty, unit: byKg ? 'kg' : '', gas_kg: byKg ? parseNum(f.gas_kg) : 0 }),
     });
   };
   return (
@@ -272,15 +310,29 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
       }
     >
       <div className="grid grid-cols-2 gap-3.5">
-        <TextInput label={t('name')} value={f.name} onChange={set('name')} error={err} maxLength={60} placeholder="11.8 kg" className="col-span-2 sm:col-span-1" autoFocus />
-        <TextInput label={t('weight_kg')} value={f.kg} onChange={set('kg')} filter="decimal" className="col-span-2 sm:col-span-1" />
-        <MoneyInput label={t('sale_price')} value={f.price} onChange={set('price')} />
-        <MoneyInput label={t('wholesale_price')} value={f.wholesale_price} onChange={set('wholesale_price')} />
-        <MoneyInput label={t('purchase_price')} value={f.purchase_price} onChange={set('purchase_price')} />
-        <MoneyInput label={t('security_per_cyl')} value={f.deposit} onChange={set('deposit')} />
-        <TextInput label={t('low_stock_alert')} value={f.low_level} onChange={set('low_level')} filter="int" hint={t('low_stock_help')} />
-        <TextInput label={t('sort_order')} value={f.sort} onChange={set('sort')} filter="int" />
         {!initial && !noOpening && (
+          <div className="col-span-2">
+            <div className="label">{t('sold_by')}</div>
+            <Chips
+              value={f.unit}
+              onChange={set('unit')}
+              options={[
+                { value: '', label: t('by_cylinder'), icon: Cylinder },
+                { value: 'kg', label: t('by_kg'), icon: Flame },
+              ]}
+            />
+          </div>
+        )}
+        <TextInput label={t('name')} value={f.name} onChange={set('name')} error={err} maxLength={60} placeholder={byKg ? t('loose_gas') : '11.8 kg'} className={cn('col-span-2', !byKg && 'sm:col-span-1')} autoFocus />
+        {!byKg && <TextInput label={t('weight_kg')} value={f.kg} onChange={set('kg')} filter="decimal" className="col-span-2 sm:col-span-1" />}
+        <MoneyInput label={byKg ? t('price_per_kg') : t('sale_price')} value={f.price} onChange={set('price')} />
+        <MoneyInput label={byKg ? t('wholesale_per_kg') : t('wholesale_price')} value={f.wholesale_price} onChange={set('wholesale_price')} />
+        <MoneyInput label={byKg ? t('purchase_per_kg') : t('purchase_price')} value={f.purchase_price} onChange={set('purchase_price')} />
+        {!byKg && <MoneyInput label={t('security_per_cyl')} value={f.deposit} onChange={set('deposit')} />}
+        <TextInput label={byKg ? `${t('low_stock_alert')} (${t('kg')})` : t('low_stock_alert')} value={f.low_level} onChange={set('low_level')} filter="int" hint={byKg ? undefined : t('low_stock_help')} />
+        <TextInput label={t('sort_order')} value={f.sort} onChange={set('sort')} filter="int" />
+        {!initial && !noOpening && byKg && <TextInput label={t('gas_in_stock')} value={f.gas_kg} onChange={set('gas_kg')} filter="decimal" className="col-span-2" />}
+        {!initial && !noOpening && !byKg && (
           <>
             <div className="col-span-2 flex items-center justify-between">
               <span className="font-semibold">{t('opening_full')}</span>
@@ -299,6 +351,74 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
         )}
         {initial && <div className="col-span-2 text-[12px] text-muted">{t('price_change_logged')}</div>}
       </div>
+    </Modal>
+  );
+}
+
+/** Open full cylinders into loose gas: the cylinders become empty, their kg is added. */
+function FillGas({ gas, types, onClose }) {
+  const sources = types.filter((x) => x.unit !== 'kg' && x.active && Number(x.kg) > 0 && x.full_qty > 0);
+  const [from, setFrom] = useState('');
+  const [count, setCount] = useState(1);
+  const [note, setNote] = useState('');
+  useEffect(() => {
+    if (gas) {
+      setFrom([...sources].sort((a, b) => b.kg - a.kg)[0]?.uid ?? '');
+      setCount(1);
+      setNote('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gas]);
+  const src = sources.find((x) => x.uid === from);
+  const save = useAct(() => api.post(`/types/${gas.uid}/fill`, { from_uid: from, count, note }), {
+    onSuccess: (r) => {
+      toast(`+${num0(r.kg)} ${t('kg')}`);
+      onClose();
+    },
+    onError: (e) => toast(e.message, 'error'),
+  });
+  return (
+    <Modal
+      open={!!gas}
+      onClose={onClose}
+      title={`${t('fill_from_cyl')} · ${gas?.name ?? ''}`}
+      icon={Flame}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('cancel')}
+          </Button>
+          <Button icon={Check} loading={save.isPending} disabled={!src || count < 1} onClick={() => save.mutate()}>
+            {t('save')}
+          </Button>
+        </>
+      }
+    >
+      {sources.length === 0 ? (
+        <p className="text-[13.5px] text-muted">{t('no_cyl_to_fill')}</p>
+      ) : (
+        <div className="space-y-3.5">
+          <p className="text-[13px] text-muted">{t('fill_help')}</p>
+          <Chips
+            value={from}
+            onChange={(v) => (setFrom(v), setCount(1))}
+            options={sources.map((x) => ({ value: x.uid, label: `${x.name} (${x.full_qty})` }))}
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold">{t('how_many')}</span>
+            <QtyStepper value={count} onChange={setCount} min={1} max={src?.full_qty ?? 1} />
+          </div>
+          {src && (
+            <div className="rounded-[var(--radius-ctl)] bg-bg px-3 py-2.5 flex items-center justify-between">
+              <span className="text-muted font-medium">{t('gas_added')}</span>
+              <span className="text-[18px] font-black num whitespace-nowrap">
+                +{num0(count * src.kg)} {t('kg')}
+              </span>
+            </div>
+          )}
+          <TextInput label={t('note')} value={note} onChange={setNote} maxLength={60} />
+        </div>
+      )}
     </Modal>
   );
 }

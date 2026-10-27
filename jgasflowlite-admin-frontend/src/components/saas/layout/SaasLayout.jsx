@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import BRANDING from "../../../constants/branding";
+import SupportCredit from "../../common/SupportCredit";
 import SAAS_MODULES from "../../../constants/saasModules";
 import { SHOP_APP_URL } from "../../../config/app";
 import { getAdmin, getModules, isSuper, clearAuth, storeAdmin } from "../../../utils/saasAuth";
@@ -273,7 +274,7 @@ const SaasLayout = () => {
               <div className="flex-1">
                 <Outlet />
               </div>
-              <p className="pt-6 text-center text-[11px] text-gray-400">{BRANDING.support}</p>
+              <SupportCredit className="pt-6 text-center text-[11px] text-gray-400" />
             </div>
           )}
         </main>

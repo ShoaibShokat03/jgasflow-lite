@@ -7,6 +7,7 @@ import { money, num0 } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, cn, Empty, IconBox, PageHeader, Tag } from '@/ui/kit';
 import { toast, useConfirm } from '@/ui/overlay';
+import { stockValue, StockValueTiles } from '@/ui/StockValue';
 import { TypeForm } from './Stock';
 
 /** Cylinder sizes: add, edit prices and security, hide or delete. */
@@ -48,9 +49,11 @@ export default function CylinderTypes() {
               <Empty icon={Cylinder} title={t('nothing_found')} action={<Button icon={Plus} onClick={() => setForm('new')}>{t('add_cylinder_type')}</Button>} />
             </Card>
           ) : (
+            <>
+            <StockValueTiles list={list} className="mb-3" />
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-[13.5px] min-w-[760px]">
+                <table className="w-full text-[13.5px] min-w-[980px]">
                   <thead>
                     <tr className="bg-bg text-muted text-[12px] text-left">
                       <th className="font-semibold px-4 py-3">{t('cylinder_type')}</th>
@@ -58,7 +61,9 @@ export default function CylinderTypes() {
                       <th className="font-semibold px-2 text-right">{t('wholesale')}</th>
                       <th className="font-semibold px-2 text-right">{t('pk_purchase')}</th>
                       <th className="font-semibold px-2 text-right">{t('security')}</th>
-                      <th className="font-semibold px-2 text-right">{t('full')}</th>
+                      <th className="font-semibold px-2 text-right">{t('stock_full')}</th>
+                      <th className="font-semibold px-2 text-right">{t('stock_empty')}</th>
+                      <th className="font-semibold px-2 text-right">{t('stock_value')}</th>
                       <th className="font-semibold px-2 text-right">{t('min_level')}</th>
                       <th className="font-semibold px-4 text-right" />
                     </tr>
@@ -71,7 +76,7 @@ export default function CylinderTypes() {
                             <IconBox icon={Cylinder} color={ty.active ? '#020033' : '#5F6279'} />
                             <div>
                               <div className="font-bold">{ty.name}</div>
-                              <div className="text-[12px] text-muted">{num0(ty.kg)} kg</div>
+                              <div className="text-[12px] text-muted">{ty.unit === 'kg' ? t('per_kg') : `${num0(ty.kg)} kg`}</div>
                             </div>
                             {!ty.active && <Tag tone="gray">{t('inactive')}</Tag>}
                           </div>
@@ -80,7 +85,9 @@ export default function CylinderTypes() {
                         <td className="px-2 text-right num">{money(ty.wholesale_price)}</td>
                         <td className="px-2 text-right num">{money(ty.purchase_price)}</td>
                         <td className="px-2 text-right num">{money(ty.deposit)}</td>
-                        <td className="px-2 text-right num font-semibold">{num0(ty.full_qty)}</td>
+                        <td className="px-2 text-right num font-semibold whitespace-nowrap">{ty.unit === 'kg' ? `${num0(ty.gas_kg)} kg` : num0(ty.full_qty)}</td>
+                        <td className="px-2 text-right num">{ty.unit === 'kg' ? '-' : num0(ty.empty_qty)}</td>
+                        <td className="px-2 text-right num">{money(Math.max(0, ty.unit === 'kg' ? ty.gas_kg : ty.full_qty) * (ty.purchase_price || 0))}</td>
                         <td className="px-2 text-right num">{ty.low_level}</td>
                         <td className="px-4">
                           <div className="flex justify-end gap-1.5">
@@ -102,10 +109,21 @@ export default function CylinderTypes() {
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t border-line bg-bg font-bold">
+                      <td className="px-4 py-3">{t('total')}</td>
+                      <td colSpan={4} />
+                      <td className="px-2 text-right num">{num0(list.filter((x) => x.active && x.unit !== 'kg').reduce((a, x) => a + x.full_qty, 0))}</td>
+                      <td className="px-2 text-right num">{num0(list.filter((x) => x.active).reduce((a, x) => a + x.empty_qty, 0))}</td>
+                      <td className="px-2 text-right num">{money(stockValue(list).cost)}</td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
               <div className="px-4 py-3 text-[12.5px] text-muted bg-bg/60">{t('active_help')}. {t('price_change_logged')}</div>
             </Card>
+            </>
           )
         }
       </Async>

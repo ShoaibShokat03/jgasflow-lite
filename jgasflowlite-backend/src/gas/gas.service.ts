@@ -3,6 +3,7 @@ import { Db, Q } from '../db/db.service';
 import { withWriter, Writer } from '../db/writer';
 import { addDays, docNo, normDate, round2, todayKey, toDb } from '../common/util';
 import { AuthUser, tid } from '../auth/auth.decorators';
+import { MoneyService } from '../accounts/money.service';
 import { CUST_BAL, CUST_HELD, out, PUR_ITEMS_TEXT, SALE_ITEMS_TEXT, STOCK_JOIN, SUP_BAL } from './gas.sql';
 
 export interface TypeIn {
@@ -15,8 +16,12 @@ export interface TypeIn {
   low_level: number;
   sort: number;
   active: boolean;
+  /** 'kg' = loose gas sold by weight; '' = cylinders. Fixed once the type is made. */
+  unit?: string;
   full_qty?: number;
   empty_qty?: number;
+  /** Opening loose gas in kg (kg types). */
+  gas_kg?: number;
 }
 export interface PartyIn {
   name: string;
@@ -29,11 +34,14 @@ export interface PartyIn {
 export interface SaleIn {
   customer_uid?: string | null;
   date?: string;
-  lines: { type_uid: string; qty: number; empty: number; price: number }[];
+  /** kg: weight for loose gas lines. */
+  lines: { type_uid: string; qty: number; empty: number; price: number; kg?: number }[];
   charge_deposit: boolean;
   discount: number;
   paid: number;
   method: string;
+  /** Cash/bank account chosen on the web (the method is then taken from it). */
+  money_id?: number;
   note: string;
 }
 export interface PurchaseIn {
@@ -42,6 +50,7 @@ export interface PurchaseIn {
   lines: { type_uid: string; qty: number; empty_sent: number; price: number }[];
   paid: number;
   method: string;
+  money_id?: number;
   note: string;
   update_prices: boolean;
 }
@@ -62,7 +71,24 @@ const cap = (limit: number | undefined, def: number) => Math.min(Math.max(Math.t
 
 @Injectable()
 export class GasService {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly money: MoneyService,
+  ) {}
+
+  /**
+   * The cash/bank account of a payment: the one chosen, else where its method
+   * lands. Money going out is checked so the account never goes below zero.
+   */
+  private async payFrom(t: number, b: { amount: number; method: string; money_id?: number; date: string }, out: boolean) {
+    const acc = b.money_id ? await this.money.resolve(t, b.money_id) : null;
+    const method = acc?.method ?? b.method;
+    if (out && b.amount > 0) {
+      const id = acc?.id ?? (await this.money.routeId(t, method));
+      if (id) await this.money.verify(t, [{ id, date: b.date.slice(0, 10), amount: -round2(b.amount) }]);
+    }
+    return { method, moneyId: acc?.id };
+  }
 
   private write<T>(u: AuthUser, fn: (w: Writer) => Promise<T>) {
     return withWriter(this.db, tid(u), u.id, fn);
@@ -72,13 +98,27 @@ export class GasService {
 
   async types(t: number, all = false, q: Q = this.db) {
     const rows = await q.all<any>(
-      `SELECT t.*, IFNULL(sm.f, 0) AS full_qty, IFNULL(sm.e, 0) AS empty_qty, IFNULL(hm.q, 0) AS with_customers, IFNULL(hm.d, 0) AS deposit_held
+      `SELECT t.*, IFNULL(sm.f, 0) AS full_qty, IFNULL(sm.e, 0) AS empty_qty, IFNULL(sm.k, 0) AS gas_kg, IFNULL(hm.q, 0) AS with_customers, IFNULL(hm.d, 0) AS deposit_held
        FROM cylinder_types t ${STOCK_JOIN}
        WHERE t.tenant_id = ? AND t.deleted = 0 ${all ? '' : 'AND t.active = 1'}
        ORDER BY t.active DESC, t.sort, t.kg`,
       [t, t, t],
     );
-    return rows.map((r) => ({ ...out(r), full_qty: Number(r.full_qty), empty_qty: Number(r.empty_qty), with_customers: Number(r.with_customers), deposit_held: Number(r.deposit_held), active: !!r.active, is_low: Number(r.full_qty) <= r.low_level }));
+    return rows.map((r) => {
+      const byKg = r.unit === 'kg';
+      const gasKg = round2(Number(r.gas_kg));
+      return {
+        ...out(r),
+        unit: byKg ? 'kg' : '',
+        full_qty: Number(r.full_qty),
+        empty_qty: Number(r.empty_qty),
+        gas_kg: gasKg,
+        with_customers: Number(r.with_customers),
+        deposit_held: Number(r.deposit_held),
+        active: !!r.active,
+        is_low: byKg ? gasKg <= r.low_level : Number(r.full_qty) <= r.low_level,
+      };
+    });
   }
 
   private async typeRow(q: Q, t: number, uid: string) {
@@ -88,13 +128,18 @@ export class GasService {
   }
 
   private async stockOf(q: Q, t: number, typeUid: string) {
-    const r = await q.one<any>('SELECT IFNULL(SUM(full_delta),0) AS f, IFNULL(SUM(empty_delta),0) AS e FROM stock_moves WHERE tenant_id = ? AND type_uid = ? AND deleted = 0', [t, typeUid]);
-    return { full: Number(r?.f ?? 0), empty: Number(r?.e ?? 0) };
+    const r = await q.one<any>(
+      'SELECT IFNULL(SUM(full_delta),0) AS f, IFNULL(SUM(empty_delta),0) AS e, IFNULL(SUM(kg_delta),0) AS k FROM stock_moves WHERE tenant_id = ? AND type_uid = ? AND deleted = 0',
+      [t, typeUid],
+    );
+    return { full: Number(r?.f ?? 0), empty: Number(r?.e ?? 0), kg: round2(Number(r?.k ?? 0)) };
   }
 
-  private move(w: Writer, typeUid: string, full: number, empty: number, reason: string, date: string, ref = '') {
-    if (!full && !empty) return Promise.resolve();
-    return w.insert('stock_moves', { type_uid: typeUid, date, full_delta: full, empty_delta: empty, reason, ref });
+  /** kg: loose gas in (+) or out (-) for kg types. */
+  private move(w: Writer, typeUid: string, full: number, empty: number, reason: string, date: string, ref = '', kg = 0) {
+    kg = round2(kg);
+    if (!full && !empty && !kg) return Promise.resolve();
+    return w.insert('stock_moves', { type_uid: typeUid, date, full_delta: full, empty_delta: empty, reason, ref, kg_delta: kg });
   }
 
   private logPrice(w: Writer, typeUid: string, kind: string, old: number, price: number, date: string, note = '') {
@@ -103,25 +148,33 @@ export class GasService {
 
   async saveType(u: AuthUser, b: TypeIn, uid?: string) {
     const now = toDb();
-    const fields = {
+    const byKg = b.unit === 'kg';
+    const fields: Record<string, unknown> = {
       name: b.name,
-      kg: b.kg,
+      kg: byKg ? 0 : b.kg,
       price: b.price,
       wholesale_price: b.wholesale_price,
       purchase_price: b.purchase_price,
-      deposit: b.deposit,
+      // Loose gas has no cylinder, so no security.
+      deposit: byKg ? 0 : b.deposit,
       low_level: b.low_level,
       sort: b.sort,
       active: b.active ? 1 : 0,
     };
     return this.write(u, async (w) => {
       if (!uid) {
-        const id = await w.insert('cylinder_types', fields);
+        const id = await w.insert('cylinder_types', { ...fields, unit: byKg ? 'kg' : '' });
         await this.logPrice(w, id, 'sale', 0, b.price, now, 'opening');
-        await this.move(w, id, b.full_qty ?? 0, b.empty_qty ?? 0, 'opening', now);
+        if (byKg) await this.move(w, id, 0, 0, 'opening', now, '', b.gas_kg ?? 0);
+        else await this.move(w, id, b.full_qty ?? 0, b.empty_qty ?? 0, 'opening', now);
         return { uid: id };
       }
       const old = await this.typeRow(w.q, w.tenantId, uid);
+      // The unit never changes after the type is made (old bills depend on it).
+      if (old.unit === 'kg') {
+        fields.kg = 0;
+        fields.deposit = 0;
+      }
       await w.update('cylinder_types', uid, fields);
       if (old.price !== b.price) await this.logPrice(w, uid, 'sale', old.price, b.price, now);
       if (old.wholesale_price !== b.wholesale_price) await this.logPrice(w, uid, 'wholesale', old.wholesale_price, b.wholesale_price, now);
@@ -190,13 +243,38 @@ export class GasService {
     });
   }
 
-  /** Set absolute full/empty counts (stock count / correction). */
-  setStock(u: AuthUser, uid: string, full: number, empty: number, note: string) {
+  /** Set absolute full/empty counts, or kg of loose gas (stock count / correction). */
+  setStock(u: AuthUser, uid: string, full: number, empty: number, note: string, kg?: number) {
     return this.write(u, async (w) => {
-      await this.typeRow(w.q, w.tenantId, uid);
+      const ty = await this.typeRow(w.q, w.tenantId, uid);
       const cur = await this.stockOf(w.q, w.tenantId, uid);
-      await this.move(w, uid, full - cur.full, empty - cur.empty, 'adjust', toDb(), note);
+      if (ty.unit === 'kg') await this.move(w, uid, 0, 0, 'adjust', toDb(), note, (kg ?? 0) - cur.kg);
+      else await this.move(w, uid, full - cur.full, empty - cur.empty, 'adjust', toDb(), note);
       return { ok: true };
+    });
+  }
+
+  /**
+   * Fill loose gas from full cylinders: `count` full cylinders of `fromUid`
+   * become empty and their gas (count x weight) is added to the kg type.
+   */
+  fillGas(u: AuthUser, uid: string, fromUid: string, count: number, note: string) {
+    const now = toDb();
+    return this.write(u, async (w) => {
+      const t = w.tenantId;
+      const gas = await this.typeRow(w.q, t, uid);
+      if (gas.unit !== 'kg') throw new BadRequestException('Choose a gas sold by kg');
+      const from = await this.typeRow(w.q, t, fromUid);
+      if (from.unit === 'kg') throw new BadRequestException('Choose a cylinder');
+      const weight = Number(from.kg);
+      if (!(weight > 0)) throw new BadRequestException(`Set the weight (kg) of ${from.name} first`);
+      if (count < 1) throw new BadRequestException('Enter how many cylinders');
+      const inStock = Math.max(0, (await this.stockOf(w.q, t, fromUid)).full);
+      if (count > inStock) throw new BadRequestException(`Not enough full ${from.name} cylinders: ${inStock} in stock`);
+      const ref = `${count} x ${from.name}`.slice(0, 60);
+      await this.move(w, fromUid, -count, count, 'fill', now, `${gas.name}`.slice(0, 60));
+      await this.move(w, uid, 0, 0, 'fill', now, note ? `${ref}, ${note}`.slice(0, 60) : ref, count * weight);
+      return { ok: true, kg: round2(count * weight) };
     });
   }
 
@@ -332,14 +410,21 @@ export class GasService {
   }
 
   /** Customer returns empty cylinders (and optionally gets security back). */
-  returnCylinders(u: AuthUser, customerUid: string, typeUid: string, qty: number, refund: number, note: string) {
+  async returnCylinders(u: AuthUser, customerUid: string, typeUid: string, qty: number, refund: number, note: string, moneyId?: number) {
     const now = toDb();
+    // A refund is paid from the chosen account (cash drawer when none), and never more than it holds.
+    let refundFrom: number | undefined;
+    if (refund > 0) {
+      refundFrom = moneyId ? (await this.money.resolve(tid(u), moneyId)).id : await this.money.routeId(tid(u), 'cash');
+      if (refundFrom) await this.money.verify(tid(u), [{ id: refundFrom, date: now.slice(0, 10), amount: -round2(refund) }]);
+    }
     return this.write(u, async (w) => {
       const c = await w.q.one<any>('SELECT name FROM customers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [w.tenantId, customerUid]);
       if (!c) throw new NotFoundException('Customer not found');
       await this.typeRow(w.q, w.tenantId, typeUid);
       await this.held(w, customerUid, typeUid, -qty, -refund, 'return', now);
-      await w.insert('cylinder_returns', { customer_uid: customerUid, type_uid: typeUid, qty, deposit_refund: refund, date: now, note });
+      const ruid = await w.insert('cylinder_returns', { customer_uid: customerUid, type_uid: typeUid, qty, deposit_refund: refund, date: now, note });
+      if (moneyId && refundFrom) await this.money.tag(w.q, w.tenantId, 'return', ruid, refundFrom);
       await this.move(w, typeUid, 0, qty, 'return', now, String(c.name).slice(0, 60));
       return { ok: true };
     });
@@ -387,8 +472,9 @@ export class GasService {
 
   async createSale(u: AuthUser, b: SaleIn) {
     const when = normDate(b.date) ?? toDb();
-    const used = b.lines.filter((l) => l.qty > 0 || l.empty > 0);
+    const used = b.lines.filter((l) => l.qty > 0 || l.empty > 0 || (l.kg ?? 0) > 0);
     if (!used.length) throw new BadRequestException('Add at least one cylinder');
+    const pay = await this.payFrom(tid(u), { amount: b.paid, method: b.method, money_id: b.money_id, date: when }, false);
     return this.write(u, async (w) => {
       const t = w.tenantId;
       const cid = b.customer_uid || null;
@@ -396,9 +482,18 @@ export class GasService {
         const c = await w.q.one('SELECT id FROM customers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [t, cid]);
         if (!c) throw new NotFoundException('Customer not found');
       }
-      const lines: { l: SaleIn['lines'][number]; dep: number; amount: number }[] = [];
+      const lines: { l: SaleIn['lines'][number]; dep: number; amount: number; kg: number }[] = [];
       for (const l of used) {
         const ty = await this.typeRow(w.q, t, l.type_uid);
+        if (ty.unit === 'kg') {
+          // Loose gas: sold by weight, no cylinder, no empties, no security.
+          const kg = round2(l.kg ?? 0);
+          if (!(kg > 0)) continue;
+          const have = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).kg);
+          if (kg > have + 0.001) throw new BadRequestException(`Not enough ${ty.name}: ${have} kg in stock, selling ${kg} kg. Fill it from a cylinder first.`);
+          lines.push({ l: { ...l, qty: 0, empty: 0 }, dep: 0, amount: round2(kg * l.price), kg });
+          continue;
+        }
         // Never sell full cylinders the shop does not have.
         if (l.qty > 0) {
           const inStock = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).full);
@@ -406,8 +501,9 @@ export class GasService {
         }
         const unreturned = l.qty > l.empty ? l.qty - l.empty : 0;
         const dep = cid && b.charge_deposit ? round2(unreturned * Number(ty.deposit)) : 0;
-        lines.push({ l, dep, amount: round2(l.qty * l.price) });
+        lines.push({ l, dep, amount: round2(l.qty * l.price), kg: 0 });
       }
+      if (!lines.length) throw new BadRequestException('Add at least one cylinder');
       const subtotal = round2(lines.reduce((a, x) => a + x.amount, 0));
       const deposit = round2(lines.reduce((a, x) => a + x.dep, 0));
       const discount = round2(b.discount);
@@ -417,13 +513,14 @@ export class GasService {
       const no = await w.nextNo('S');
       const saleUid = await w.insert('sales', { no, customer_uid: cid, date: when, subtotal, deposit, discount, total, paid: round2(b.paid), note: b.note, created_at: toDb() });
       const ref = docNo('S', no);
-      for (const { l, dep, amount } of lines) {
-        await w.insert('sale_items', { sale_uid: saleUid, type_uid: l.type_uid, qty: l.qty, empty_qty: l.empty, price: l.price, deposit: dep, amount });
-        await this.move(w, l.type_uid, -l.qty, l.empty, 'sale', when, ref);
-        if (cid) await this.held(w, cid, l.type_uid, l.qty - l.empty, dep, 'sale', when, ref);
+      for (const { l, dep, amount, kg } of lines) {
+        await w.insert('sale_items', { sale_uid: saleUid, type_uid: l.type_uid, qty: l.qty, empty_qty: l.empty, price: l.price, deposit: dep, amount, kg });
+        await this.move(w, l.type_uid, -l.qty, l.empty, 'sale', when, ref, -kg);
+        if (cid && !kg) await this.held(w, cid, l.type_uid, l.qty - l.empty, dep, 'sale', when, ref);
       }
       if (b.paid > 0) {
-        await w.insert('payments', { customer_uid: cid, sale_uid: saleUid, date: when, amount: round2(b.paid), method: b.method, note: '', created_at: toDb() });
+        const puid = await w.insert('payments', { customer_uid: cid, sale_uid: saleUid, date: when, amount: round2(b.paid), method: pay.method, note: '', created_at: toDb() });
+        if (pay.moneyId) await this.money.tag(w.q, t, 'payment', puid, pay.moneyId);
       }
       return { uid: saleUid, no: ref };
     });
@@ -463,13 +560,14 @@ export class GasService {
     );
     if (!r) throw new NotFoundException('Sale not found');
     const items = await this.db.all<any>(
-      `SELECT si.*, ty.name AS type_name FROM sale_items si
+      `SELECT si.*, ty.name AS type_name, ty.unit FROM sale_items si
        JOIN cylinder_types ty ON ty.tenant_id = si.tenant_id AND ty.uid = si.type_uid
        WHERE si.tenant_id = ? AND si.sale_uid = ? AND si.deleted = 0 ORDER BY si.id`,
       [t, uid],
     );
-    const pay = await this.db.one<any>('SELECT method FROM payments WHERE tenant_id = ? AND sale_uid = ? AND deleted = 0 ORDER BY id LIMIT 1', [t, uid]);
+    const pay = await this.db.one<any>('SELECT uid, method FROM payments WHERE tenant_id = ? AND sale_uid = ? AND deleted = 0 ORDER BY id LIMIT 1', [t, uid]);
     r.method = pay?.method ?? null;
+    r.money_name = pay?.uid ? await this.money.nameOf(t, 'payment', pay.uid) : '';
     let balance: number | null = null;
     if (r.customer_uid) {
       const b = await this.db.one<any>(`SELECT ${CUST_BAL} AS b FROM customers c WHERE c.tenant_id = ? AND c.uid = ?`, [t, r.customer_uid]);
@@ -479,8 +577,11 @@ export class GasService {
   }
 
   /** Deletes a sale and reverses its stock, customer cylinders and payment. */
-  deleteSale(u: AuthUser, uid: string) {
+  async deleteSale(u: AuthUser, uid: string) {
     const now = toDb();
+    const pays = await this.db.all<any>('SELECT uid FROM payments WHERE tenant_id = ? AND sale_uid = ? AND deleted = 0', [tid(u), uid]);
+    const gone = new Set(pays.map((p) => p.uid));
+    if (gone.size) await this.money.verify(tid(u), [], (m) => m.src === 'payment' && gone.has(m.link));
     return this.write(u, async (w) => {
       const t = w.tenantId;
       const s = await w.q.one<any>('SELECT * FROM sales WHERE tenant_id = ? AND uid = ? AND deleted = 0', [t, uid]);
@@ -488,8 +589,8 @@ export class GasService {
       const ref = docNo('S', s.no);
       const items = await w.q.all<any>('SELECT * FROM sale_items WHERE tenant_id = ? AND sale_uid = ? AND deleted = 0', [t, uid]);
       for (const it of items) {
-        await this.move(w, it.type_uid, it.qty, -it.empty_qty, 'sale_del', now, ref);
-        if (s.customer_uid) await this.held(w, s.customer_uid, it.type_uid, -(it.qty - it.empty_qty), -Number(it.deposit), 'sale_del', now, ref);
+        await this.move(w, it.type_uid, it.qty, -it.empty_qty, 'sale_del', now, ref, Number(it.kg) || 0);
+        if (s.customer_uid && !(Number(it.kg) > 0)) await this.held(w, s.customer_uid, it.type_uid, -(it.qty - it.empty_qty), -Number(it.deposit), 'sale_del', now, ref);
         await w.remove('sale_items', it.uid);
       }
       await w.removeWhere('payments', 'sale_uid', uid);
@@ -500,11 +601,14 @@ export class GasService {
 
   // ───────────── payments ─────────────
 
-  addPayment(u: AuthUser, b: { customer_uid: string; amount: number; date?: string; method: string; note: string }) {
+  async addPayment(u: AuthUser, b: { customer_uid: string; amount: number; date?: string; method: string; money_id?: number; note: string }) {
+    const when = normDate(b.date) ?? toDb();
+    const pay = await this.payFrom(tid(u), { amount: b.amount, method: b.method, money_id: b.money_id, date: when }, false);
     return this.write(u, async (w) => {
       const c = await w.q.one('SELECT id FROM customers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [w.tenantId, b.customer_uid]);
       if (!c) throw new NotFoundException('Customer not found');
-      const uid = await w.insert('payments', { customer_uid: b.customer_uid, sale_uid: null, date: normDate(b.date) ?? toDb(), amount: round2(b.amount), method: b.method, note: b.note, created_at: toDb() });
+      const uid = await w.insert('payments', { customer_uid: b.customer_uid, sale_uid: null, date: when, amount: round2(b.amount), method: pay.method, note: b.note, created_at: toDb() });
+      if (pay.moneyId) await this.money.tag(w.q, w.tenantId, 'payment', uid, pay.moneyId);
       const p = await w.q.one<any>('SELECT no FROM payments WHERE tenant_id = ? AND uid = ?', [w.tenantId, uid]);
       return { uid, no: docNo('R', p?.no) };
     });
@@ -532,11 +636,14 @@ export class GasService {
       [t, uid],
     );
     if (!r) throw new NotFoundException('Payment not found');
+    r.money_name = await this.money.nameOf(t, 'payment', uid);
     return { ...out(r), ref: docNo('R', r.no), sale_ref: r.sale_uid ? docNo('S', r.sale_no) : null, customer_balance: r.customer_uid ? Number(r.customer_balance) : null };
   }
 
   /** Only standalone payments can be deleted (sale payments go with the sale). */
-  deletePayment(u: AuthUser, uid: string) {
+  async deletePayment(u: AuthUser, uid: string) {
+    const p0 = await this.db.one<any>('SELECT sale_uid FROM payments WHERE tenant_id = ? AND uid = ? AND deleted = 0', [tid(u), uid]);
+    if (p0 && !p0.sale_uid) await this.money.verify(tid(u), [], (m) => m.src === 'payment' && m.link === uid);
     return this.write(u, async (w) => {
       const p = await w.q.one<any>('SELECT sale_uid FROM payments WHERE tenant_id = ? AND uid = ? AND deleted = 0', [w.tenantId, uid]);
       if (!p) throw new NotFoundException('Payment not found');
@@ -590,12 +697,17 @@ export class GasService {
     });
   }
 
-  createPurchase(u: AuthUser, b: PurchaseIn) {
+  async createPurchase(u: AuthUser, b: PurchaseIn) {
     const when = normDate(b.date) ?? toDb();
     const used = b.lines.filter((l) => l.qty > 0 || l.empty_sent > 0);
     if (!used.length) throw new BadRequestException('Add at least one cylinder');
+    const pay = await this.payFrom(tid(u), { amount: b.paid, method: b.method, money_id: b.money_id, date: when }, true);
     return this.write(u, async (w) => {
       const t = w.tenantId;
+      for (const l of used) {
+        const ty = await w.q.one<any>('SELECT name, unit FROM cylinder_types WHERE tenant_id = ? AND uid = ?', [t, l.type_uid]);
+        if (ty?.unit === 'kg') throw new BadRequestException(`${ty.name} is sold by kg. Buy full cylinders, then use Fill from cylinder.`);
+      }
       const sid = b.supplier_uid || null;
       if (sid) {
         const s = await w.q.one('SELECT id FROM suppliers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [t, sid]);
@@ -615,7 +727,8 @@ export class GasService {
         }
       }
       if (b.paid > 0) {
-        await w.insert('supplier_payments', { supplier_uid: sid, purchase_uid: pid, date: when, amount: round2(b.paid), method: b.method, note: '', created_at: toDb() });
+        const puid = await w.insert('supplier_payments', { supplier_uid: sid, purchase_uid: pid, date: when, amount: round2(b.paid), method: pay.method, note: '', created_at: toDb() });
+        if (pay.moneyId) await this.money.tag(w.q, t, 'sup_pay', puid, pay.moneyId);
       }
       return { uid: pid, no: ref };
     });
@@ -647,6 +760,9 @@ export class GasService {
        WHERE pi.tenant_id = ? AND pi.purchase_uid = ? AND pi.deleted = 0 ORDER BY pi.id`,
       [t, uid],
     );
+    const sp = await this.db.one<any>('SELECT uid, method FROM supplier_payments WHERE tenant_id = ? AND purchase_uid = ? AND deleted = 0 ORDER BY id LIMIT 1', [t, uid]);
+    r.method = sp?.method ?? null;
+    r.money_name = sp ? await this.money.nameOf(t, 'sup_pay', sp.uid) : '';
     return { ...out(r), ref: docNo('P', r.no), due: round2(r.total - r.paid), items: items.map(out) };
   }
 
@@ -668,11 +784,14 @@ export class GasService {
     });
   }
 
-  addSupplierPayment(u: AuthUser, b: { supplier_uid: string; amount: number; date?: string; method: string; note: string }) {
+  async addSupplierPayment(u: AuthUser, b: { supplier_uid: string; amount: number; date?: string; method: string; money_id?: number; note: string }) {
+    const when = normDate(b.date) ?? toDb();
+    const pay = await this.payFrom(tid(u), { amount: b.amount, method: b.method, money_id: b.money_id, date: when }, true);
     return this.write(u, async (w) => {
       const s = await w.q.one('SELECT id FROM suppliers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [w.tenantId, b.supplier_uid]);
       if (!s) throw new NotFoundException('Supplier not found');
-      const uid = await w.insert('supplier_payments', { supplier_uid: b.supplier_uid, purchase_uid: null, date: normDate(b.date) ?? toDb(), amount: round2(b.amount), method: b.method, note: b.note, created_at: toDb() });
+      const uid = await w.insert('supplier_payments', { supplier_uid: b.supplier_uid, purchase_uid: null, date: when, amount: round2(b.amount), method: pay.method, note: b.note, created_at: toDb() });
+      if (pay.moneyId) await this.money.tag(w.q, w.tenantId, 'sup_pay', uid, pay.moneyId);
       return { uid };
     });
   }
@@ -731,7 +850,7 @@ export class GasService {
     const [s, qty, p, o, h, counts, types, recent] = await Promise.all([
       q.one<any>('SELECT IFNULL(SUM(total),0) AS t, COUNT(*) AS n FROM sales WHERE tenant_id = ? AND deleted = 0 AND date >= ? AND date < ?', [t, from, to]),
       q.one<any>(
-        `SELECT IFNULL(SUM(si.qty),0) AS q FROM sale_items si JOIN sales s ON s.tenant_id = si.tenant_id AND s.uid = si.sale_uid
+        `SELECT IFNULL(SUM(si.qty),0) AS q, IFNULL(SUM(si.kg),0) AS k FROM sale_items si JOIN sales s ON s.tenant_id = si.tenant_id AND s.uid = si.sale_uid
          WHERE si.tenant_id = ? AND si.deleted = 0 AND s.deleted = 0 AND s.date >= ? AND s.date < ?`,
         [t, from, to],
       ),
@@ -760,6 +879,8 @@ export class GasService {
       today_sales: Number(s?.t ?? 0),
       today_sales_count: Number(s?.n ?? 0),
       today_qty: Number(qty?.q ?? 0),
+      today_kg: round2(Number(qty?.k ?? 0)),
+      gas_kg_total: round2(types.reduce((a, x) => a + (x.unit === 'kg' ? x.gas_kg : 0), 0)),
       today_payments: Number(p?.t ?? 0),
       outstanding: Number(o?.t ?? 0),
       udhaar_customers: Number(o?.n ?? 0),
@@ -788,12 +909,12 @@ export class GasService {
         [t, f, tt],
       ),
       q.all<any>(
-        `SELECT ty.uid AS type_uid, ty.name AS type_name, ty.purchase_price, SUM(si.qty) AS qty, SUM(si.empty_qty) AS empty_qty, SUM(si.amount) AS amount
+        `SELECT ty.uid AS type_uid, ty.name AS type_name, ty.purchase_price, ty.unit, SUM(si.qty) AS qty, SUM(si.empty_qty) AS empty_qty, SUM(si.kg) AS kg, SUM(si.amount) AS amount
          FROM sale_items si
          JOIN sales s ON s.tenant_id = si.tenant_id AND s.uid = si.sale_uid AND s.deleted = 0
          JOIN cylinder_types ty ON ty.tenant_id = si.tenant_id AND ty.uid = si.type_uid
          WHERE si.tenant_id = ? AND si.deleted = 0 AND s.date >= ? AND s.date < ?
-         GROUP BY ty.uid, ty.name, ty.purchase_price, ty.sort ORDER BY ty.sort`,
+         GROUP BY ty.uid, ty.name, ty.purchase_price, ty.unit, ty.sort ORDER BY ty.sort`,
         [t, f, tt],
       ),
       q.all<any>(
@@ -812,8 +933,8 @@ export class GasService {
     ]);
     const types = byType.map((r) => {
       const amount = Number(r.amount);
-      const cost = Number(r.qty) * Number(r.purchase_price);
-      return { type_uid: r.type_uid, type_name: r.type_name, qty: Number(r.qty), empty_qty: Number(r.empty_qty), amount, est_profit: round2(amount - cost) };
+      const cost = (Number(r.qty) + Number(r.kg)) * Number(r.purchase_price);
+      return { type_uid: r.type_uid, type_name: r.type_name, unit: r.unit === 'kg' ? 'kg' : '', qty: Number(r.qty), kg: round2(Number(r.kg)), empty_qty: Number(r.empty_qty), amount, est_profit: round2(amount - cost) };
     });
     return {
       from: f,

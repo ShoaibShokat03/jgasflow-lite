@@ -3,7 +3,7 @@
  * English (en) and Roman Urdu (ur). Steps quote on-screen labels in **bold**.
  * Keep it current when a screen changes. No em or en dashes.
  */
-export const MANUAL_UPDATED = '14 Oct 2026';
+export const MANUAL_UPDATED = '27 Oct 2026';
 
 export const MANUAL = [
   {
@@ -124,7 +124,8 @@ export const MANUAL = [
       intro: 'See full, empty and customer cylinders, and correct counts after checking the godown.',
       steps: [
         'Open **Stock**. The top tiles show **Ready to sell**, **To refill**, **With customers** and **Total owned**.',
-        'Each size card shows **Full**, **Empty** and **With customers**.',
+        'Each size card shows **Full**, **Empty** and **With customers**, and the **Stock value** of its full cylinders.',
+        '**Stock at cost** and **Stock at sale price** show what all full cylinders are worth (full cylinders x price). The same totals are on **Prices** and **Cylinder types**.',
         'After counting the godown, click **Adjust stock**, enter the real **Full cylinders** and **Empty cylinders**, add a **Reason** and click **Save**.',
         '**Stock history** at the bottom shows every change: sales, purchases, returns and adjustments. Use the size chips to filter.',
       ],
@@ -135,11 +136,40 @@ export const MANUAL = [
       intro: 'Bhare, khali aur gahakon ke cylinder dekhein, aur godown gin kar ginti theek karein.',
       steps: [
         '**Stock** kholein. Upar tiles **Ready to sell**, **To refill**, **With customers** aur **Total owned** dikhati hain.',
-        'Har size card mein **Full**, **Empty** aur **With customers** hain.',
+        'Har size card mein **Full**, **Empty** aur **With customers** hain, aur bhare cylinderon ki **Stock value**.',
+        '**Stock at cost** aur **Stock at sale price** batate hain ke sab bhare cylinder kitne ke hain (bhare cylinder x qeemat). Yahi total **Prices** aur **Cylinder types** par bhi hain.',
         'Godown gin kar **Adjust stock** dabayein, asal **Full cylinders** aur **Empty cylinders** likhein, **Reason** likh kar **Save** karein.',
         'Neeche **Stock history** har tabdeeli dikhati hai: sale, khareed, wapsi aur durusti. Size chips se filter karein.',
       ],
       tips: ['Har sale, khareed aur wapsi se stock khud badalta hai. **Adjust stock** sirf ginti theek karne ke liye hai.'],
+    },
+  },
+  {
+    id: 'loose-gas',
+    icon: 'cylinder',
+    roles: ['owner', 'manager'],
+    to: '/app/stock',
+    en: {
+      title: 'Selling gas by kg',
+      intro: 'For shops that fill gas from a big cylinder: 1 kg, 2 kg and so on.',
+      steps: [
+        'Open **Stock** and click **Add cylinder**. Under **Sold as** choose **Gas by kg**, name it (for example **Loose gas**) and enter the **Price per kg**. Click **Save**.',
+        'To put gas in, click **Fill from cylinder** on its card. Choose the big cylinder and **How many**. Those cylinders become empty and their kg is added.',
+        'In **New Sale** the gas card asks for **kg**, or type the rupees in **Or Rs** and the kg is worked out. The quick buttons add 1, 2, 3, 5 or 10 kg.',
+        'The bill shows the kg, for example **2.5 kg x 280**. Deleting the sale puts the gas back.',
+      ],
+      tips: ['Use **Adjust stock** to correct the kg after weighing. Loose gas has no empties and no security.'],
+    },
+    ur: {
+      title: 'Gas kg mein bechna',
+      intro: 'Un dukanon ke liye jo bare cylinder se gas bharti hain: 1 kg, 2 kg waghera.',
+      steps: [
+        '**Stock** khol kar **Add cylinder** dabayein. **Sold as** mein **Gas by kg** chunein, naam likhein (jaise **Loose gas**) aur **Price per kg** likhein. **Save** karein.',
+        'Gas daalne ke liye card par **Fill from cylinder** dabayein. Bara cylinder aur **How many** chunein. Woh cylinder khali ho jate hain aur un ki kg jama ho jati hai.',
+        '**New Sale** mein gas card par **kg** likhein, ya **Or Rs** mein rupay likhein to kg khud nikal aati hai. Fori buttons 1, 2, 3, 5 ya 10 kg dalte hain.',
+        'Bill par kg likha hota hai, jaise **2.5 kg x 280**. Sale delete karne se gas wapas aa jati hai.',
+      ],
+      tips: ['Tolne ke baad kg theek karne ke liye **Adjust stock** istemal karein. Khuli gas ke khali cylinder aur security nahi hoti.'],
     },
   },
   {
@@ -366,6 +396,9 @@ export const MANUAL = [
         'New prices apply to new sales only. Old bills keep the price they were sold at.',
         'If the purchase price is higher than the sale price, the margin shows in red with **Selling at a loss**, and saving asks you to confirm with **Save anyway**.',
         'A cylinder price can be up to Rs 500,000.',
+        'On **Current**: **Add cylinder type** adds a new size. Each card has **Update price**, **Edit** (name, weight, prices, security, low stock alert) and **Delete**. A size that was already sold is hidden instead of deleted, so old bills stay correct.',
+        'On **Special**: **Add special price**, choose the customer, the cylinder and the price. Use the pencil to change a price and the bin to remove it.',
+        'The phone and computer app have the same buttons on **Prices**.',
       ],
     },
     ur: {
@@ -381,6 +414,9 @@ export const MANUAL = [
         'Nayi qeemat sirf nayi sale par lagti hai. Purane bill apni qeemat par rehte hain.',
         'Agar khareed qeemat sale qeemat se zyada ho to munafa laal mein **Selling at a loss** ke sath dikhta hai, aur save karte waqt **Save anyway** se tasdeeq poochi jati hai.',
         'Cylinder ki qeemat Rs 500,000 tak ho sakti hai.',
+        '**Current** par: **Add cylinder type** naya size shamil karta hai. Har card par **Update price**, **Edit** (naam, wazan, qeematein, security, kam stock alert) aur **Delete** hai. Jo size bik chuka ho woh delete ke bajaye chhup jata hai taake purane bill theek rahein.',
+        '**Special** par: **Add special price** dabayein, gahak, cylinder aur qeemat chunein. Qeemat badalne ke liye pencil aur hatane ke liye bin dabayein.',
+        'Phone aur computer app mein bhi **Prices** par yahi buttons hain.',
       ],
     },
   },
@@ -410,6 +446,48 @@ export const MANUAL = [
         'Kaghaz par lene ke liye **Print** dabayein.',
       ],
       tips: ['Andazan munafa har size ki mojooda khareed qeemat se nikalta hai.'],
+    },
+  },
+  {
+    id: 'accounts',
+    icon: 'chart',
+    roles: ['owner', 'manager'],
+    to: '/app/accounts/profit-loss',
+    en: {
+      title: 'Accounts',
+      intro: 'Full double-entry books: profit and loss, balance sheet, trial balance and a ledger for every account.',
+      steps: [
+        'The **Accounts** part of the menu has **Chart of accounts**, **Account ledger**, **Cash / Bank**, **Loans**, **Expenses and entries**, **Balance sheet**, **Profit and loss**, **Trial balance** and **Journal**. Lists and reports have **Today**, **Last 7 days**, **This month**, **All** or **Custom** dates; **Balance sheet** and **Trial balance** use an **As at** date.',
+        '**Cash / Bank**: click **Add account** for each bank or wallet (for example Meezan Bank, JazzCash) and choose which payments come to it. Use **Deposit**, **Withdraw** and **Transfer** to move money, and **Statement** to see every entry.',
+        'On the web, every sale, payment, purchase, supplier payment and security refund asks **Received in** or **Paid from**: choose the Cash / Bank account. Each one shows its balance. Phone records go to the account set for their payment method.',
+        'Money going out can never be more than the account holds. If it is short you see **Not enough money**: choose another account, or click **Take loan** to record the loan into that account, then save again.',
+        '**Loans**: **Take loan** for money borrowed from a person or bank, **Give loan** for money lent. Each person shows what is **Left**; click **Repay** or **Get back** when money is returned. A repayment cannot be more than what is left.',
+        '**Profit and loss** starts with **Cash in hand**, **Bank and wallets**, **To receive**, **To pay** and **Security held**, then the profit for the period.',
+        'Every sale, payment, purchase, supplier payment and security refund is added to the accounts by itself, from the phone or the web. Editing or deleting one corrects the accounts at once.',
+        'In **Expenses and entries** click **New entry** for what the app does not know: **Expense** (rent, bills, salary), **Other income**, **Capital added**, **Owner drawing**, **Cash and bank transfer** and **Opening cash or bank**.',
+        '**Profit and loss** shows income and expenses for the period. **Balance sheet** and **Trial balance** are as at the last day of the period and show **Books balanced**.',
+        '**Account ledger**: choose an account to see its opening balance, every entry and the running balance. Click a sale or payment to open it.',
+        'In **Chart of accounts** click **Add account** to make your own expense or income heads.',
+      ],
+      tips: ['Use **Print** or **Export** on any report.', 'Only the owner can make a **Journal entry** (a correction between any two accounts).', 'Fields marked **(optional)** can be left empty.'],
+    },
+    ur: {
+      title: 'Hisab kitab',
+      intro: 'Poora double-entry hisab: nafa nuqsan, balance sheet, trial balance aur har account ka khata.',
+      steps: [
+        'Menu ke **Accounts** hisse mein **Chart of accounts**, **Account ledger**, **Cash / Bank**, **Loans**, **Expenses and entries**, **Balance sheet**, **Profit and loss**, **Trial balance** aur **Journal** hain. List aur report mein **Today**, **Last 7 days**, **This month**, **All** ya **Custom**; **Balance sheet** aur **Trial balance** mein **As at** tareekh.',
+        '**Cash / Bank**: har bank ya wallet ke liye **Add account** (jaise Meezan Bank, JazzCash) aur chunein kaun si payment yahan aaye. **Deposit**, **Withdraw** aur **Transfer** se paisa le jayein, **Statement** se har entry dekhein.',
+        'Web par har sale, wasooli, khareed, supplier payment aur zamanat wapsi mein **Received in** ya **Paid from** aata hai: Cash / Bank account chunein. Har account ka baqaya sath dikhta hai. Phone ke record us account mein jate hain jo un ke payment tareeqe ke liye set hai.',
+        'Account mein jitna paisa hai us se zyada bahar nahi ja sakta. Kam ho to **Not enough money** aata hai: doosra account chunein, ya **Take loan** se us account mein qarz likhein, phir dobara save karein.',
+        '**Loans**: kisi shakhs ya bank se liye paise ke liye **Take loan**, kisi ko diye paise ke liye **Give loan**. Har shakhs ka **Left** (baqi) dikhta hai; paisa wapas ho to **Repay** ya **Get back** dabayein. Wapsi baqi se zyada nahi ho sakti.',
+        '**Profit and loss** ke upar **Cash in hand**, **Bank and wallets**, **To receive**, **To pay**, **Security held**, phir is waqt ka nafa.',
+        'Har sale, wasooli, khareed, supplier ko payment aur zamanat wapsi khud hisab mein aa jati hai, phone ho ya web. Badalne ya delete karne se hisab foran theek ho jata hai.',
+        '**Expenses and entries** mein **New entry** dabayein un cheezon ke liye jo app ko pata nahi: **Expense** (kiraya, bill, tankhwah), **Other income**, **Capital added**, **Owner drawing**, **Cash and bank transfer** aur **Opening cash or bank**.',
+        '**Profit and loss** is waqt ki aamdani aur kharche. **Balance sheet** aur **Trial balance** waqt ke aakhri din tak, aur **Books balanced** dikhate hain.',
+        '**Account ledger**: account chunein, shuru ka baqaya, har entry aur chalta baqaya. Sale ya wasooli par click se woh khulti hai.',
+        '**Chart of accounts** mein **Add account** se apne kharche ya aamdani ke khane banayein.',
+      ],
+      tips: ['Har report par **Print** ya **Export** istemal karein.', '**Journal entry** (do accounts ke darmiyan durusti) sirf malik kar sakta hai.', '**(ikhtiyari)** wale khane khali chhore ja sakte hain.'],
     },
   },
   {
@@ -486,7 +564,7 @@ export const MANUAL = [
         'Click **CSV** (opens in any spreadsheet) or **Excel** (amounts stay as numbers, with a filter on every column).',
         'The file is saved in your Downloads folder, named like "JGasFlow Sales 2026-10-15".',
       ],
-      tips: ['Files hold only readable details: names, phones, dates, bill numbers and amounts.', 'A customer or supplier page exports its full statement.'],
+      tips: ['Files hold only readable details: names, phones, dates, bill numbers and amounts.', 'A customer or supplier page exports its full statement.', 'The phone and computer app have the same **Export** on Sales, Customers, Udhaar, Purchases, Suppliers, Stock and Prices: choose CSV or Excel, then where to save the file.'],
     },
     ur: {
       title: 'Lists CSV ya Excel mein download karein',
@@ -497,7 +575,7 @@ export const MANUAL = [
         '**CSV** (har spreadsheet mein khulti hai) ya **Excel** (raqam number rehti hai, har column par filter) dabayein.',
         'File aap ke Downloads folder mein "JGasFlow Sales 2026-10-15" jaise naam se save hoti hai.',
       ],
-      tips: ['File mein sirf parhne wali maloomat hoti hai: naam, phone, tareekh, bill number aur raqam.', 'Customer ya supplier ke page se us ka poora statement export hota hai.'],
+      tips: ['File mein sirf parhne wali maloomat hoti hai: naam, phone, tareekh, bill number aur raqam.', 'Customer ya supplier ke page se us ka poora statement export hota hai.', 'Phone aur computer app mein bhi Sales, Customers, Udhaar, Purchases, Suppliers, Stock aur Prices par **Export** hai: CSV ya Excel chunein, phir file save karne ki jagah.'],
     },
   },
   {
@@ -539,12 +617,14 @@ export const MANUAL = [
       steps: [
         'Open **Subscription** to see your **Plan** and days left. A yellow bar appears 5 days before it ends.',
         'Choose a plan (**Basic** or **Pro**) and **Months**. 6 months save 10% and 12 months save 20%.',
+        'Some plans also show **or Rs ... once for lifetime**. Choose **Lifetime** under **Months** to pay once: the plan never ends, online or offline, and the phone app works without monthly checks.',
         'Under **Pay by bank transfer**, transfer the **Amount to pay** to the bank account shown. Use **Copy** to copy the account number or IBAN.',
         'Attach a **Screenshot of the transfer** (up to 3 pictures, or paste with Ctrl+V), add the reference number if you have it, and click **Send payment proof**.',
         'We check and activate your plan, usually within a few hours. **Payment history** shows the status.',
       ],
       tips: [
         'If the plan ends you can still view and export everything, but cannot add records until renewal.',
+        'With **Lifetime access** the **Subscription** page shows **Never ends. No more payments.** You can still upgrade to another plan for lifetime.',
         'An **Offline** shop keeps its records on one phone. On the web it can renew, get help, or choose **Upgrade now** for an Online plan; after approval, switch the phone app to Online and its data is uploaded.',
       ],
     },
@@ -554,12 +634,14 @@ export const MANUAL = [
       steps: [
         '**Subscription** khol kar **Plan** aur baqi din dekhein. Khatam hone se 5 din pehle peeli bar aati hai.',
         'Plan (**Basic** ya **Pro**) aur **Months** chunein. 6 mahine par 10% aur 12 par 20% bachat.',
+        'Kuch plans par **or Rs ... once for lifetime** bhi likha hota hai. **Months** mein **Lifetime** chun kar aik dafa ada karein: plan kabhi khatam nahi hota, online ho ya offline, aur phone app ko har mahine check ki zaroorat nahi.',
         '**Pay by bank transfer** mein diye bank account mein **Amount to pay** transfer karein. Account number ya IBAN **Copy** se copy karein.',
         '**Screenshot of the transfer** lagayein (3 tasveer tak, ya Ctrl+V se paste), reference number ho to likhein, aur **Send payment proof** dabayein.',
         'Hum check kar ke plan chalu karte hain, aam tor par chand ghanton mein. **Payment history** mein status hai.',
       ],
       tips: [
         'Plan khatam ho to sab dekh aur export kar sakte hain, magar renewal tak naya record nahi.',
+        '**Lifetime access** par **Subscription** page **Never ends. No more payments.** dikhata hai. Doosre plan ka lifetime upgrade phir bhi le sakte hain.',
         '**Offline** dukaan ka record aik phone par rehta hai. Web par renew, madad, ya Online plan ke liye **Upgrade now**; approval ke baad phone app Online karein to data upload ho jata hai.',
       ],
     },
@@ -608,7 +690,7 @@ export const MANUAL = [
         '**Signed-in devices** lists every browser and phone using your login. Click **Log out** next to any device you do not know.',
         'Use **Log out** in the account menu (top right) on shared computers.',
       ],
-      tips: ['Never share your password. Give each staff member their own login from **Team**.', 'Forgot your password? On the log in page click **Forgot password?**, enter the email on your account, click **Get code**, then enter the code and a new password. Every device is signed out.'],
+      tips: ['Never share your password. Give each staff member their own login from **Team**.', 'Forgot your password? On the log in page click **Forgot password?**, enter the email on your account, click **Get code**, then enter the code and a new password. Every device is signed out.', 'Your email is shown in **My account** and cannot be typed over. To change it click **Change email**: a code is sent to the new email, and the email changes after you enter it. In the phone and computer app: **Settings** > **Account and plan** > **Change email**.'],
     },
     ur: {
       title: 'Account aur hifazat',
@@ -619,7 +701,7 @@ export const MANUAL = [
         '**Signed-in devices** har browser aur phone dikhata hai. Anjaan device ke sath **Log out** dabayein.',
         'Saanjhe computer par upar daayein account menu se **Log out** karein.',
       ],
-      tips: ['Password kisi ko na batayein. Har staff ko **Team** se apna login dein.', 'Password bhool gaye? Log in page par **Forgot password?** dabayein, account wala email likhein, **Get code** dabayein, phir code aur naya password likhein. Har device se log out ho jata hai.'],
+      tips: ['Password kisi ko na batayein. Har staff ko **Team** se apna login dein.', 'Password bhool gaye? Log in page par **Forgot password?** dabayein, account wala email likhein, **Get code** dabayein, phir code aur naya password likhein. Har device se log out ho jata hai.', 'Aap ka email **My account** mein dikhta hai aur us par likha nahi ja sakta. Badalne ke liye **Change email** dabayein: naye email par code jata hai, code likhne ke baad email badalta hai. Phone aur computer app mein: **Settings** > **Account and plan** > **Change email**.'],
     },
   },
   {
@@ -639,7 +721,7 @@ export const MANUAL = [
         '**I forgot my password.** Staff: ask the owner. Owner: contact support from your registered number.',
       ],
       tips: [
-        'Support: Jantrah Tech, +92 303 3203444 (WhatsApp or call).',
+        'Support phone and WhatsApp are on **Help & support** (in the phone and computer app: **Settings** > **Help and support**). They always show the latest numbers.',
         'To write to us, open **Help & support** > **New message**, choose a **Topic**, write the **Subject** and **Message**, add screenshots and click **Send**. Our reply appears in the same message; an orange dot shows a **New reply**.',
       ],
     },
@@ -655,7 +737,7 @@ export const MANUAL = [
         '**Password bhool gaya.** Staff: malik se poochein. Malik: registered number se support se rabta karein.',
       ],
       tips: [
-        'Support: Jantrah Tech, +92 303 3203444 (WhatsApp ya call).',
+        'Support ka phone aur WhatsApp **Help & support** par hai (phone aur computer app mein: **Settings** > **Help and support**). Wahan hamesha naye number dikhte hain.',
         'Humein likhne ke liye **Help & support** > **New message** kholein, **Topic** chunein, **Subject** aur **Message** likhein, screenshot lagayein aur **Send** dabayein. Jawab usi paigham mein aata hai; orange nuqta **New reply** dikhata hai.',
       ],
     },

@@ -6,6 +6,7 @@ import { saasAuthApi } from "../../../api/saasApi";
 import { errMsg } from "../../../api/saasClient";
 import { storeSession, clearAuth, landingPath } from "../../../utils/saasAuth";
 import BRANDING from "../../../constants/branding";
+import SupportCredit from "../../common/SupportCredit";
 import { inputCls, BtnPrimary } from "../common";
 
 const LoginPage = () => {
@@ -110,7 +111,7 @@ const LoginPage = () => {
             </BtnPrimary>
           </form>
 
-          <p className="text-center text-[11px] text-navy-200 mt-5">{BRANDING.support}</p>
+          <SupportCredit className="text-center text-[11px] text-navy-200 mt-5" />
         </div>
       </div>
     </div>

@@ -61,7 +61,8 @@ export class PlatformController {
   @HttpCode(200)
   @Post('shops/:id/extend')
   extend(@CurrentUser() u: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() body: unknown) {
-    const b = parse(z.object({ plan: zPlanKey, months: z.coerce.number().int().min(1).max(36), note: zText(200) }), body);
+    // months 0 = lifetime access
+    const b = parse(z.object({ plan: zPlanKey, months: z.coerce.number().int().min(0).max(36), note: zText(200) }), body);
     return this.svc.extend(id, b.plan, b.months, b.note, u.id);
   }
 
@@ -131,7 +132,7 @@ export class PlatformController {
       z.object({
         shop_id: z.coerce.number().int().min(1),
         plan: zPlanKey,
-        months: z.coerce.number().int().min(1).max(36),
+        months: z.coerce.number().int().min(0).max(36), // 0 = lifetime
         amount: z.coerce.number().min(0).max(10000000).optional(),
         method: z.enum(['bank', 'cash', 'other']),
         txn_ref: zText(80),
@@ -170,6 +171,7 @@ export class PlatformController {
         key: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_]{1,19}$/, 'Key: small letters, numbers and _ only').optional(),
         name: z.string().trim().min(2).max(60),
         price: z.coerce.number().int().min(0).max(1000000),
+        lifetime_price: z.coerce.number().int().min(0).max(100000000).default(0),
         users: z.coerce.number().int().min(1).max(500),
         features: z.array(z.string().trim().min(1).max(120)).max(12).default([]),
         is_active: z.boolean().default(true),
@@ -230,7 +232,7 @@ export class PlatformController {
       z.object({
         support_company: s,
         support_phone: s,
-        support_whatsapp: z.string().trim().regex(/^\d{10,15}$/, 'WhatsApp number in digits, like 923001234567').optional(),
+        support_whatsapp: z.string().trim().regex(/^(\d{10,15})?$/, 'WhatsApp number in digits, like 923001234567').optional(),
         support_email: zEmailOpt.optional(),
         support_hours: s,
         bank_name: s,

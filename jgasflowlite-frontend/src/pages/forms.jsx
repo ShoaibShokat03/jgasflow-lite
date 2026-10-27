@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Check, ChevronsUpDown, HandCoins, Undo2 } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
 import { dayKey, money, numInput, parseNum } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { opt, t } from '@/lib/i18n';
+import { MoneySelect, useDefaultMoney, useMoneyChoices } from '@/ui/money';
+import { useLowBalance } from './Accounts';
 import { Balance, Button, Card, Initials, KV } from '@/ui/kit';
-import { businessNameError, Chips, DateInput, MethodPicker, MoneyInput, phoneError, QtyStepper, Select, Textarea, textError, TextInput } from '@/ui/form';
+import { businessNameError, Chips, DateInput, MoneyInput, phoneError, QtyStepper, Select, Textarea, textError, TextInput } from '@/ui/form';
 import { Modal, toast } from '@/ui/overlay';
 import { CustomerPicker } from '@/ui/pickers';
 
@@ -64,7 +66,7 @@ export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved, 
       <form onSubmit={submit} className="space-y-3.5" noValidate>
         <TextInput label={t(isCust ? 'customer_shop_name' : 'supplier_name')} value={f.name} onChange={set('name')} filter="business" maxLength={50} error={errs.name} autoFocus />
         <div className="grid sm:grid-cols-2 gap-3.5">
-          <TextInput label={t('phone')} value={f.phone} onChange={set('phone')} filter="phone" error={errs.phone} placeholder="03xx-xxxxxxx" />
+          <TextInput label={opt(t('phone'))} value={f.phone} onChange={set('phone')} filter="phone" error={errs.phone} placeholder="03xx-xxxxxxx" />
           {isCust && (
             <div>
               <div className="label">{t('customer_type')}</div>
@@ -72,16 +74,16 @@ export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved, 
             </div>
           )}
         </div>
-        <TextInput label={t('address')} value={f.address} onChange={set('address')} maxLength={255} error={errs.address} />
+        <TextInput label={opt(t('address'))} value={f.address} onChange={set('address')} maxLength={255} error={errs.address} />
         <div>
-          <div className="label">{t(isCust ? 'previous_balance' : 'previous_payable')}</div>
+          <div className="label">{opt(t(isCust ? 'previous_balance' : 'previous_payable'))}</div>
           <div className="grid grid-cols-[auto_1fr] gap-2">
             <Chips value={f.side} onChange={set('side')} options={[{ value: 'udhaar', label: t(isCust ? 'udhaar' : 'payable') }, { value: 'advance', label: t('advance') }]} />
             <MoneyInput value={f.bal} onChange={set('bal')} />
           </div>
           <div className="mt-1 text-[12px] text-muted">{t(f.side === 'advance' ? 'advance_help' : isCust ? 'previous_balance_help' : 'previous_payable_help')}</div>
         </div>
-        <Textarea label={t('note')} value={f.note} onChange={set('note')} maxLength={1000} />
+        <Textarea label={opt(t('note'))} value={f.note} onChange={set('note')} maxLength={1000} />
       </form>
     </Modal>
   );
@@ -93,14 +95,15 @@ export function ReceivePayment({ open, onClose, customer: fixed }) {
   const [customer, setCustomer] = useState(fixed || null);
   const [picker, setPicker] = useState(false);
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState('cash');
+  const accounts = useMoneyChoices(open);
+  const [moneyId, setMoneyId] = useState('');
+  useDefaultMoney(accounts.data, moneyId, setMoneyId);
   const [date, setDate] = useState(dayKey());
   const [note, setNote] = useState('');
   useEffect(() => {
     if (open) {
       setCustomer(fixed || null);
       setAmount('');
-      setMethod('cash');
       setDate(dayKey());
       setNote('');
       if (!fixed) setPicker(true);
@@ -118,7 +121,8 @@ export function ReceivePayment({ open, onClose, customer: fixed }) {
     if (!customer) return setPicker(true);
     const a = parseNum(amount);
     if (a <= 0) return toast(t('enter_amount'), 'error');
-    save.mutate({ customer_uid: customer.uid, amount: a, method, note, date: date === dayKey() ? undefined : date });
+    if (!moneyId) return toast(t('choose_cash_bank'), 'error');
+    save.mutate({ customer_uid: customer.uid, amount: a, money_id: Number(moneyId), note, date: date === dayKey() ? undefined : date });
   };
   return (
     <>
@@ -157,11 +161,11 @@ export function ReceivePayment({ open, onClose, customer: fixed }) {
               </Button>
             )}
           </div>
-          <MethodPicker value={method} onChange={setMethod} />
           <div className="grid grid-cols-2 gap-3">
+            <MoneySelect label={t('acc_received_in')} list={accounts.data} value={moneyId} onChange={setMoneyId} />
             <DateInput label={t('date')} value={date} onChange={setDate} max={dayKey()} />
           </div>
-          <Textarea label={t('note')} value={note} onChange={setNote} maxLength={500} />
+          <Textarea label={opt(t('note'))} value={note} onChange={setNote} maxLength={500} />
           {customer && parseNum(amount) > 0 && <KV label={t('remaining_balance')} value={money(customer.balance - parseNum(amount))} strong />}
         </div>
       </Modal>
@@ -178,6 +182,10 @@ export function ReturnEmpties({ open, onClose, customer }) {
   const [refund, setRefund] = useState('');
   const [note, setNote] = useState('');
   const types = useGet(open ? '/types' : null, { all: 1 });
+  const accounts = useMoneyChoices(open);
+  const [moneyId, setMoneyId] = useState('');
+  useDefaultMoney(accounts.data, moneyId, setMoneyId);
+  const [onLow, lowUi] = useLowBalance();
   const h = held.find((x) => x.type_uid === typeUid);
   useEffect(() => {
     if (open) {
@@ -194,9 +202,9 @@ export function ReturnEmpties({ open, onClose, customer }) {
       toast(t('saved'));
       onClose();
     },
-    onError: (e) => toast(e.message, 'error'),
+    onError: onLow,
   });
-  const options = (types.data ?? []).map((ty) => {
+  const options = (types.data ?? []).filter((ty) => ty.unit !== 'kg').map((ty) => {
     const hh = held.find((x) => x.type_uid === ty.uid);
     return { value: ty.uid, label: `${ty.name}${hh ? ` (${hh.qty})` : ''}` };
   });
@@ -212,7 +220,11 @@ export function ReturnEmpties({ open, onClose, customer }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={() => (typeUid && qty > 0 ? save.mutate({ type_uid: typeUid, qty, refund: parseNum(refund), note }) : toast(t('add_qty_first'), 'error'))}>
+          <Button
+            icon={Check}
+            loading={save.isPending}
+            onClick={() => (typeUid && qty > 0 ? save.mutate({ type_uid: typeUid, qty, refund: parseNum(refund), money_id: parseNum(refund) > 0 && moneyId ? Number(moneyId) : undefined, note }) : toast(t('add_qty_first'), 'error'))}
+          >
             {t('save')}
           </Button>
         </>
@@ -225,20 +237,22 @@ export function ReturnEmpties({ open, onClose, customer }) {
           <QtyStepper value={qty} onChange={setQty} min={1} />
         </div>
         <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-          <MoneyInput label={t('security_refund')} value={refund} onChange={setRefund} />
+          <MoneyInput label={opt(t('security_refund'))} value={refund} onChange={setRefund} />
           {perCyl > 0 && (
             <Button variant="soft" onClick={() => setRefund(String(Math.round(perCyl * qty)))}>
               {money(Math.round(perCyl * qty))}
             </Button>
           )}
         </div>
+        <MoneySelect label={t('acc_paid_from')} list={accounts.data} value={moneyId} onChange={setMoneyId} disabled={!(parseNum(refund) > 0)} />
         {h && (
           <div className="text-[12.5px] text-muted">
             {t('cylinders_with_customer')}: {h.qty} · {t('security_held')}: {money(h.deposit)}
           </div>
         )}
-        <Textarea label={t('note')} value={note} onChange={setNote} />
+        <Textarea label={opt(t('note'))} value={note} onChange={setNote} />
       </div>
+      {lowUi}
     </Modal>
   );
 }
@@ -286,7 +300,7 @@ export function SetHeld({ open, onClose, customer }) {
     >
       <div className="space-y-3.5">
         <p className="text-[13px] text-muted">{t('set_held_help')}</p>
-        <Select label={t('cylinder_type')} value={typeUid} onChange={setTypeUid} options={(types.data ?? []).map((ty) => ({ value: ty.uid, label: ty.name }))} />
+        <Select label={t('cylinder_type')} value={typeUid} onChange={setTypeUid} options={(types.data ?? []).filter((ty) => ty.unit !== 'kg').map((ty) => ({ value: ty.uid, label: ty.name }))} />
         <div className="flex items-center justify-between">
           <span className="font-semibold">{t('cylinders')}</span>
           <QtyStepper value={qty} onChange={setQty} />

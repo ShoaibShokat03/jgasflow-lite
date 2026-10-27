@@ -39,7 +39,7 @@ api.interceptors.response.use(
     // Plan ended, or the shop is Offline: refresh the account so the screens follow.
     if (status === 402 || data?.code === 'OFFLINE_ACCOUNT') window.dispatchEvent(new CustomEvent('jgf:expired'));
     const message = Array.isArray(data?.message) ? data.message[0] : data?.message || (err.code === 'ERR_NETWORK' ? 'Cannot reach the server. Check your internet.' : err.message);
-    return Promise.reject(Object.assign(new Error(message), { status, code: data?.code }));
+    return Promise.reject(Object.assign(new Error(message), { status, code: data?.code, data }));
   },
 );
 

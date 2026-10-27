@@ -186,6 +186,7 @@ export const subBadge = (sub) => {
   if (!sub) return { label: "-", cls: "bg-gray-100 text-gray-600" };
   if (sub.status === "suspended") return { label: "Suspended", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" };
   if (sub.status === "expired") return { label: "Expired", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" };
+  if (sub.lifetime) return { label: "Lifetime", cls: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" };
   if (sub.days_left <= 7)
     return { label: `${sub.days_left}d left`, cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" };
   if (sub.plan === "trial") return { label: "Trial", cls: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" };

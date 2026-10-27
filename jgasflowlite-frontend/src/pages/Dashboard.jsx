@@ -40,7 +40,7 @@ function Body({ d }) {
   const week = d.last7.map((x, i) => ({ value: x.total, label: i === 6 ? t('today') : fDateShort(x.day).slice(0, 6), highlight: i === 6 }));
   const weekTotal = d.last7.reduce((a, x) => a + x.total, 0);
   const stockLink = auth.isManager ? '/app/stock' : undefined;
-  const maxFull = Math.max(1, ...d.types.map((x) => x.full_qty));
+  const maxFull = Math.max(1, ...d.types.filter((x) => x.unit !== 'kg').map((x) => x.full_qty));
 
   const actions = [
     { icon: Plus, label: t('new_sale'), color: '#F26B1D', to: '/app/sales/new' },
@@ -160,16 +160,16 @@ function Body({ d }) {
                       {x.is_low && <Tag tone="red">{t('low')}</Tag>}
                     </div>
                     <div className="text-[12px] text-muted truncate">
-                      {num0(x.empty_qty)} {t('empty')} · {num0(x.with_customers)} {t('with_customers').toLowerCase()} · {money(x.price)}
+                      {x.unit === 'kg' ? `${money(x.price)}/${t('kg')}` : `${num0(x.empty_qty)} ${t('empty')} · ${num0(x.with_customers)} ${t('with_customers').toLowerCase()} · ${money(x.price)}`}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[18px] font-extrabold num leading-tight">{num0(x.full_qty)}</div>
-                    <div className="text-[11px] text-muted">{t('full')}</div>
+                    <div className="text-[18px] font-extrabold num leading-tight whitespace-nowrap">{num0(x.unit === 'kg' ? x.gas_kg : x.full_qty)}</div>
+                    <div className="text-[11px] text-muted">{x.unit === 'kg' ? t('kg') : t('full')}</div>
                   </div>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-soft overflow-hidden">
-                  <div className={cn('h-full rounded-full', x.is_low ? 'bg-bad' : 'bg-primary-3')} style={{ width: `${Math.max(2, (x.full_qty / maxFull) * 100)}%` }} />
+                  <div className={cn('h-full rounded-full', x.is_low ? 'bg-bad' : 'bg-primary-3')} style={{ width: `${x.unit === 'kg' ? (x.is_low ? 8 : 100) : Math.max(2, (x.full_qty / maxFull) * 100)}%` }} />
                 </div>
               </div>
             ))}

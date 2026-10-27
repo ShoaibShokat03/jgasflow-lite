@@ -6,6 +6,7 @@ import { money, periodRange } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, PageHeader } from '@/ui/kit';
 import { Chips, SearchBox } from '@/ui/form';
+import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 import { ExportMenu } from '@/ui/ExportMenu';
 import { SaleRow } from './Dashboard';
 
@@ -17,10 +18,9 @@ export const PERIODS = () => [
 ];
 
 export default function Sales() {
-  const [period, setPeriod] = useState('today');
+  const p = usePeriod('sales', 'today');
   const [q, setQ] = useState('');
-  const range = periodRange(period);
-  const sales = useGet('/sales', { ...range, q });
+  const sales = useGet('/sales', { ...p.range, q, limit: 50000 });
   return (
     <div>
       <PageHeader
@@ -34,10 +34,7 @@ export default function Sales() {
           </>
         }
       />
-      <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
-        <Chips value={period} onChange={setPeriod} options={PERIODS()} />
-        <SearchBox value={q} onChange={setQ} placeholder={t('search_sale')} className="sm:ml-auto sm:w-72" />
-      </div>
+      <PeriodFilter className="mb-3" p={p} right={<SearchBox value={q} onChange={setQ} placeholder={t('search_sale')} className="sm:ml-auto sm:w-72" />} />
       <Async q={sales}>
         {(list) => {
           const total = list.reduce((a, s) => a + s.total, 0);
@@ -56,7 +53,7 @@ export default function Sales() {
                 ) : (
                   <div className="divide-rows">
                     {list.map((s) => (
-                      <SaleRow key={s.uid} s={s} showDate={period !== 'today'} />
+                      <SaleRow key={s.uid} s={s} showDate={p.period !== 'today'} />
                     ))}
                   </div>
                 )}

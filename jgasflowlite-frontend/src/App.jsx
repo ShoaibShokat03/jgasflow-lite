@@ -8,7 +8,7 @@ import Login from '@/pages/public/Login';
 import Signup from '@/pages/public/Signup';
 import ForgotPassword from '@/pages/public/ForgotPassword';
 import Impersonate from '@/pages/public/Impersonate';
-import Legal, { Contact } from '@/pages/public/Legal';
+import Legal, { Contact, DeleteAccountInfo } from '@/pages/public/Legal';
 import Dashboard from '@/pages/Dashboard';
 import NewSale from '@/pages/NewSale';
 import Sales from '@/pages/Sales';
@@ -26,6 +26,8 @@ import Suppliers from '@/pages/Suppliers';
 import SupplierView from '@/pages/SupplierView';
 import Prices from '@/pages/Prices';
 import Reports from '@/pages/Reports';
+import { BalanceSheetPage, ChartPage, EntriesPage, JournalPage, LedgerPage, LoansPage, ProfitLossPage, TrialBalancePage } from '@/pages/Accounts';
+import BankAccounts from '@/pages/BankAccounts';
 import Team from '@/pages/Team';
 import Billing from '@/pages/Billing';
 import DataSync from '@/pages/DataSync';
@@ -75,6 +77,7 @@ export default function App() {
       <Route path="/refund-policy" element={<Legal page="refund" />} />
       <Route path="/disclaimer" element={<Legal page="disclaimer" />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/delete-account" element={<DeleteAccountInfo />} />
 
       <Route path="/app" element={<ShopOnly><Shell /></ShopOnly>}>
         <Route index element={<Dashboard />} />
@@ -95,6 +98,15 @@ export default function App() {
         <Route path="suppliers/:uid" element={mgr(<SupplierView />)} />
         <Route path="prices" element={mgr(<Prices />)} />
         <Route path="reports" element={mgr(<Reports />)} />
+        <Route path="accounts" element={mgr(<ChartPage />)} />
+        <Route path="accounts/ledger" element={mgr(<LedgerPage />)} />
+        <Route path="accounts/banks" element={mgr(<BankAccounts />)} />
+        <Route path="accounts/loans" element={mgr(<LoansPage />)} />
+        <Route path="accounts/entries" element={mgr(<EntriesPage />)} />
+        <Route path="accounts/balance-sheet" element={mgr(<BalanceSheetPage />)} />
+        <Route path="accounts/profit-loss" element={mgr(<ProfitLossPage />)} />
+        <Route path="accounts/trial-balance" element={mgr(<TrialBalancePage />)} />
+        <Route path="accounts/journal" element={mgr(<JournalPage />)} />
         <Route path="team" element={owner(<Team />)} />
         <Route path="billing" element={owner(<Billing />)} />
         <Route path="data" element={mgr(<DataSync />)} />

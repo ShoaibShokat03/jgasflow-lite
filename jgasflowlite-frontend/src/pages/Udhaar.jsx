@@ -9,7 +9,8 @@ import { Async, Balance, Button, Card, Empty, Initials, PageHeader } from '@/ui/
 import { Chips, SearchBox } from '@/ui/form';
 import { ExportMenu } from '@/ui/ExportMenu';
 import { ReceivePayment } from './forms';
-import { PERIODS, Summary } from './Sales';
+import { Summary } from './Sales';
+import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 
 export default function Udhaar() {
   const [params, setParams] = useSearchParams();
@@ -77,15 +78,17 @@ function UdhaarList() {
 }
 
 function History() {
-  const [period, setPeriod] = useState('today');
+  const p = usePeriod('payments', 'today');
+  const period = p.period;
   const navigate = useNavigate();
-  const list = useGet('/payments', periodRange(period));
+  const list = useGet('/payments', { ...p.range, limit: 50000 });
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2.5 mb-3">
-        <Chips value={period} onChange={setPeriod} options={PERIODS()} />
-        <ExportMenu className="ml-auto" title={t('x_payments')} columns={paymentColumns} rows={list.data} all={() => api.get('/payments', { params: { limit: 50000 } })} />
-      </div>
+      <PeriodFilter
+        className="mb-3"
+        p={p}
+        right={<ExportMenu className="sm:ml-auto" title={t('x_payments')} columns={paymentColumns} rows={list.data} all={() => api.get('/payments', { params: { limit: 50000 } })} />}
+      />
       <Async q={list}>
         {(rows) =>
           rows.length === 0 ? (

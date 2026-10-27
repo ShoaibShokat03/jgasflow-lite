@@ -39,6 +39,8 @@ export class AuthController {
         password: zPassword,
         mode: z.enum(['offline', 'online']).default('online'),
         email_code: z.string().trim().max(12).optional(),
+        // The phone and computer app send their build; builds from 11 on can do the email code.
+        app_build: z.coerce.number().int().min(0).max(100000).optional(),
         ...zClient,
       }),
       body,
@@ -52,7 +54,7 @@ export class AuthController {
   @HttpCode(200)
   @Post('email-code')
   emailCode(@Body() body: unknown, @Req() req: Request) {
-    const b = parse(z.object({ email: zEmail, purpose: z.enum(['signup', 'reset']) }), body);
+    const b = parse(z.object({ email: zEmail, purpose: z.enum(['signup', 'reset', 'change']) }), body);
     return this.codes.request(b.email, b.purpose, String(req.ip || ''));
   }
 
@@ -98,6 +100,17 @@ export class AuthController {
     return this.auth.updateMe(u, parse(z.object({ name: zPersonName, email: zEmailOpt }), body));
   }
 
+  /** Change email: the code from POST auth/email-code (purpose change) sent to the new email. */
+  @AnyUser()
+  @AllowExpired()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(200)
+  @Post('email-change')
+  changeEmail(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(z.object({ email: zEmail, code: z.string().trim().min(1, 'Enter the code').max(12) }), body);
+    return this.auth.changeEmail(u, b.email, b.code);
+  }
+
   @AnyUser()
   @AllowExpired()
   @HttpCode(200)
@@ -116,6 +129,17 @@ export class AuthController {
     const b = parse(z.object({ current: z.string().min(1, 'Enter your current password'), next: zPassword }), body);
     await this.auth.changePassword(u, b.current, b.next);
     return { ok: true };
+  }
+
+  /** Delete my account (owner: the whole shop and its records). Needs the password. */
+  @AnyUser()
+  @AllowExpired()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(200)
+  @Post('delete-account')
+  deleteAccount(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(z.object({ password: z.string().min(1, 'Enter your password'), confirm: z.literal('DELETE', { errorMap: () => ({ message: 'Type DELETE to confirm' }) }) }), body);
+    return this.auth.deleteAccount(u, b.password);
   }
 
   @AnyUser()

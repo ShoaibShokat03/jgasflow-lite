@@ -113,7 +113,8 @@ export class SyncService {
             const no = r.no != null ? Math.trunc(Number(r.no)) || null : (ex?.no ?? null);
             vals.push(no);
           } else {
-            vals.push(deleted && ex && r[c.name] === undefined ? ex[c.name] : coerce(c, r[c.name]));
+            // A column the phone does not send (deletes, older app versions) keeps the saved value.
+            vals.push(ex && r[c.name] === undefined ? ex[c.name] : coerce(c, r[c.name]));
           }
         }
         values.push([r.uid, vals, mode === 'force' ? Math.max(updatedAt, Date.now()) : updatedAt, deleted]);

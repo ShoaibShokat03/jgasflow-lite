@@ -43,7 +43,8 @@ export class BillingController {
     const b = parse(
       z.object({
         plan: z.string(),
-        months: z.coerce.number().int().refine((m) => [1, 3, 6, 12].includes(m), 'Choose 1, 3, 6 or 12 months'),
+        // 0 = lifetime (one payment)
+        months: z.coerce.number().int().refine((m) => [0, 1, 3, 6, 12].includes(m), 'Choose 1, 3, 6 or 12 months, or Lifetime'),
         txn_ref: z.string().trim().max(80).optional().default(''),
         note: zText(255),
       }),

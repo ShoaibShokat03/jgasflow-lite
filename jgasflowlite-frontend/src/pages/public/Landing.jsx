@@ -150,6 +150,7 @@ export default function Landing() {
                   <span className="text-[30px] font-black num">{p.price ? `Rs ${p.price.toLocaleString('en-US')}` : t('free')}</span>
                   <span className="text-muted mb-1.5 text-[13px]">{p.price ? t('per_month') : t('days_n', { n: plans.data.trial_days })}</span>
                 </div>
+                {p.lifetime_price > 0 && <div className="text-[12.5px] font-bold text-accent-dark">{t('or_lifetime', { amount: `Rs ${p.lifetime_price.toLocaleString('en-US')}` })}</div>}
                 <ul className="mt-4 space-y-2 flex-1">
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-2 text-[13.5px]">
@@ -215,49 +216,37 @@ function ModeCard({ icon, color, title, text }) {
 }
 
 /** A small picture of the dashboard, drawn with the real UI styles. */
+/** Hero picture: LPG cylinders (transparent WebP) with two live-style stat cards over it. */
 function HeroMock() {
-  const bars = [32, 54, 41, 70, 48, 88, 64];
   return (
-    <div className="relative mx-auto w-full max-w-[420px]">
-      <div className="rounded-[28px] bg-white/8 p-3 shadow-[var(--shadow-pop)]">
-        <div className="rounded-[20px] bg-bg overflow-hidden">
-          <div className="bg-gradient-to-b from-primary to-primary-2 px-4 pt-4 pb-5">
-            <div className="text-[13px] font-bold">Assalam-o-Alaikum, Ali</div>
-            <div className="text-[11px] text-white/60">{t('today_sales')}</div>
-            <div className="text-[26px] font-black num">Rs 48,750</div>
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <div className="text-[10.5px] text-white/70">{t('today_payments')}</div>
-                <div className="font-extrabold num">Rs 31,200</div>
-              </div>
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <div className="text-[10.5px] text-white/70">{t('total_outstanding')}</div>
-                <div className="font-extrabold num">Rs 112,400</div>
-              </div>
+    <div className="relative mx-auto w-full max-w-[460px] pt-2">
+      <div className="absolute inset-x-6 bottom-6 top-16 rounded-full bg-accent/25 blur-3xl pointer-events-none" aria-hidden />
+      <img
+        src="/hero-cylinders.webp"
+        alt={t('hero_img_alt')}
+        width={877}
+        height={900}
+        fetchPriority="high"
+        className="relative w-full h-auto select-none drop-shadow-[0_24px_40px_rgba(0,0,0,0.35)]"
+        draggable={false}
+      />
+      <div className="absolute left-0 top-10 sm:-left-6 rounded-[var(--radius-card)] bg-white text-ink shadow-[var(--shadow-pop)] px-3.5 py-2.5">
+        <div className="text-[11px] font-semibold text-muted">{t('today_sales')}</div>
+        <div className="text-[19px] font-black num leading-tight">Rs 48,750</div>
+        <div className="text-[11px] font-bold text-good">12 {t('bills')}</div>
+      </div>
+      <div className="absolute right-0 bottom-14 sm:-right-4 rounded-[var(--radius-card)] bg-white text-ink shadow-[var(--shadow-pop)] px-3.5 py-2.5 flex gap-4">
+        {[
+          ['142', t('full'), '#020033'],
+          ['37', t('empty'), '#B77D00'],
+        ].map(([v, l, c]) => (
+          <div key={l}>
+            <div className="text-[19px] font-black num leading-tight" style={{ color: c }}>
+              {v}
             </div>
+            <div className="text-[11px] font-semibold text-muted">{l}</div>
           </div>
-          <div className="p-3 grid grid-cols-3 gap-2 text-ink">
-            {[
-              ['142', t('full'), '#020033'],
-              ['37', t('empty'), '#B77D00'],
-              ['96', t('with_customers'), '#6A3FB5'],
-            ].map(([v, l, c]) => (
-              <div key={l} className="card p-2">
-                <div className="text-[17px] font-extrabold num" style={{ color: c }}>
-                  {v}
-                </div>
-                <div className="text-[10.5px] text-muted truncate">{l}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mx-3 mb-3 card p-3">
-            <div className="flex items-end gap-1.5 h-16">
-              {bars.map((b, i) => (
-                <div key={i} className={cn('flex-1 rounded-t-[4px]', i === 6 ? 'bg-accent' : 'bg-primary-3')} style={{ height: `${b}%` }} />
-              ))}
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

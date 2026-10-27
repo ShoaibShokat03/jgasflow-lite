@@ -54,6 +54,7 @@ export default function Welcome() {
                   </div>
                   <div className="mt-2 text-[26px] font-black num">{p.price ? money(p.price) : t('free')}</div>
                   {p.price > 0 && <div className="text-[12.5px] text-muted -mt-1">{t('per_month')}</div>}
+                  {p.lifetime_price > 0 && <div className="text-[12.5px] font-bold text-accent-dark">{t('or_lifetime', { amount: money(p.lifetime_price) })}</div>}
                   <ul className="mt-3 space-y-1.5 flex-1">
                     {p.features.map((x) => (
                       <li key={x} className="flex gap-2 text-[13.5px]">

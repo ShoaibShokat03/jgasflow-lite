@@ -71,9 +71,3 @@ export function printNow(kind = 'receipt') {
   window.print();
   for (let i = 1; i < copies; i++) window.print();
 }
-
-export const SUPPORT = {
-  company: 'Jantrah Tech',
-  phone: '+92 303 3203444',
-  whatsapp: '923033203444',
-};

@@ -62,6 +62,7 @@ export default function PaymentView() {
             <Dashed />
             <Line l={t('amount_received')} r={money(p.amount)} strong />
             <Line l={t('payment_method')} r={methodLabel(p.method)} />
+            {p.money_name && <Line l={t('acc_received_in')} r={p.money_name} />}
             {p.note && <div className="text-[12px] text-muted mt-1">{p.note}</div>}
             {p.customer_balance != null && (
               <>

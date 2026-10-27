@@ -74,7 +74,7 @@ export default function PurchaseView() {
             </table>
             <Dashed />
             <Line l={t('total')} r={money(p.total)} strong />
-            <Line l={t('paid')} r={money(p.paid)} />
+            <Line l={`${t('paid')}${p.paid > 0 && p.money_name ? ` (${p.money_name})` : ''}`} r={money(p.paid)} />
             {p.due > 0.009 && <Line l={t('payable')} r={money(p.due)} tone="red" />}
             {p.note && <div className="mt-2 text-[12px] text-muted">{p.note}</div>}
             <PrintCredit />

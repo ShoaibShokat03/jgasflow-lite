@@ -22,7 +22,7 @@ import { errMsg } from "../../../api/saasClient";
 import { canModule } from "../../../utils/saasAuth";
 import { useToast } from "../../common/Toast";
 import { fmtAgo, fmtDate, PageHeader, BtnPrimary } from "../common";
-import { usePlanName } from "../dialogs";
+import { usePlanName, termLabel } from "../dialogs";
 import { Proofs } from "../attach";
 import {
   Card,
@@ -166,7 +166,7 @@ const OverviewPage = () => {
                 <div className="min-w-0">
                   <Link to={`/shops/${p.shop_id}`} className="block text-sm font-medium text-gray-900 dark:text-white truncate hover:underline">{p.shop_name}</Link>
                   <p className="text-[11px] text-gray-500 truncate">
-                    {planName(p.plan)} for {p.months} month{p.months === 1 ? "" : "s"}, {METHOD_LABELS[p.method] || p.method} {p.txn_ref}, {fmtAgo(p.created_at)}
+                    {planName(p.plan)}, {termLabel(p.months)}, {METHOD_LABELS[p.method] || p.method} {p.txn_ref}, {fmtAgo(p.created_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

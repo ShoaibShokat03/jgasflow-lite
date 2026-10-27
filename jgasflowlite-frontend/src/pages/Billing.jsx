@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Infinity as InfinityIcon } from 'lucide-react';
 import { Check, Clock, Copy, Crown, Landmark, MessageCircle, Send } from 'lucide-react';
 import { postForm, useAct, useGet } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -31,7 +32,7 @@ export default function Billing() {
                     <div key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold">
-                          {b.plans.find((p) => p.key === r.plan)?.name} · {t('months_n', { n: r.months })} · {money(r.amount)}
+                          {b.plans.find((p) => p.key === r.plan)?.name ?? r.plan} · {r.months === 0 ? t('lifetime') : t('months_n', { n: r.months })} · {money(r.amount)}
                         </div>
                         <div className="text-[12px] text-muted">
                           {fDateTime(r.created_at)} · {t(`pm_${r.method}`)} {r.txn_ref}
@@ -72,6 +73,12 @@ function Current({ s }) {
         </div>
         <div className="text-right">
           <span className={cn('inline-flex items-center h-7 px-3 rounded-full text-[12px] font-bold', active ? 'bg-[#5BE49B]/20 text-[#5BE49B]' : 'bg-[#ff8a80]/20 text-[#ff9a8a]')}>{active ? t('active') : s.status === 'expired' ? t('expired') : t('suspended')}</span>
+          {s.lifetime && (
+            <div className="text-[12.5px] text-white/80 mt-1 flex items-center justify-end gap-1.5 font-semibold">
+              <InfinityIcon className="size-4 text-[#FFC23D]" /> {t('lifetime_access')}
+            </div>
+          )}
+          {s.lifetime && <div className="text-[12px] text-white/60">{t('lifetime_never_ends')}</div>}
           {s.expires_at && (
             <div className="text-[12.5px] text-white/70 mt-1">
               {active ? t('valid_till') : t('ended_on')} {fDate(s.expires_at)}
@@ -86,16 +93,24 @@ function Current({ s }) {
 }
 
 function PayForm({ b, onDone }) {
-  const paid = b.plans.filter((p) => p.price > 0);
+  const paid = b.plans.filter((p) => p.price > 0 && p.prices.length);
+  // Lifetime shops with nothing left to upgrade to: no payment form.
+  if (!paid.length) return null;
+  return <PayFormInner b={b} paid={paid} onDone={onDone} />;
+}
+
+function PayFormInner({ b, paid, onDone }) {
   // ?plan=pro preselects a plan (from the welcome screen after sign up).
   const wanted = new URLSearchParams(window.location.search).get('plan');
   const [plan, setPlan] = useState(paid.find((x) => x.key === wanted)?.key ?? paid[0]?.key);
-  const [months, setMonths] = useState(1);
+  const [pickedMonths, setMonths] = useState(1);
   const [ref, setRef] = useState('');
   const [shots, setShots] = useState([]);
   const [shotErr, setShotErr] = useState('');
   const pending = b.requests.find((r) => r.status === 'pending');
   const p = paid.find((x) => x.key === plan);
+  // The chosen term, or the plan's first one when that term is not sold (lifetime-only upgrades).
+  const months = p?.prices.some((x) => x.months === pickedMonths) ? pickedMonths : (p?.prices[0]?.months ?? 1);
   const amount = p?.prices.find((x) => x.months === months)?.amount ?? 0;
   const send = useAct(() => postForm('/billing/requests', { plan, months, txn_ref: ref.trim() }, shots), {
     onSuccess: () => {
@@ -130,6 +145,7 @@ function PayForm({ b, onDone }) {
                 Rs {x.price.toLocaleString('en-US')} <span className="text-[12px] text-muted font-semibold">{t('per_month')}</span>
               </div>
             </div>
+            {x.lifetime_price > 0 && <div className="mt-1 text-[12.5px] font-bold text-accent-dark">{t('or_lifetime', { amount: money(x.lifetime_price) })}</div>}
             <ul className="mt-2 space-y-1">
               {x.features.map((f) => (
                 <li key={f} className="flex gap-2 text-[13px] text-muted">
@@ -215,7 +231,7 @@ function PayForm({ b, onDone }) {
             <Chips
               value={months}
               onChange={setMonths}
-              options={(p?.prices ?? []).map((x) => ({ value: x.months, label: x.months === 12 ? t('one_year') : t('months_n', { n: x.months }) }))}
+              options={(p?.prices ?? []).map((x) => ({ value: x.months, label: x.months === 0 ? t('lifetime') : x.months === 12 ? t('one_year') : t('months_n', { n: x.months }) }))}
             />
           </div>
           <ScreenshotPicker files={shots} onChange={(f) => (setShots(f), f.length && setShotErr(''))} label={t('payment_screenshots')} required error={shotErr} hint={t('payment_screenshots_hint')} />

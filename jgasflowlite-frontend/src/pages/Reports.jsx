@@ -7,15 +7,14 @@ import { useAuth } from '@/lib/auth';
 import { dayKey, fDate, fDateShort, money, num0, periodRange } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
 import { Async, Bars, Button, Card, Empty, KV, PageHeader, SectionHeader } from '@/ui/kit';
-import { Chips, DateInput } from '@/ui/form';
+import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 import { Summary } from './Sales';
 import { printNow } from '@/lib/print';
 import { PrintCredit } from '@/ui/receipt';
 
 export default function Reports() {
-  const [period, setPeriod] = useState('month');
-  const [custom, setCustom] = useState({ from: dayKey(), to: dayKey() });
-  const range = period === 'custom' ? custom : periodRange(period);
+  const p = usePeriod('reports', 'month');
+  const range = p.range;
   const q = useGet('/reports/summary', range);
   const { shop } = useAuth();
   return (
@@ -35,24 +34,7 @@ export default function Reports() {
           </>
         }
       />
-      <Chips
-        className="mb-3 no-print"
-        value={period}
-        onChange={setPeriod}
-        options={[
-          { value: 'today', label: t('today') },
-          { value: 'week', label: t('last_7_days') },
-          { value: 'month', label: t('this_month') },
-          { value: 'all', label: t('all') },
-          { value: 'custom', label: t('custom') },
-        ]}
-      />
-      {period === 'custom' && (
-        <div className="grid grid-cols-2 gap-3 max-w-md mb-3 no-print">
-          <DateInput label={t('from')} value={custom.from} onChange={(v) => setCustom((s) => ({ ...s, from: v }))} max={dayKey()} />
-          <DateInput label={t('to')} value={custom.to} onChange={(v) => setCustom((s) => ({ ...s, to: v }))} max={dayKey()} />
-        </div>
-      )}
+      <PeriodFilter className="mb-3" p={p} />
       <Async q={q}>
         {(r) => (
           <div className="print-area">

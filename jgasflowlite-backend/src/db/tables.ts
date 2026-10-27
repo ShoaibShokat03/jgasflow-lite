@@ -41,7 +41,8 @@ const u = (name: string, ref: string, nullable = false): Col => ({ name, kind: '
 export const TABLES: TableSpec[] = [
   {
     name: 'cylinder_types',
-    cols: [s('name', 60), n('kg'), m('price'), m('wholesale_price'), m('purchase_price'), m('deposit'), i('low_level'), i('sort'), b('active')],
+    // unit: '' = sold as cylinders, 'kg' = loose gas sold by weight (prices per kg)
+    cols: [s('name', 60), n('kg'), m('price'), m('wholesale_price'), m('purchase_price'), m('deposit'), i('low_level'), i('sort'), b('active'), s('unit', 10)],
   },
   {
     name: 'customers',
@@ -70,7 +71,8 @@ export const TABLES: TableSpec[] = [
   },
   {
     name: 'sale_items',
-    cols: [u('sale_uid', 'sales'), u('type_uid', 'cylinder_types'), i('qty'), i('empty_qty'), m('price'), m('deposit'), m('amount')],
+    // kg: weight sold for loose gas lines (qty is 0 then)
+    cols: [u('sale_uid', 'sales'), u('type_uid', 'cylinder_types'), i('qty'), i('empty_qty'), m('price'), m('deposit'), m('amount'), n('kg')],
     index: [['tenant_id', 'sale_uid']],
   },
   {
@@ -102,7 +104,8 @@ export const TABLES: TableSpec[] = [
   },
   {
     name: 'stock_moves',
-    cols: [u('type_uid', 'cylinder_types'), d('date'), i('full_delta'), i('empty_delta'), s('reason', 20), s('ref', 60)],
+    // kg_delta: loose gas in or out (kg)
+    cols: [u('type_uid', 'cylinder_types'), d('date'), i('full_delta'), i('empty_delta'), s('reason', 20), s('ref', 60), n('kg_delta')],
     index: [['tenant_id', 'type_uid']],
   },
   {

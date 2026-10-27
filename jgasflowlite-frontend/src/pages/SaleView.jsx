@@ -71,11 +71,11 @@ export default function SaleView() {
               </thead>
               <tbody>
                 {s.items
-                  .filter((i) => i.qty > 0)
+                  .filter((i) => i.qty > 0 || i.kg > 0)
                   .map((i) => (
                     <tr key={i.uid}>
                       <td className="py-1 font-semibold">{i.type_name}</td>
-                      <td className="text-right num">{i.qty}</td>
+                      <td className="text-right num whitespace-nowrap">{i.kg > 0 ? `${num0(i.kg)} ${t('kg')}` : i.qty}</td>
                       <td className="text-right num">{num0(i.price)}</td>
                       <td className="text-right num font-semibold">{num0(i.amount)}</td>
                     </tr>
@@ -92,7 +92,7 @@ export default function SaleView() {
             {s.deposit > 0 && <Line l={t('security_deposit')} r={money(s.deposit)} />}
             {s.discount > 0 && <Line l={t('discount')} r={`- ${money(s.discount)}`} />}
             <Line l={t('total')} r={money(s.total)} strong />
-            <Line l={`${t('paid')}${s.paid > 0 ? ` (${methodLabel(s.method || 'cash')})` : ''}`} r={money(s.paid)} />
+            <Line l={`${t('paid')}${s.paid > 0 ? ` (${s.money_name || methodLabel(s.method || 'cash')})` : ''}`} r={money(s.paid)} />
             {s.customer_uid && s.due > 0.009 && <Line l={t('due_this_bill')} r={money(s.due)} tone="red" />}
             {s.customer_balance != null && (
               <>

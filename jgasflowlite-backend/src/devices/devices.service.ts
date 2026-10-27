@@ -28,11 +28,12 @@ export class DevicesService {
 
   /** The licence a phone keeps and obeys while offline. */
   private async licence(tenantId: number, device: { id: number; status: string; device_id: string }) {
-    const t = await this.db.one<any>('SELECT id, name, plan, status, mode, trial_ends_at, paid_until FROM tenants WHERE id = ?', [tenantId]);
+    const t = await this.db.one<any>('SELECT id, name, plan, status, mode, trial_ends_at, paid_until, lifetime FROM tenants WHERE id = ?', [tenantId]);
     const sub = subscriptionOf(t);
     const released = device.status !== 'active';
     const state = released ? 'released' : sub.status;
-    const checkBy = new Date(Date.now() + CHECK_DAYS * 86400000);
+    // Lifetime access: the phone only needs to report in once every 10 years.
+    const checkBy = new Date(Date.now() + (sub.lifetime ? 3650 : CHECK_DAYS) * 86400000);
     return {
       status: state, // active | expired | suspended | released
       can_write: state === 'active',
@@ -41,6 +42,7 @@ export class DevicesService {
       plan_name: sub.plan_name,
       expires_at: sub.expires_at,
       days_left: sub.days_left,
+      lifetime: sub.lifetime,
       users_limit: sub.users_limit,
       shop: { id: t.id, name: t.name },
       device_id: device.device_id,

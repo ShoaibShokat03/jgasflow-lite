@@ -47,4 +47,7 @@ export function t(key, vars) {
 }
 
 export const methodLabel = (m) => t(`pm_${m || 'cash'}`);
+
+/** A field label marked as not required: "Note (optional)". */
+export const opt = (label) => `${label} (${t('optional')})`;
 export const moveLabel = (r) => (S[`mv_${r}`] ? t(`mv_${r}`) : r === 'set' ? t('set_cylinders_held') : r);

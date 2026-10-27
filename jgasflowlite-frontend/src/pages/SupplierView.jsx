@@ -5,9 +5,11 @@ import { api, useAct, useGet } from '@/lib/api';
 import { supplierLedgerColumns } from '@/features/exports';
 import { ExportMenu } from '@/ui/ExportMenu';
 import { dayKey, fDate, money, num0, parseNum } from '@/lib/format';
-import { methodLabel, t } from '@/lib/i18n';
+import { methodLabel, opt, t } from '@/lib/i18n';
+import { MoneySelect, useDefaultMoney, useMoneyChoices } from '@/ui/money';
+import { useLowBalance } from './Accounts';
 import { Async, Button, Card, cn, Empty, PageHeader } from '@/ui/kit';
-import { DateInput, MethodPicker, MoneyInput, Textarea } from '@/ui/form';
+import { DateInput, MoneyInput, Textarea } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { PartyForm } from './forms';
 import { printNow } from '@/lib/print';
@@ -139,7 +141,10 @@ export default function SupplierView() {
 
 function PaySupplier({ open, supplier, onClose }) {
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState('cash');
+  const accounts = useMoneyChoices(open);
+  const [moneyId, setMoneyId] = useState('');
+  useDefaultMoney(accounts.data, moneyId, setMoneyId);
+  const [onLow, lowUi] = useLowBalance();
   const [date, setDate] = useState(dayKey());
   const [note, setNote] = useState('');
   const save = useAct((b) => api.post('/supplier-payments', b), {
@@ -149,7 +154,7 @@ function PaySupplier({ open, supplier, onClose }) {
       setNote('');
       onClose();
     },
-    onError: (e) => toast(e.message, 'error'),
+    onError: onLow,
   });
   return (
     <Modal
@@ -167,7 +172,13 @@ function PaySupplier({ open, supplier, onClose }) {
             variant="good"
             icon={Check}
             loading={save.isPending}
-            onClick={() => (parseNum(amount) > 0 ? save.mutate({ supplier_uid: supplier.uid, amount: parseNum(amount), method, note, date: date === dayKey() ? undefined : date }) : toast(t('enter_amount'), 'error'))}
+            onClick={() =>
+              !(parseNum(amount) > 0)
+                ? toast(t('enter_amount'), 'error')
+                : !moneyId
+                  ? toast(t('choose_cash_bank'), 'error')
+                  : save.mutate({ supplier_uid: supplier.uid, amount: parseNum(amount), money_id: Number(moneyId), note, date: date === dayKey() ? undefined : date })
+            }
           >
             {t('save_payment')}
           </Button>
@@ -183,12 +194,13 @@ function PaySupplier({ open, supplier, onClose }) {
             </Button>
           )}
         </div>
-        <MethodPicker value={method} onChange={setMethod} />
         <div className="grid grid-cols-2 gap-3">
+          <MoneySelect label={t('acc_paid_from')} list={accounts.data} value={moneyId} onChange={setMoneyId} />
           <DateInput label={t('date')} value={date} onChange={setDate} max={dayKey()} />
         </div>
-        <Textarea label={t('note')} value={note} onChange={setNote} />
+        <Textarea label={opt(t('note'))} value={note} onChange={setNote} />
       </div>
+      {lowUi}
     </Modal>
   );
 }

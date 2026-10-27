@@ -9,7 +9,7 @@ import { errMsg } from "../../../api/saasClient";
 import { useToast } from "../../common/Toast";
 import { fmtAgo, fmtDateTime, inputCls, PageHeader, EmptyState, BtnPrimary, StatusBadge, Th, Td, Tr } from "../common";
 import { Loading, ErrorBox, Pager, PKR, METHOD_LABELS, TableCard, IconBtn } from "../kit";
-import { RecordPaymentDialog, RejectDialog, usePlanName } from "../dialogs";
+import { RecordPaymentDialog, RejectDialog, usePlanName, termLabel } from "../dialogs";
 import { Proofs } from "../attach";
 
 const TABS = [
@@ -130,7 +130,7 @@ const PaymentsPage = () => {
                     <p className="text-[11px] text-gray-500">{p.sent_by ? `By ${p.sent_by}` : p.shop_phone}</p>
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {planName(p.plan)}, {p.months} month{p.months === 1 ? "" : "s"}
+                    {planName(p.plan)}, {termLabel(p.months)}
                   </Td>
                   <Td className="text-right font-semibold whitespace-nowrap">{PKR(p.amount)}</Td>
                   <Td className="hidden md:table-cell text-xs">

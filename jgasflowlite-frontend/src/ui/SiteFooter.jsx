@@ -1,17 +1,14 @@
 import { Link } from 'react-router-dom';
 import { Mail, MessageCircle, Phone } from 'lucide-react';
-import { useGet } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { SUPPORT } from '@/lib/print';
+import { telHref, useSupport } from '@/lib/support';
 import { Brand } from './kit';
 import { APK_URL, WIN_URL } from './AppDownload';
 
 /** Footer of the public website: product, help and policy links, contact, copyright. */
 export function SiteFooter() {
-  const cfg = useGet('/public/config');
-  const s = cfg.data?.support ?? {};
-  const phone = s.phone || SUPPORT.phone;
-  const wa = s.whatsapp || SUPPORT.whatsapp;
+  const s = useSupport();
+  const { phone, whatsapp: wa } = s;
   const year = new Date().getFullYear();
   const col = 'text-[12px] font-bold uppercase tracking-wider text-white/45 mb-3';
   const link = 'block py-1 text-white/75 hover:text-white';
@@ -60,15 +57,22 @@ export function SiteFooter() {
           <Link to="/disclaimer" className={link}>
             {t('footer_disclaimer')}
           </Link>
+          <Link to="/delete-account" className={link}>
+            {t('delete_account')}
+          </Link>
         </nav>
         <div className="min-w-0">
           <div className={col}>{t('footer_reach')}</div>
-          <a href={`tel:${phone.replace(/\s/g, '')}`} className="flex items-center gap-2 py-1 text-white/75 hover:text-white">
-            <Phone className="size-4 shrink-0" /> <span className="num">{phone}</span>
-          </a>
-          <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1 text-white/75 hover:text-white">
-            <MessageCircle className="size-4 shrink-0" /> WhatsApp
-          </a>
+          {phone && (
+            <a href={telHref(phone)} className="flex items-center gap-2 py-1 text-white/75 hover:text-white">
+              <Phone className="size-4 shrink-0" /> <span className="num">{phone}</span>
+            </a>
+          )}
+          {wa && (
+            <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1 text-white/75 hover:text-white">
+              <MessageCircle className="size-4 shrink-0" /> WhatsApp
+            </a>
+          )}
           {s.email && (
             <a href={`mailto:${s.email}`} className="flex items-center gap-2 py-1 text-white/75 hover:text-white min-w-0">
               <Mail className="size-4 shrink-0" /> <span className="truncate">{s.email}</span>
@@ -82,7 +86,8 @@ export function SiteFooter() {
         <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-white/50">
           <span>{t('footer_copyright', { year })}</span>
           <span>
-            Software developed by <b className="text-white/80">Jantrah Tech</b> | ☎ {SUPPORT.phone}
+            Software developed by <b className="text-white/80">Jantrah Tech</b>
+            {phone && <> | ☎ {phone}</>}
           </span>
         </div>
       </div>

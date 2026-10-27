@@ -7,6 +7,7 @@ import { platformApi } from "../../../api/saasApi";
 import { inputCls, PageHeader, BtnGhost, Th, Td, Tr } from "../common";
 import { Card, Kpi, BarChart, ShareBars, Loading, ErrorBox, PKR, num, monthLabel, METHOD_LABELS, TableCard } from "../kit";
 import BRANDING from "../../../constants/branding";
+import SupportCredit from "../../common/SupportCredit";
 
 const iso = (d) => d.toISOString().slice(0, 10);
 const RANGES = [
@@ -135,7 +136,7 @@ const ReportsPage = () => {
             </tbody>
           </TableCard>
         </Card>
-        <p className="hidden print:block text-center text-xs text-gray-500">{BRANDING.support}</p>
+        <SupportCredit className="hidden print:block text-center text-xs text-gray-500" />
       </div>
     );
   };

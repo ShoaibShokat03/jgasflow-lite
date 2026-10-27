@@ -10,7 +10,7 @@ import { PageHeader, EmptyState, Modal, Field, inputCls, BtnPrimary, BtnGhost, T
 import { Loading, ErrorBox, PKR, num, IconBtn, ModeBadge } from "../kit";
 import { ConfirmDialog } from "../dialogs";
 
-const blank = { key: "", mode: "online", name: "", price: "", users: 3, features: [], is_active: true, sort: 10 };
+const blank = { key: "", mode: "online", name: "", price: "", lifetime_price: "", users: 3, features: [], is_active: true, sort: 10 };
 
 const PlanDialog = ({ plan, onClose }) => {
   const qc = useQueryClient();
@@ -28,6 +28,7 @@ const PlanDialog = ({ plan, onClose }) => {
       const body = {
         name: f.name,
         price: Number(f.price || 0),
+        lifetime_price: Number(f.lifetime_price || 0),
         users: Number(f.users || 1),
         features: f.features,
         is_active: !!f.is_active,
@@ -103,6 +104,9 @@ const PlanDialog = ({ plan, onClose }) => {
           <Field label="Price per month (Rs)" required hint={trial ? "The trial is always free" : undefined}>
             <input type="number" min="0" className={inputCls} value={trial ? 0 : f.price} disabled={trial} onChange={(e) => setF({ ...f, price: e.target.value })} />
           </Field>
+          <Field label="Lifetime price (Rs)" hint={trial ? "The trial has no lifetime option" : "One payment, never expires. Empty or 0: not sold for lifetime"}>
+            <input type="number" min="0" className={inputCls} value={trial ? 0 : f.lifetime_price || ""} disabled={trial} placeholder="0" onChange={(e) => setF({ ...f, lifetime_price: e.target.value })} />
+          </Field>
           <Field label="Users allowed" required>
             <input type="number" min="1" max="500" className={inputCls} value={f.users} onChange={(e) => setF({ ...f, users: e.target.value })} />
           </Field>
@@ -147,7 +151,7 @@ const PlansPage = () => {
   const [removing, setRemoving] = useState(null);
 
   const toggle = useMutation({
-    mutationFn: (p) => platformApi.updatePlan(p.key, { name: p.name, price: p.price, users: p.users, features: p.features, sort: p.sort, mode: p.mode === "offline" ? "offline" : "online", is_active: !p.is_active }),
+    mutationFn: (p) => platformApi.updatePlan(p.key, { name: p.name, price: p.price, lifetime_price: p.lifetime_price || 0, users: p.users, features: p.features, sort: p.sort, mode: p.mode === "offline" ? "offline" : "online", is_active: !p.is_active }),
     onSuccess: () => qc.invalidateQueries(),
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -192,6 +196,7 @@ const PlansPage = () => {
                 <span className="text-2xl font-extrabold text-navy-900 dark:text-white">{p.price ? PKR(p.price) : "Free"}</span>
                 {p.price > 0 && <span className="text-sm text-gray-500"> a month</span>}
               </p>
+              {p.lifetime_price > 0 && <p className="text-sm font-semibold text-primary-600 dark:text-primary-400">or {PKR(p.lifetime_price)} once for lifetime</p>}
               <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />Up to {num(p.users)} user{p.users === 1 ? "" : "s"}</span>
                 <span className="inline-flex items-center gap-1"><Package className="w-3.5 h-3.5" />{num(p.shops)} shop{p.shops === 1 ? "" : "s"} on it</span>

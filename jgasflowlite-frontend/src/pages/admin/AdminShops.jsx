@@ -11,6 +11,7 @@ export function SubTag({ s }) {
   if (s.status === 'suspended') return <Tag tone="gray">{t('suspended')}</Tag>;
   if (s.status === 'expired') return <Tag tone="red">{t('expired')}</Tag>;
   if (s.plan === 'trial') return <Tag tone="blue">{t('free_trial')} · {s.days_left}d</Tag>;
+  if (s.lifetime) return <Tag tone="green">{s.plan_name} · {t('lifetime')}</Tag>;
   return <Tag tone={s.days_left <= 7 ? 'amber' : 'green'}>{s.plan_name} · {s.days_left}d</Tag>;
 }
 

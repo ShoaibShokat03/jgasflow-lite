@@ -3,8 +3,12 @@ import { parse, z } from '../common/util';
 import { zBusinessName, zMethod, zMoney, zMoneySigned, zPhoneOpt, zPlainText, zQty, zText, zUid, zUnitPrice } from '../common/rules';
 import { AuthUser, CurrentUser, OnlineOnly, Roles, tid } from '../auth/auth.decorators';
 import { GasService } from './gas.service';
+import { MoneyService } from '../accounts/money.service';
 
 const MGR = ['owner', 'manager'] as const;
+
+/** Kilograms of loose gas (2 decimals). */
+const zKg = z.coerce.number().min(0).max(100000);
 
 const zType = z.object({
   name: z.string().trim().min(1, 'Enter a name').max(60),
@@ -18,6 +22,8 @@ const zType = z.object({
   active: z.boolean().default(true),
   full_qty: zQty.optional(),
   empty_qty: zQty.optional(),
+  unit: z.enum(['', 'kg']).optional().default(''),
+  gas_kg: zKg.optional(),
 });
 
 const zParty = z.object({
@@ -30,15 +36,18 @@ const zParty = z.object({
 });
 
 const zDateOpt = z.string().trim().max(19).optional();
+/** The cash drawer / bank / wallet the money goes to or comes from. */
+const zMoneyId = z.coerce.number().int().positive().optional();
 
 const zSale = z.object({
   customer_uid: zUid.nullable().optional(),
   date: zDateOpt,
-  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty: zQty.default(0), price: zUnitPrice.default(0) })).min(1).max(50),
+  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty: zQty.default(0), price: zUnitPrice.default(0), kg: zKg.default(0) })).min(1).max(50),
   charge_deposit: z.boolean().default(false),
   discount: zMoney.default(0),
   paid: zMoney.default(0),
   method: zMethod,
+  money_id: zMoneyId,
   note: zText(500),
 });
 
@@ -48,19 +57,29 @@ const zPurchase = z.object({
   lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty_sent: zQty.default(0), price: zUnitPrice.default(0) })).min(1).max(50),
   paid: zMoney.default(0),
   method: zMethod,
+  money_id: zMoneyId,
   note: zText(500),
   update_prices: z.boolean().default(true),
 });
 
 const zPay = (key: 'customer_uid' | 'supplier_uid') =>
-  z.object({ [key]: zUid, amount: zMoney.refine((v) => v > 0, 'Enter an amount'), date: zDateOpt, method: zMethod, note: zText(500) }) as z.ZodObject<any>;
+  z.object({ [key]: zUid, amount: zMoney.refine((v) => v > 0, 'Enter an amount'), date: zDateOpt, method: zMethod, money_id: zMoneyId, note: zText(500) }) as z.ZodObject<any>;
 
 const zRange = z.object({ from: z.string().optional(), to: z.string().optional(), q: z.string().max(80).optional().default(''), customer: z.string().optional(), supplier: z.string().optional(), type: z.string().optional(), filter: z.string().optional(), all: z.string().optional(), limit: z.coerce.number().optional() });
 
 @OnlineOnly()
 @Controller()
 export class GasController {
-  constructor(private readonly gas: GasService) {}
+  constructor(
+    private readonly gas: GasService,
+    private readonly money: MoneyService,
+  ) {}
+
+  /** Cash and bank accounts to choose on a payment; balances for owner and manager only. */
+  @Get('money-accounts')
+  moneyAccounts(@CurrentUser() u: AuthUser) {
+    return this.money.choices(tid(u), u.role === 'owner' || u.role === 'manager');
+  }
 
   @Get('dashboard')
   dashboard(@CurrentUser() u: AuthUser) {
@@ -101,8 +120,16 @@ export class GasController {
   @Roles(...MGR)
   @Post('types/:uid/stock')
   setStock(@CurrentUser() u: AuthUser, @Param('uid') uid: string, @Body() body: unknown) {
-    const b = parse(z.object({ full: zQty, empty: zQty, note: zText(60) }), body);
-    return this.gas.setStock(u, uid, b.full, b.empty, b.note);
+    const b = parse(z.object({ full: zQty.default(0), empty: zQty.default(0), kg: zKg.optional(), note: zText(60) }), body);
+    return this.gas.setStock(u, uid, b.full, b.empty, b.note, b.kg);
+  }
+
+  /** Loose gas: open full cylinders into a kg type. */
+  @Roles(...MGR)
+  @Post('types/:uid/fill')
+  fillGas(@CurrentUser() u: AuthUser, @Param('uid') uid: string, @Body() body: unknown) {
+    const b = parse(z.object({ from_uid: zUid, count: zQty.refine((v) => v >= 1, 'Enter how many cylinders'), note: zText(60) }), body);
+    return this.gas.fillGas(u, uid, b.from_uid, b.count, b.note);
   }
 
   @Roles(...MGR)
@@ -179,8 +206,8 @@ export class GasController {
 
   @Post('customers/:uid/returns')
   returnCylinders(@CurrentUser() u: AuthUser, @Param('uid') uid: string, @Body() body: unknown) {
-    const b = parse(z.object({ type_uid: zUid, qty: zQty.refine((v) => v > 0, 'Enter quantity'), refund: zMoney.default(0), note: zText(500) }), body);
-    return this.gas.returnCylinders(u, uid, b.type_uid, b.qty, b.refund, b.note);
+    const b = parse(z.object({ type_uid: zUid, qty: zQty.refine((v) => v > 0, 'Enter quantity'), refund: zMoney.default(0), money_id: zMoneyId, note: zText(500) }), body);
+    return this.gas.returnCylinders(u, uid, b.type_uid, b.qty, b.refund, b.note, b.money_id);
   }
 
   // ── sales

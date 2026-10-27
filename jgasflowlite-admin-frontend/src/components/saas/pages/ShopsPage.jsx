@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Search, Store, Smartphone, StickyNote, Users, X } from "lucide-react";
+import { Search, Store, Smartphone, StickyNote, Users, X, Activity, BadgeCheck, Clock } from "lucide-react";
 import { platformApi } from "../../../api/saasApi";
 import { fmtAgo, fmtDate, inputCls, PageHeader, EmptyState, Th, Td, Tr } from "../common";
-import { Loading, ErrorBox, Pager, Select, SubBadge, ActivityDot, PKR, num, TableCard, ModeBadge } from "../kit";
+import { Loading, ErrorBox, Pager, Select, SubBadge, ActivityDot, PKR, num, TableCard, ModeBadge, Kpi } from "../kit";
 
 const STATUS = [
   { value: "", label: "All shops" },
@@ -42,6 +42,7 @@ const ShopsPage = () => {
     plan: params.get("plan") || "",
     activity: params.get("activity") || "",
     mode: params.get("mode") || "",
+    active: params.get("active") || "",
     sort: params.get("sort") || "newest",
     page: Number(params.get("page")) || 1,
   };
@@ -69,11 +70,22 @@ const ShopsPage = () => {
     placeholderData: keepPreviousData,
   });
 
-  const filtered = f.q || f.status || f.plan || f.activity || f.mode;
+  const filtered = f.q || f.status || f.plan || f.activity || f.mode || f.active;
 
   return (
     <div className="space-y-4">
       <PageHeader title="Shops" subtitle="Every shop using JGasFlow, with its plan and how much it is used" />
+
+      {data?.summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Kpi label="Total shops" value={num(data.summary.total)} icon={Store} tone="navy" />
+          <div className={f.active ? "rounded-xl ring-2 ring-emerald-400" : ""}>
+            <Kpi label="Regular active" value={num(data.summary.active)} icon={Activity} tone="emerald" hint={f.active ? "Filter on, tap to clear" : "Used in last 7 days"} onClick={() => set({ active: f.active ? "" : "1" })} />
+          </div>
+          <Kpi label="Paying" value={num(data.summary.paying)} icon={BadgeCheck} tone="sky" />
+          <Kpi label="On trial" value={num(data.summary.trial)} icon={Clock} tone="amber" />
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(5,minmax(0,1fr))] gap-2">
         <div className="relative">
@@ -113,6 +125,7 @@ const ShopsPage = () => {
           <TableCard footer={<Pager page={data.page} totalPages={data.total_pages} total={data.total} noun="shops" onPage={(p) => set({ page: p })} />}>
             <thead>
               <tr>
+                <Th className="w-10 text-right">#</Th>
                 <Th>Shop</Th>
                 <Th>Plan</Th>
                 <Th className="text-right">Sales, 30 days</Th>
@@ -122,8 +135,9 @@ const ShopsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {data.items.map((s) => (
+              {data.items.map((s, i) => (
                 <Tr key={s.id} onClick={() => navigate(`/shops/${s.id}`)} style={{ cursor: "pointer" }}>
+                  <Td className="text-right text-[11px] text-gray-400 tabular-nums">{(data.page - 1) * (data.limit || 20) + i + 1}</Td>
                   <Td>
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="w-9 h-9 shrink-0 rounded-lg bg-navy-900 text-white text-sm font-bold flex items-center justify-center">
@@ -148,7 +162,7 @@ const ShopsPage = () => {
                       </div>
                       <span className="text-[11px] text-gray-500 whitespace-nowrap">
                         {s.subscription.plan_name}
-                        {s.subscription.expires_at ? `, to ${fmtDate(s.subscription.expires_at)}` : ""}
+                        {s.subscription.lifetime ? ", lifetime" : s.subscription.expires_at ? `, to ${fmtDate(s.subscription.expires_at)}` : ""}
                       </span>
                       {s.pending > 0 && <span className="text-[11px] font-medium text-amber-600">Payment waiting</span>}
                     </div>

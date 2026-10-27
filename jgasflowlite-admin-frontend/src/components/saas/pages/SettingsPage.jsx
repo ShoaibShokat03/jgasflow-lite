@@ -16,8 +16,8 @@ const GROUPS = [
     icon: LifeBuoy,
     fields: [
       ["support_company", "Company name"],
-      ["support_phone", "Phone", "+92 303 3203444"],
-      ["support_whatsapp", "WhatsApp number", "923033203444", "Digits only, with country code"],
+      ["support_phone", "Phone", "+92 300 1234567"],
+      ["support_whatsapp", "WhatsApp number", "923001234567", "Digits only, with country code. Empty: the phone number is used"],
       ["support_email", "Email"],
       ["support_hours", "Working hours", "Monday to Saturday, 9 am to 9 pm"],
     ],

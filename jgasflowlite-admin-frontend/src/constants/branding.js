@@ -11,8 +11,6 @@ export const BRANDING = {
 
   colors: { navy: "#020033", orange: "#F26B1D" },
 
-  support: "Software developed by Jantrah Tech | ☎ +92 303 3203444",
-
   copyright: {
     year: new Date().getFullYear(),
     text: `© ${new Date().getFullYear()} JGasFlow by Jantrah Tech`,

@@ -8,12 +8,13 @@ import { fDateShort, money, periodRange } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, Initials, PageHeader, Tag } from '@/ui/kit';
 import { Chips } from '@/ui/form';
-import { PERIODS, Summary } from './Sales';
+import { Summary } from './Sales';
+import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 
 export default function Purchases() {
-  const [period, setPeriod] = useState('month');
+  const p = usePeriod('purchases', 'month');
   const navigate = useNavigate();
-  const list = useGet('/purchases', periodRange(period));
+  const list = useGet('/purchases', { ...p.range, limit: 50000 });
   return (
     <div>
       <PageHeader
@@ -27,7 +28,7 @@ export default function Purchases() {
           </>
         }
       />
-      <Chips className="mb-3" value={period} onChange={setPeriod} options={PERIODS()} />
+      <PeriodFilter className="mb-3" p={p} />
       <Async q={list}>
         {(rows) => (
           <>

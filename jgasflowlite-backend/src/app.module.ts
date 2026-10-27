@@ -12,6 +12,9 @@ import { BillingController } from './billing/billing.controller';
 import { AdminController } from './admin/admin.controller';
 import { GasService } from './gas/gas.service';
 import { GasController } from './gas/gas.controller';
+import { AccountsService } from './accounts/accounts.service';
+import { AccountsController } from './accounts/accounts.controller';
+import { MoneyService } from './accounts/money.service';
 import { SyncService } from './sync/sync.service';
 import { SyncController } from './sync/sync.controller';
 import { PlatformModule } from './platform/platform.module';
@@ -29,11 +32,13 @@ class HealthController {
 
 @Module({
   imports: [DbModule, PlatformModule, PlatformAiModule, ThrottlerModule.forRoot([{ ttl: 60000, limit: 600 }])],
-  controllers: [HealthController, AuthController, ShopController, BillingController, AdminController, GasController, SyncController],
+  controllers: [HealthController, AuthController, ShopController, BillingController, AdminController, GasController, SyncController, AccountsController],
   providers: [
     AuthService,
     EmailCodesService,
     GasService,
+    AccountsService,
+    MoneyService,
     SyncService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },

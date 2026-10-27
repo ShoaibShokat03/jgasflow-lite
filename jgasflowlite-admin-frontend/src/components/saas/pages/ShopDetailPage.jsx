@@ -30,7 +30,7 @@ import { canModule } from "../../../utils/saasAuth";
 import { useToast } from "../../common/Toast";
 import { fmtAgo, fmtDate, fmtDateTime, Modal, Field, inputCls, BtnPrimary, BtnGhost, BtnDanger, StatusBadge, Th, Td, Tr } from "../common";
 import { Card, Kpi, BarChart, Loading, ErrorBox, PKR, num, dayLabel, SubBadge, ActivityDot, METHOD_LABELS, eventLabel, eventDot, IconBtn, TableCard, ModeBadge } from "../kit";
-import { RecordPaymentDialog, RejectDialog, ConfirmDialog, useActivePlans, usePlanName, amountFor } from "../dialogs";
+import { RecordPaymentDialog, RejectDialog, ConfirmDialog, useActivePlans, usePlanName, amountFor, termLabel, LIFETIME } from "../dialogs";
 import { Proofs } from "../attach";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -81,8 +81,10 @@ const PlanDialog = ({ mode, shop, sub, onClose }) => {
       <div className="space-y-3">
         <p className="text-xs text-gray-500">
           {mode === "extend"
-            ? "Adds whole months from today or from the current end date, whichever is later, so no paid days are lost. No payment is recorded: use Record payment when money was received."
-            : "Sets the exact last day of the plan, for corrections and special deals."}
+            ? Number(f.months) === LIFETIME
+              ? "Lifetime access: the shop never expires, online or offline, until you change it. No payment is recorded: use Record payment when money was received."
+              : `Adds whole months from today or from the current end date, whichever is later, so no paid days are lost.${sub.lifetime ? " This replaces the shop's lifetime access." : ""} No payment is recorded: use Record payment when money was received.`
+            : `Sets the exact last day of the plan, for corrections and special deals.${sub.lifetime ? " This replaces the shop's lifetime access." : ""}`}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Plan" required>
@@ -95,11 +97,11 @@ const PlanDialog = ({ mode, shop, sub, onClose }) => {
             </select>
           </Field>
           {mode === "extend" ? (
-            <Field label="Months" required hint={plan && plan.key !== "trial" ? `Worth ${PKR(amountFor(plan, Number(f.months)))}` : undefined}>
+            <Field label="Period" required hint={plan && plan.key !== "trial" ? `Worth ${PKR(amountFor(plan, Number(f.months)))}` : undefined}>
               <select className={inputCls} value={f.months} onChange={(e) => setF({ ...f, months: Number(e.target.value) })}>
-                {[1, 2, 3, 6, 12, 24].map((m) => (
+                {[1, 2, 3, 6, 12, 24, ...(f.plan !== "trial" ? [LIFETIME] : [])].map((m) => (
                   <option key={m} value={m}>
-                    {m} month{m === 1 ? "" : "s"}
+                    {termLabel(m)}
                   </option>
                 ))}
               </select>
@@ -330,8 +332,8 @@ const ShopDetailPage = () => {
             {[
               ["Plan", sub.plan_name],
               ["Status", <SubBadge key="s" sub={sub} />],
-              ["Ends", sub.expires_at ? fmtDate(sub.expires_at) : "-"],
-              ["Days left", sub.status === "active" ? num(sub.days_left) : "0"],
+              ["Ends", sub.lifetime ? "Never (lifetime)" : sub.expires_at ? fmtDate(sub.expires_at) : "-"],
+              ["Days left", sub.lifetime ? "Lifetime" : sub.status === "active" ? num(sub.days_left) : "0"],
               ["Users allowed", num(sub.users_limit)],
             ].map(([k, v]) => (
               <div key={k} className="flex items-center justify-between gap-3">
@@ -482,7 +484,7 @@ const ShopDetailPage = () => {
               {requests.map((r) => (
                 <Tr key={r.id}>
                   <Td className="text-xs whitespace-nowrap">{fmtDateTime(r.created_at)}</Td>
-                  <Td className="whitespace-nowrap">{planName(r.plan)}, {r.months} month{r.months === 1 ? "" : "s"}</Td>
+                  <Td className="whitespace-nowrap">{planName(r.plan)}, {termLabel(r.months)}</Td>
                   <Td className="text-right font-semibold whitespace-nowrap">{PKR(r.amount)}</Td>
                   <Td className="hidden md:table-cell text-xs">
                     {METHOD_LABELS[r.method] || r.method}

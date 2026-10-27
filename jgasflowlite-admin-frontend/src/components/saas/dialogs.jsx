@@ -21,9 +21,16 @@ export const usePlanName = () => {
 
 const MONTHS = [1, 2, 3, 6, 12];
 
+/** `months` value meaning lifetime access (one payment, never ends). */
+export const LIFETIME = 0;
+
+/** "Lifetime" or "3 months". */
+export const termLabel = (m) => (Number(m) === LIFETIME ? "Lifetime" : `${m} month${Number(m) === 1 ? "" : "s"}`);
+
 /** Amount for a plan and months: the plan's own price list when it has one. */
 export const amountFor = (plan, months) => {
   if (!plan) return 0;
+  if (months === LIFETIME) return Number(plan.lifetime_price) || 0;
   const listed = plan.prices?.find((p) => p.months === months);
   return listed ? listed.amount : plan.price * months;
 };
@@ -146,11 +153,11 @@ export const RecordPaymentDialog = ({ open, onClose, shop: fixedShop }) => {
               ))}
             </select>
           </Field>
-          <Field label="Months" required>
+          <Field label="Period" required hint={f.months === LIFETIME ? "Lifetime: the shop never expires, online or offline" : undefined}>
             <select className={inputCls} value={f.months} onChange={(e) => setF({ ...f, months: Number(e.target.value) })}>
-              {MONTHS.map((m) => (
+              {[...MONTHS, LIFETIME].map((m) => (
                 <option key={m} value={m}>
-                  {m} month{m === 1 ? "" : "s"}
+                  {termLabel(m)}
                 </option>
               ))}
             </select>

@@ -18,7 +18,7 @@ export class AdminController {
 
   @Get('overview')
   async overview() {
-    const shops = await this.db.all<any>('SELECT plan, status, trial_ends_at, paid_until, created_at, last_active_at FROM tenants');
+    const shops = await this.db.all<any>('SELECT plan, status, trial_ends_at, paid_until, lifetime, created_at, last_active_at FROM tenants');
     const subs = shops.map((t) => ({ ...subscriptionOf(t), created_at: t.created_at, last_active_at: t.last_active_at }));
     const since = (days: number) => Date.now() - days * 86400000;
     const ts = (s: string | null) => (s ? new Date(s.replace(' ', 'T')).getTime() : 0);
@@ -51,7 +51,7 @@ export class AdminController {
   async shops(@Query('q') q = '', @Query('status') status = '') {
     const qq = q.trim();
     const rows = await this.db.all<any>(
-      `SELECT t.id, t.name, t.owner_name, t.phone, t.address, t.plan, t.status, t.trial_ends_at, t.paid_until, t.created_at, t.last_active_at,
+      `SELECT t.id, t.name, t.owner_name, t.phone, t.address, t.plan, t.status, t.trial_ends_at, t.paid_until, t.lifetime, t.created_at, t.last_active_at,
          (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.active = 1) AS users,
          (SELECT COUNT(*) FROM sales s WHERE s.tenant_id = t.id AND s.deleted = 0) AS sales,
          (SELECT COUNT(*) FROM billing_requests b WHERE b.tenant_id = t.id AND b.status = 'pending') AS pending
@@ -85,7 +85,7 @@ export class AdminController {
 
   @Post('shops/:id/extend')
   async extend(@CurrentUser() u: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() body: unknown) {
-    const b = parse(z.object({ plan: z.string(), months: z.coerce.number().int().min(1).max(36), note: zText(200) }), body);
+    const b = parse(z.object({ plan: z.string(), months: z.coerce.number().int().min(0).max(36), note: zText(200) }), body);
     if (!PLAN[b.plan]) throw new BadRequestException('Unknown plan');
     await this.db.tx((q) => this.billing.extend(q, id, b.plan, b.months, u.id, b.note));
     return this.shop(id);

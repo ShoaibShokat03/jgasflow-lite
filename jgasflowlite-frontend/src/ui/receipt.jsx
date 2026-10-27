@@ -1,5 +1,6 @@
 import { MessageCircle, Phone, Printer } from 'lucide-react';
-import { printNow, SUPPORT } from '@/lib/print';
+import { printNow } from '@/lib/print';
+import { useSupport } from '@/lib/support';
 import { useAuth } from '@/lib/auth';
 import { fDateTime, money, num0 } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
@@ -51,11 +52,16 @@ export function ShopFoot() {
 
 /** Shown under every print: who made the software and how to reach them. */
 export function PrintCredit({ className }) {
+  const { phone } = useSupport();
   return (
     <div className={cn('mt-3 pt-2 border-t border-dashed border-[#c7cad6] text-center text-[10.5px] italic text-muted leading-snug', className)}>
-      Software developed by <b className="not-italic font-bold text-primary">{SUPPORT.company}</b>
-      <span className="mx-1.5">|</span>
-      <Phone className="inline size-3 -mt-0.5" /> {SUPPORT.phone}
+      Software developed by <b className="not-italic font-bold text-primary">Jantrah Tech</b>
+      {phone && (
+        <>
+          <span className="mx-1.5">|</span>
+          <Phone className="inline size-3 -mt-0.5" /> {phone}
+        </>
+      )}
     </div>
   );
 }
@@ -88,7 +94,7 @@ export function saleText(shop, s) {
     fDateTime(s.date),
     s.customer_name ? `${t('customer')}: ${s.customer_name}` : `${t('customer')}: ${t('walk_in')}`,
     '',
-    ...s.items.filter((i) => i.qty > 0).map((i) => `${i.type_name}: ${i.qty} x ${num0(i.price)} = ${money(i.amount)}`),
+    ...s.items.filter((i) => i.qty > 0 || i.kg > 0).map((i) => (i.kg > 0 ? `${i.type_name}: ${num0(i.kg)} ${t('kg')} x ${num0(i.price)} = ${money(i.amount)}` : `${i.type_name}: ${i.qty} x ${num0(i.price)} = ${money(i.amount)}`)),
     ...s.items.filter((i) => i.empty_qty > 0).map((i) => `${t('empty_received')} ${i.type_name}: ${i.empty_qty}`),
     '',
     s.deposit ? `${t('security_deposit')}: ${money(s.deposit)}` : null,

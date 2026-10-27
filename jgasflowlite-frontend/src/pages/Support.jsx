@@ -1,6 +1,6 @@
 import { BookOpen, ChevronDown, Copy, Headphones, MessageCircle, Phone, Printer } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { SUPPORT } from '@/lib/print';
+import { telHref, useSupport } from '@/lib/support';
 import { t } from '@/lib/i18n';
 import { Button, Card, IconBox, KV, PageHeader, SectionHeader } from '@/ui/kit';
 import { toast } from '@/ui/overlay';
@@ -11,6 +11,7 @@ const TOPICS = ['sale', 'udhaar', 'stock', 'phone', 'print', 'staff', 'renew', '
 
 export default function Support() {
   const auth = useAuth();
+  const sup = useSupport();
   const hello = encodeURIComponent(`${t('support_wa_text')} ${auth.shop?.name ?? ''} (${auth.user?.phone || auth.user?.email || ''})`);
   return (
     <div>
@@ -23,30 +24,37 @@ export default function Support() {
             </div>
             <div className="min-w-0">
               <div className="text-[13px] text-white/60">{t('support_by')}</div>
-              <div className="text-[20px] font-black">{SUPPORT.company}</div>
+              <div className="text-[20px] font-black">{sup.company}</div>
             </div>
           </div>
           <p className="mt-4 text-[13.5px] text-white/80">{t('support_intro')}</p>
-          <div className="mt-4 text-[26px] font-black tracking-tight num">{SUPPORT.phone}</div>
+          {sup.phone && <div className="mt-4 text-[26px] font-black tracking-tight num">{sup.phone}</div>}
+          {sup.hours && <div className="mt-1 text-[12.5px] text-white/60">{sup.hours}</div>}
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="good" icon={MessageCircle} onClick={() => window.open(`https://wa.me/${SUPPORT.whatsapp}?text=${hello}`, '_blank', 'noopener')}>
-              WhatsApp
-            </Button>
-            <Button variant="light" icon={Phone} onClick={() => (window.location.href = `tel:${SUPPORT.phone.replace(/\s/g, '')}`)}>
-              {t('call')}
-            </Button>
-            <Button
-              variant="light"
-              icon={Copy}
-              onClick={() =>
-                navigator.clipboard?.writeText(SUPPORT.phone).then(
-                  () => toast(t('copied')),
-                  () => toast(SUPPORT.phone, 'info'),
-                )
-              }
-            >
-              {t('copy')}
-            </Button>
+            {sup.whatsapp && (
+              <Button variant="good" icon={MessageCircle} onClick={() => window.open(`https://wa.me/${sup.whatsapp}?text=${hello}`, '_blank', 'noopener')}>
+                WhatsApp
+              </Button>
+            )}
+            {sup.phone && (
+              <Button variant="light" icon={Phone} onClick={() => (window.location.href = telHref(sup.phone))}>
+                {t('call')}
+              </Button>
+            )}
+            {sup.phone && (
+              <Button
+                variant="light"
+                icon={Copy}
+                onClick={() =>
+                  navigator.clipboard?.writeText(sup.phone).then(
+                    () => toast(t('copied')),
+                    () => toast(sup.phone, 'info'),
+                  )
+                }
+              >
+                {t('copy')}
+              </Button>
+            )}
           </div>
         </Card>
         <Card className="p-4">
@@ -55,7 +63,7 @@ export default function Support() {
           <KV label={t('shop_name')} value={auth.shop?.name ?? '-'} />
           <KV label={t('shop_id')} value={auth.shop ? `#${auth.shop.id}` : '-'} />
           <KV label={t('logged_in_as')} value={`${auth.user?.name ?? ''} · ${t(`role_${auth.role}`)}`} />
-          {auth.sub && <KV label={t('current_plan')} value={`${auth.sub.plan_name} · ${auth.sub.status === 'active' ? t('days_left', { n: auth.sub.days_left }) : t('expired')}`} />}
+          {auth.sub && <KV label={t('current_plan')} value={`${auth.sub.plan_name} · ${auth.sub.status !== 'active' ? t('expired') : auth.sub.lifetime ? t('lifetime_access') : t('days_left', { n: auth.sub.days_left })}`} />}
           <KV label={t('app_version')} value="JGasFlow Online 1.1" />
           <div className="mt-3 flex gap-2">
             <Button size="sm" variant="soft" icon={BookOpen} to="/app/manual">

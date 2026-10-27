@@ -36,7 +36,11 @@ export interface ShopQuery {
   limit?: number;
   created_from?: string;
   created_to?: string;
+  active?: string;
 }
+
+/** "Regularly active": a live subscription and used within the last 7 days. */
+const isRegularActive = (s: any) => s.subscription.status === 'active' && (s.activity === 'active' || s.activity === 'low');
 
 /**
  * Everything the platform console reads and changes. Shops are tenants; their
@@ -60,7 +64,7 @@ export class PlatformService {
   async allShops() {
     const since = addDays(todayKey(), -29);
     const rows = await this.db.all<any>(
-      `SELECT t.id, t.name, t.owner_name, t.phone, t.address, t.plan, t.status, t.mode, t.trial_ends_at, t.paid_until, t.created_at, t.last_active_at, t.admin_note,
+      `SELECT t.id, t.name, t.owner_name, t.phone, t.address, t.plan, t.status, t.mode, t.trial_ends_at, t.paid_until, t.lifetime, t.created_at, t.last_active_at, t.admin_note,
          (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.status = 'active') AS devices,
          (SELECT MAX(d.last_seen) FROM devices d WHERE d.tenant_id = t.id) AS device_seen_at,
          (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.active = 1) AS users,
@@ -105,9 +109,18 @@ export class PlatformService {
   }
 
   async shops(q: ShopQuery) {
-    let list = await this.allShops();
+    const all = await this.allShops();
+    // Counts over every shop, independent of the current filters.
+    const summary = {
+      total: all.length,
+      active: all.filter(isRegularActive).length,
+      paying: all.filter((s) => s.subscription.status === 'active' && s.plan !== 'trial').length,
+      trial: all.filter((s) => s.subscription.status === 'active' && s.plan === 'trial').length,
+    };
+    let list = all;
     const term = (q.q ?? '').trim().toLowerCase();
     if (term) list = list.filter((s) => [s.name, s.owner_name, s.phone, String(s.id)].some((x) => String(x ?? '').toLowerCase().includes(term)));
+    if (q.active === '1' || q.active === 'true') list = list.filter(isRegularActive);
     if (q.plan) list = list.filter((s) => s.plan === q.plan);
     if (q.mode === 'offline' || q.mode === 'online') list = list.filter((s) => s.mode === q.mode);
     if (q.activity) list = list.filter((s) => s.activity === q.activity);
@@ -139,7 +152,7 @@ export class PlatformService {
     list.sort(sorters[q.sort ?? 'newest'] ?? sorters.newest);
     const limit = Math.min(Math.max(Number(q.limit) || 20, 1), 100);
     const page = Math.max(Number(q.page) || 1, 1);
-    return { items: list.slice((page - 1) * limit, page * limit), total: list.length, page, total_pages: Math.max(1, Math.ceil(list.length / limit)) };
+    return { items: list.slice((page - 1) * limit, page * limit), total: list.length, page, total_pages: Math.max(1, Math.ceil(list.length / limit)), limit, summary };
   }
 
   async shop(id: number) {
@@ -219,7 +232,8 @@ export class PlatformService {
   async setExpiry(id: number, plan: string, until: string, note: string, by: number) {
     if (!PLAN[plan]) throw new BadRequestException('Unknown plan');
     const col = plan === 'trial' ? 'trial_ends_at' : 'paid_until';
-    const r = await this.db.run(`UPDATE tenants SET plan = ?, ${col} = ? WHERE id = ?`, [plan, `${until} 23:59:59`, id]);
+    // An exact end date replaces lifetime access.
+    const r = await this.db.run(`UPDATE tenants SET plan = ?, ${col} = ?, lifetime = 0 WHERE id = ?`, [plan, `${until} 23:59:59`, id]);
     if (!r.affectedRows) throw new NotFoundException('Shop not found');
     await this.billing.event(this.db, id, 'expiry_set', `${PLAN[plan].name} until ${until}${note ? `, ${note}` : ''}`, by);
     return this.shop(id);

@@ -6,13 +6,90 @@ import { Col, TABLES } from './tables';
  * Schema is created and upgraded here on boot (idempotent). Bump SCHEMA_VERSION
  * and add a step to UPGRADES for any change after the first release.
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 9;
 
 const SAAS_DDL = [
   `CREATE TABLE IF NOT EXISTS meta (
     k VARCHAR(40) PRIMARY KEY,
     v VARCHAR(255) NOT NULL
   ) ENGINE=InnoDB`,
+
+  // Accounting (server only, not synced). Sales, payments, purchases and the
+  // rest are turned into ledger lines from their own rows at report time; these
+  // tables hold the chart of accounts and the entries that exist only in
+  // accounting (expenses, capital, transfers, opening balances, journals).
+  `CREATE TABLE IF NOT EXISTS acc_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    account_type VARCHAR(20) NOT NULL DEFAULT 'asset',
+    is_system TINYINT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 1,
+    UNIQUE KEY ux_acc_code (tenant_id, code)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS acc_vouchers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    kind VARCHAR(20) NOT NULL,
+    date DATE NOT NULL,
+    debit_code VARCHAR(10) NOT NULL,
+    credit_code VARCHAR(10) NOT NULL,
+    amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+    note VARCHAR(255) NOT NULL DEFAULT '',
+    money_id INT NULL,
+    to_id INT NULL,
+    party VARCHAR(120) NOT NULL DEFAULT '',
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX ix_accv_t (tenant_id, date)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // Cash drawers, banks and wallets. Each rolls up to chart code 1001 (cash) or 1002 (bank);
+  // `methods` lists the payment methods whose money lands in this account.
+  `CREATE TABLE IF NOT EXISTS acc_money_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    kind VARCHAR(10) NOT NULL DEFAULT 'bank',
+    title VARCHAR(120) NOT NULL DEFAULT '',
+    number VARCHAR(60) NOT NULL DEFAULT '',
+    branch VARCHAR(120) NOT NULL DEFAULT '',
+    opening_balance DECIMAL(14,2) NOT NULL DEFAULT 0,
+    opening_date DATE NULL,
+    methods VARCHAR(80) NOT NULL DEFAULT '',
+    status TINYINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX ix_accm_t (tenant_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // The cash drawer / bank / wallet a synced record (payment, supplier payment,
+  // security refund) used, when chosen on the web. Records without one are
+  // routed by their payment method, so phone records keep working.
+  `CREATE TABLE IF NOT EXISTS acc_money_tags (
+    tenant_id INT NOT NULL,
+    ref_type VARCHAR(20) NOT NULL,
+    uid VARCHAR(40) NOT NULL,
+    money_id INT NOT NULL,
+    PRIMARY KEY (tenant_id, ref_type, uid),
+    INDEX ix_accg_m (money_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS acc_entries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    date DATE NOT NULL,
+    account_id INT NOT NULL,
+    entry_type VARCHAR(10) NOT NULL,
+    amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+    description VARCHAR(255) NOT NULL DEFAULT '',
+    ref_type VARCHAR(20) NOT NULL DEFAULT '',
+    ref_id INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX ix_acc_ref (tenant_id, ref_type, ref_id),
+    INDEX ix_acc_acc (tenant_id, account_id, date)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   `CREATE TABLE IF NOT EXISTS tenants (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -28,6 +105,7 @@ const SAAS_DDL = [
     mode VARCHAR(10) NOT NULL DEFAULT 'online',
     trial_ends_at DATETIME NULL,
     paid_until DATETIME NULL,
+    lifetime TINYINT NOT NULL DEFAULT 0,
     seq BIGINT NOT NULL DEFAULT 0,
     no_s INT NOT NULL DEFAULT 0,
     no_p INT NOT NULL DEFAULT 0,
@@ -97,6 +175,7 @@ const SAAS_DDL = [
     plan_key VARCHAR(20) PRIMARY KEY,
     name VARCHAR(60) NOT NULL,
     price INT NOT NULL DEFAULT 0,
+    lifetime_price INT NOT NULL DEFAULT 0,
     users_limit INT NOT NULL DEFAULT 3,
     features TEXT NULL,
     is_active TINYINT NOT NULL DEFAULT 1,
@@ -292,6 +371,21 @@ const UPGRADES: Record<number, string[]> = {
   ],
   // v5: when the email was confirmed with a code (email_codes is created above).
   5: ['ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL AFTER email'],
+  // v6: lifetime access (a one-time price per plan; the shop never expires).
+  6: [
+    'ALTER TABLE plans ADD COLUMN lifetime_price INT NOT NULL DEFAULT 0 AFTER price',
+    'ALTER TABLE tenants ADD COLUMN lifetime TINYINT NOT NULL DEFAULT 0 AFTER paid_until',
+  ],
+  // v7: loose gas sold by kg from a big cylinder.
+  7: [
+    "ALTER TABLE cylinder_types ADD COLUMN unit VARCHAR(10) NOT NULL DEFAULT '' AFTER active",
+    'ALTER TABLE sale_items ADD COLUMN kg DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER amount',
+    'ALTER TABLE stock_moves ADD COLUMN kg_delta DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER ref',
+  ],
+  // v8: accounting entries name the cash/bank account they used.
+  8: ['ALTER TABLE acc_vouchers ADD COLUMN money_id INT NULL AFTER note', 'ALTER TABLE acc_vouchers ADD COLUMN to_id INT NULL AFTER money_id'],
+  // v9: loans name the person or bank (acc_money_tags is created above).
+  9: ["ALTER TABLE acc_vouchers ADD COLUMN party VARCHAR(120) NOT NULL DEFAULT '' AFTER to_id"],
 };
 
 export async function migrate(q: Q) {

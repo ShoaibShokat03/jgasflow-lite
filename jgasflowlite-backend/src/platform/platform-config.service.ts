@@ -10,8 +10,9 @@ import { DEFAULT_PLANS, OFFLINE_PLAN_DEFAULT, Plan, PLAN, PLANS, setPlans } from
  */
 export const SETTING_DEFAULTS = (): Record<string, string> => ({
   support_company: 'Jantrah Tech',
-  support_phone: '+92 303 3203444',
-  support_whatsapp: '923033203444',
+  // Support numbers come only from the console; nothing is built in.
+  support_phone: '',
+  support_whatsapp: '',
   support_email: '',
   support_hours: 'Monday to Saturday, 9 am to 9 pm',
   // Plans are paid by bank transfer only. pay_bank is the old one-line text,
@@ -160,12 +161,18 @@ export class PlatformConfig implements OnModuleInit {
   publicConfig() {
     const s = this.settings;
     return {
-      support: { company: s.support_company, phone: s.support_phone, whatsapp: s.support_whatsapp, email: s.support_email, hours: s.support_hours },
-      pay_to: { bank: this.bankText(), bank_details: this.bankDetails(), whatsapp: s.support_whatsapp },
+      support: { company: s.support_company, phone: s.support_phone, whatsapp: this.supportWhatsapp(), email: s.support_email, hours: s.support_hours },
+      pay_to: { bank: this.bankText(), bank_details: this.bankDetails(), whatsapp: this.supportWhatsapp() },
       trial_days: this.trialDays(),
       email_verify: this.emailVerifyOn(),
       email_reset: !!this.smtp(),
     };
+  }
+
+  /** WhatsApp digits with the country code; when not set, the support phone is used. */
+  supportWhatsapp() {
+    const d = String(this.settings.support_whatsapp || this.settings.support_phone || '').replace(/\D/g, '');
+    return d.startsWith('0') ? `92${d.slice(1)}` : d;
   }
 
   /** The bank account shops pay into, field by field (empty fields left out). */
@@ -192,6 +199,7 @@ export class PlatformConfig implements OnModuleInit {
         mode: r.plan_key === 'trial' ? 'any' : r.mode === 'offline' ? 'offline' : 'online',
         name: r.name,
         price: Number(r.price),
+        lifetime_price: Number(r.lifetime_price) || 0,
         users: Number(r.users_limit),
         features: safeList(r.features),
         is_active: !!r.is_active,
@@ -202,9 +210,9 @@ export class PlatformConfig implements OnModuleInit {
 
   private writePlan(p: Plan) {
     return this.db.run(
-      `INSERT INTO plans (plan_key, name, price, users_limit, features, is_active, sort, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), users_limit = VALUES(users_limit), features = VALUES(features), is_active = VALUES(is_active), sort = VALUES(sort), mode = VALUES(mode)`,
-      [p.key, p.name, p.price, p.users, JSON.stringify(p.features), p.is_active ? 1 : 0, p.sort, p.key === 'trial' ? 'any' : p.mode === 'offline' ? 'offline' : 'online'],
+      `INSERT INTO plans (plan_key, name, price, lifetime_price, users_limit, features, is_active, sort, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), lifetime_price = VALUES(lifetime_price), users_limit = VALUES(users_limit), features = VALUES(features), is_active = VALUES(is_active), sort = VALUES(sort), mode = VALUES(mode)`,
+      [p.key, p.name, p.price, p.key === 'trial' ? 0 : p.lifetime_price || 0, p.users, JSON.stringify(p.features), p.is_active ? 1 : 0, p.sort, p.key === 'trial' ? 'any' : p.mode === 'offline' ? 'offline' : 'online'],
     );
   }
 

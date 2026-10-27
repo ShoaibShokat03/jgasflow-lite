@@ -10,9 +10,9 @@ export const SUP_BAL = `(s.opening_balance
   + IFNULL((SELECT SUM(p.total) FROM purchases p WHERE p.tenant_id = s.tenant_id AND p.supplier_uid = s.uid AND p.deleted = 0), 0)
   - IFNULL((SELECT SUM(x.amount) FROM supplier_payments x WHERE x.tenant_id = s.tenant_id AND x.supplier_uid = s.uid AND x.deleted = 0), 0))`;
 
-export const SALE_ITEMS_TEXT = `(SELECT GROUP_CONCAT(CONCAT(si.qty, ' x ', t.name) ORDER BY t.sort SEPARATOR ', ')
+export const SALE_ITEMS_TEXT = `(SELECT GROUP_CONCAT(IF(t.unit = 'kg', CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM si.kg)), ' kg ', t.name), CONCAT(si.qty, ' x ', t.name)) ORDER BY t.sort SEPARATOR ', ')
   FROM sale_items si JOIN cylinder_types t ON t.tenant_id = si.tenant_id AND t.uid = si.type_uid
-  WHERE si.tenant_id = s.tenant_id AND si.sale_uid = s.uid AND si.deleted = 0 AND si.qty > 0)`;
+  WHERE si.tenant_id = s.tenant_id AND si.sale_uid = s.uid AND si.deleted = 0 AND (si.qty > 0 OR si.kg > 0))`;
 
 export const PUR_ITEMS_TEXT = `(SELECT GROUP_CONCAT(CONCAT(pi.qty, ' x ', t.name) ORDER BY t.sort SEPARATOR ', ')
   FROM purchase_items pi JOIN cylinder_types t ON t.tenant_id = pi.tenant_id AND t.uid = pi.type_uid
@@ -20,7 +20,7 @@ export const PUR_ITEMS_TEXT = `(SELECT GROUP_CONCAT(CONCAT(pi.qty, ' x ', t.name
 
 /** Live stock per type from the move ledger. Needs tenant id twice. */
 export const STOCK_JOIN = `
-  LEFT JOIN (SELECT type_uid, SUM(full_delta) AS f, SUM(empty_delta) AS e FROM stock_moves
+  LEFT JOIN (SELECT type_uid, SUM(full_delta) AS f, SUM(empty_delta) AS e, SUM(kg_delta) AS k FROM stock_moves
              WHERE tenant_id = ? AND deleted = 0 GROUP BY type_uid) sm ON sm.type_uid = t.uid
   LEFT JOIN (SELECT type_uid, SUM(qty_delta) AS q, SUM(deposit_delta) AS d FROM held_moves
              WHERE tenant_id = ? AND deleted = 0 GROUP BY type_uid) hm ON hm.type_uid = t.uid`;

@@ -42,7 +42,7 @@ export default function Suppliers() {
                       <div className="font-semibold truncate">{s.name}</div>
                       <div className="text-[12px] text-muted truncate">{[s.phone, s.address].filter(Boolean).join(' · ')}</div>
                     </div>
-                    <Balance value={s.balance} />
+                    <Balance value={s.balance} supplier />
                   </button>
                 ))}
               </div>

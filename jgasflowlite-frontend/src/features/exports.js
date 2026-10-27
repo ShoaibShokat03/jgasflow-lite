@@ -80,6 +80,7 @@ export const stockColumns = () => [
   { label: t('col_kg'), type: 'number', value: (x) => x.kg },
   { label: t('col_full'), type: 'number', value: (x) => x.full_qty },
   { label: t('col_empty'), type: 'number', value: (x) => x.empty_qty },
+  { label: t('col_gas_kg'), type: 'number', value: (x) => (x.unit === 'kg' ? x.gas_kg : '') },
   { label: t('col_with_customers'), type: 'number', value: (x) => x.with_customers },
   { label: t('col_total_owned'), type: 'number', value: (x) => x.full_qty + x.empty_qty + x.with_customers },
   { label: t('col_low_level'), type: 'number', value: (x) => x.low_level },
@@ -98,6 +99,7 @@ export const moveColumns = () => [
   { label: t('col_reason'), value: (m) => moveLabel(m.reason) },
   { label: t('col_full_change'), type: 'number', value: (m) => m.full_delta },
   { label: t('col_empty_change'), type: 'number', value: (m) => m.empty_delta },
+  { label: t('col_kg_change'), type: 'number', value: (m) => Number(m.kg_delta) || '' },
   { label: t('col_reference'), value: (m) => m.ref || '' },
 ];
 

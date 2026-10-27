@@ -52,9 +52,9 @@ ${lines.map((l) => `<p style="margin:0 0 10px;font-size:14px;line-height:1.55;co
 ${code ? `<div style="margin:18px 0;padding:14px;border-radius:12px;background:#f3f4f9;border:1px solid #e3e5ef;text-align:center;font-size:32px;font-weight:800;letter-spacing:10px;color:#020033">${esc(code)}</div>` : ''}
 <p style="margin:16px 0 0;font-size:12px;color:#7a7a96">If you did not ask for this, you can ignore this email.</p>
 </td></tr>
-<tr><td style="padding:14px 24px;background:#fafbfd;font-size:11.5px;color:#7a7a96">Software developed by Jantrah Tech | &#9742; ${esc(support.phone || '+92 303 3203444')}</td></tr>
+<tr><td style="padding:14px 24px;background:#fafbfd;font-size:11.5px;color:#7a7a96">Software developed by Jantrah Tech${support.phone ? ` | &#9742; ${esc(support.phone)}` : ''}</td></tr>
 </table></td></tr></table></body></html>`;
-    const text = [title, '', ...lines, ...(code ? ['', `Code: ${code}`] : []), '', 'If you did not ask for this, you can ignore this email.', '', `Software developed by Jantrah Tech | ${support.phone || '+92 303 3203444'}`].join('\n');
+    const text = [title, '', ...lines, ...(code ? ['', `Code: ${code}`] : []), '', 'If you did not ask for this, you can ignore this email.', '', `Software developed by Jantrah Tech${support.phone ? ` | ${support.phone}` : ''}`].join('\n');
     return { html, text };
   }
 }

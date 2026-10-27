@@ -32,6 +32,15 @@ import {
   Cylinder,
   LayoutDashboard,
   BadgeDollarSign,
+  HandCoins,
+  Landmark,
+  BookOpenCheck,
+  FileText,
+  NotebookPen,
+  Scale,
+  TrendingUp,
+  ListChecks,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getLang, setLang, t, useLang } from '@/lib/i18n';
@@ -56,6 +65,17 @@ function shopNav() {
       { to: '/app/purchases', icon: ShoppingCart, label: t('purchases'), who: 'mgr' },
       { to: '/app/suppliers', icon: Truck, label: t('suppliers'), who: 'mgr' },
       { to: '/app/prices', icon: TagIcon, label: t('prices'), who: 'mgr' },
+    ] },
+    { group: t('nav_accounts'), items: [
+      { to: '/app/accounts', end: true, icon: BookOpenCheck, label: t('acc_chart'), who: 'mgr' },
+      { to: '/app/accounts/ledger', icon: FileText, label: t('acc_ledger'), who: 'mgr' },
+      { to: '/app/accounts/banks', icon: Landmark, label: t('acc_banks'), who: 'mgr' },
+      { to: '/app/accounts/loans', icon: HandCoins, label: t('acc_loans'), who: 'mgr' },
+      { to: '/app/accounts/entries', icon: NotebookPen, label: t('acc_entries'), who: 'mgr' },
+      { to: '/app/accounts/balance-sheet', icon: Scale, label: t('acc_balance_sheet'), who: 'mgr' },
+      { to: '/app/accounts/profit-loss', icon: TrendingUp, label: t('acc_pnl'), who: 'mgr' },
+      { to: '/app/accounts/trial-balance', icon: ListChecks, label: t('acc_trial'), who: 'mgr' },
+      { to: '/app/accounts/journal', icon: FileSpreadsheet, label: t('acc_journal'), who: 'mgr' },
     ] },
     { group: t('nav_business'), items: [
       { to: '/app/reports', icon: BarChart3, label: t('reports'), who: 'mgr' },
@@ -163,7 +183,7 @@ function SideBody({ admin, onPick, footer = true }) {
               <Crown className="size-3.5 text-[#FFC23D]" /> {sub.plan_name}
             </div>
             <div className={cn('text-[11.5px]', sub.status === 'active' ? 'text-white/60' : 'text-[#ff9a8a] font-semibold')}>
-              {sub.status === 'active' ? t('days_left', { n: sub.days_left }) : sub.status === 'expired' ? t('plan_expired_short') : t('suspended')}
+              {sub.status === 'active' ? (sub.lifetime ? t('lifetime_access') : t('days_left', { n: sub.days_left })) : sub.status === 'expired' ? t('plan_expired_short') : t('suspended')}
             </div>
           </button>
         )}

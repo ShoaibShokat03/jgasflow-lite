@@ -4,7 +4,10 @@ import { randomBytes } from 'crypto';
 import { ENV } from '../config/env';
 import { Db, Q } from '../db/db.service';
 import { withWriter } from '../db/writer';
-import { SEED_TYPES } from '../db/tables';
+import { SEED_TYPES, TABLE_NAMES } from '../db/tables';
+import { rmSync } from 'fs';
+import { join } from 'path';
+import { UPLOAD_ROOT } from '../common/uploads';
 import { subscriptionOf } from '../billing/plans';
 import { normPhone } from '../common/rules';
 import { toDb } from '../common/util';
@@ -20,7 +23,10 @@ export interface SessionInfo {
   ip?: string;
 }
 
-export const SHOP_FIELDS = 'id, name, owner_name, phone, address, currency, receipt_note, profile_updated_at, plan, status, mode, trial_ends_at, paid_until, created_at';
+/** First phone/computer app build that sends the sign-up email code. */
+const MIN_APP_BUILD_EMAIL = 11;
+
+export const SHOP_FIELDS = 'id, name, owner_name, phone, address, currency, receipt_note, profile_updated_at, plan, status, mode, trial_ends_at, paid_until, lifetime, created_at';
 
 @Injectable()
 export class AuthService {
@@ -30,16 +36,17 @@ export class AuthService {
     private readonly codes: EmailCodesService,
   ) {}
 
-  async signup(b: { shop_name: string; owner_name: string; phone: string; email: string; password: string; mode?: 'offline' | 'online'; email_code?: string }, info: SessionInfo) {
+  async signup(b: { shop_name: string; owner_name: string; phone: string; email: string; password: string; mode?: 'offline' | 'online'; email_code?: string; app_build?: number }, info: SessionInfo) {
     const mode = b.mode === 'offline' ? 'offline' : 'online';
     const phone = normPhone(b.phone);
     const email = b.email ? b.email.trim().toLowerCase() : null;
-    // The web sign-up needs an email, confirmed with a code when email is set up.
-    // The phone app (older versions too) signs up without one.
+    // The web sign-up and the app from build 11 need an email, confirmed with a
+    // code when email is set up. Older app versions sign up without one.
     const web = info.client !== 'mobile';
-    if (web && !email) throw new BadRequestException('Enter your email');
+    const needsEmail = web || (b.app_build ?? 0) >= MIN_APP_BUILD_EMAIL;
+    if (needsEmail && !email) throw new BadRequestException('Enter your email');
     await this.assertFree(this.db, phone, email);
-    const verify = web && this.config.emailVerifyOn();
+    const verify = needsEmail && this.config.emailVerifyOn();
     if (verify) await this.codes.consume(email!, 'signup', b.email_code ?? '');
     const hash = await bcrypt.hash(b.password, 10);
 
@@ -131,13 +138,14 @@ export class AuthService {
 
   /** Who am I: user, shop and subscription. */
   async profile(userId: number) {
-    const u = await this.db.one<any>('SELECT id, tenant_id, name, phone, email, role, is_super, admin_perms FROM users WHERE id = ?', [userId]);
+    const u = await this.db.one<any>('SELECT id, tenant_id, name, phone, email, email_verified_at, role, is_super, admin_perms FROM users WHERE id = ?', [userId]);
     if (!u) throw new UnauthorizedException();
     const user = {
       id: u.id,
       name: u.name,
       phone: u.phone,
       email: u.email,
+      email_verified: !!u.email_verified_at,
       role: u.is_super ? (u.role === 'admin' ? 'admin' : 'super_admin') : u.role,
       is_super: !!u.is_super,
       admin_perms: u.is_super ? parsePerms(u.admin_perms) : undefined,
@@ -149,6 +157,42 @@ export class AuthService {
 
   logout(u: AuthUser) {
     return this.db.run('UPDATE sessions SET revoked = 1 WHERE id = ?', [u.sessionId]);
+  }
+
+  /**
+   * The user deletes their own account (Google Play rule). An owner deletes the
+   * whole shop: every record, staff login, phone and picture. The shop row stays
+   * only as an empty "Deleted shop" so the console's payment history adds up.
+   * Staff delete only their own login (their name is removed from it).
+   */
+  async deleteAccount(u: AuthUser, password: string) {
+    const row = await this.db.one<any>('SELECT password_hash, role, tenant_id, is_super FROM users WHERE id = ?', [u.id]);
+    if (!row) throw new UnauthorizedException('Please log in');
+    if (row.is_super) throw new ForbiddenException('Console admins are removed from the console');
+    if (!(await bcrypt.compare(password, row.password_hash))) throw new BadRequestException('Wrong password');
+    const tid = row.tenant_id as number | null;
+    const scrap = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+    if (row.role !== 'owner' || !tid) {
+      await this.db.run("UPDATE users SET name = 'Deleted user', phone = NULL, email = NULL, email_verified_at = NULL, active = 0, password_hash = ? WHERE id = ?", [scrap, u.id]);
+      await this.db.run('UPDATE sessions SET revoked = 1 WHERE user_id = ?', [u.id]);
+      return { ok: true, deleted: 'user' };
+    }
+    await this.db.tx(async (q) => {
+      for (const t of TABLE_NAMES) await q.run(`DELETE FROM ${t} WHERE tenant_id = ?`, [tid]);
+      await q.run('DELETE FROM support_messages WHERE tenant_id = ?', [tid]);
+      await q.run('DELETE FROM support_requests WHERE tenant_id = ?', [tid]);
+      await q.run('DELETE FROM devices WHERE tenant_id = ?', [tid]);
+      await q.run("UPDATE billing_requests SET proof_files = NULL, txn_ref = '', note = '' WHERE tenant_id = ?", [tid]);
+      await q.run('DELETE s FROM sessions s JOIN users x ON x.id = s.user_id WHERE x.tenant_id = ?', [tid]);
+      await q.run('DELETE FROM users WHERE tenant_id = ?', [tid]);
+      await q.run(
+        "UPDATE tenants SET name = 'Deleted shop', owner_name = '', phone = '', address = '', receipt_note = '', status = 'suspended', admin_note = CONCAT('Deleted by the owner on ', NOW()) WHERE id = ?",
+        [tid],
+      );
+      await q.run("INSERT INTO billing_events (tenant_id, action, detail, by_user) VALUES (?, 'account_deleted', 'Shop and all records deleted by the owner', NULL)", [tid]);
+    });
+    for (const area of ['payments', 'support']) rmSync(join(UPLOAD_ROOT, area, String(tid)), { recursive: true, force: true });
+    return { ok: true, deleted: 'shop' };
   }
 
   async changePassword(u: AuthUser, current: string, next: string) {
@@ -171,10 +215,28 @@ export class AuthService {
     return { ok: true };
   }
 
+  /** Name (and, for console admins only, email). A shop user's email changes only with a code (changeEmail). */
   async updateMe(u: AuthUser, b: { name: string; email: string }) {
+    const row = await this.db.one<any>('SELECT email, is_super FROM users WHERE id = ?', [u.id]);
     const email = b.email || null;
+    if (row?.is_super) {
+      await this.assertFree(this.db, null, email, u.id);
+      await this.db.run('UPDATE users SET name = ?, email = ? WHERE id = ?', [b.name, email, u.id]);
+    } else {
+      if (b.email !== undefined && (email ?? '') !== (row?.email ?? '')) {
+        throw new BadRequestException({ message: 'To change your email, use Change email: a code is sent to the new email.', code: 'EMAIL_NEEDS_CODE' });
+      }
+      await this.db.run('UPDATE users SET name = ? WHERE id = ?', [b.name, u.id]);
+    }
+    return this.profile(u.id);
+  }
+
+  /** New email for a shop user, confirmed with the code sent to that email. */
+  async changeEmail(u: AuthUser, rawEmail: string, code: string) {
+    const email = rawEmail.trim().toLowerCase();
     await this.assertFree(this.db, null, email, u.id);
-    await this.db.run('UPDATE users SET name = ?, email = ? WHERE id = ?', [b.name, email, u.id]);
+    await this.codes.consume(email, 'change', code);
+    await this.db.run('UPDATE users SET email = ?, email_verified_at = NOW() WHERE id = ?', [email, u.id]);
     return this.profile(u.id);
   }
 

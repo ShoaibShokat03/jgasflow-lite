@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Check, KeyRound, Laptop, LogOut, Smartphone, UserRound } from 'lucide-react';
+import { BadgeCheck, Check, KeyRound, Laptop, LogOut, Mail, Pencil, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { daysAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { Async, Button, Card, IconBox, PageHeader, SectionHeader, Tag } from '@/ui/kit';
 import { emailError, passwordError, PasswordInput, personNameError, TextInput } from '@/ui/form';
-import { toast, useConfirm } from '@/ui/overlay';
+import { Modal, toast, useConfirm } from '@/ui/overlay';
+import { EmailCodeField } from '@/ui/EmailCode';
 
 /** Name, email, password and signed-in devices for the logged-in person. */
 export function AccountPanel() {
@@ -14,6 +15,9 @@ export function AccountPanel() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [errs, setErrs] = useState({});
+  const [changing, setChanging] = useState(false);
+  // Shop users change their email only with a code; console admins edit it directly.
+  const direct = auth.isSuper;
   useEffect(() => {
     setName(auth.user?.name || '');
     setEmail(auth.user?.email || '');
@@ -40,14 +44,38 @@ export function AccountPanel() {
             </div>
           </div>
           <TextInput label={t('name')} value={name} onChange={setName} filter="person" maxLength={50} error={errs.name} />
-          <TextInput label={t('email_optional')} value={email} onChange={setEmail} error={errs.email} type="email" />
+          {direct ? (
+            <TextInput label={t('email_optional')} value={email} onChange={setEmail} error={errs.email} type="email" />
+          ) : (
+            <div>
+              <div className="label">{t('email')}</div>
+              <div className="flex items-center gap-2.5 rounded-[var(--radius-ctl)] border border-line bg-bg px-3 min-h-10 py-1.5">
+                <Mail className="size-4 text-muted shrink-0" />
+                <span className="flex-1 min-w-0 truncate font-semibold">{auth.user?.email || <span className="text-muted font-normal">{t('no_email_yet')}</span>}</span>
+                {auth.user?.email && (
+                  <Tag tone={auth.user?.email_verified ? 'green' : 'gray'}>
+                    {auth.user?.email_verified ? (
+                      <span className="inline-flex items-center gap-1">
+                        <BadgeCheck className="size-3.5" /> {t('email_verified')}
+                      </span>
+                    ) : (
+                      t('email_not_verified')
+                    )}
+                  </Tag>
+                )}
+                <Button size="sm" variant="outline" icon={Pencil} onClick={() => setChanging(true)}>
+                  {auth.user?.email ? t('change_email') : t('add_email')}
+                </Button>
+              </div>
+            </div>
+          )}
           <Button
             icon={Check}
             loading={save.isPending}
             onClick={() => {
-              const es = { name: personNameError(name), email: emailError(email) };
+              const es = { name: personNameError(name), email: direct ? emailError(email) : null };
               setErrs(es);
-              if (!Object.values(es).some(Boolean)) save.mutate({ name, email });
+              if (!Object.values(es).some(Boolean)) save.mutate(direct ? { name, email } : { name });
             }}
           >
             {t('save')}
@@ -56,7 +84,112 @@ export function AccountPanel() {
         <ChangePassword />
       </div>
       <Sessions />
+      {!auth.user?.is_super && <DeleteAccount />}
+      <ChangeEmail open={changing} onClose={() => setChanging(false)} onDone={() => auth.refresh()} />
     </>
+  );
+}
+
+/** Delete my account. An owner deletes the whole shop and all its records. */
+export function DeleteAccount() {
+  const auth = useAuth();
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [word, setWord] = useState('');
+  const owner = auth.isOwner;
+  const del = useAct(() => api.post('/auth/delete-account', { password: pw, confirm: word.trim().toUpperCase() }), {
+    onSuccess: async () => {
+      toast(t('account_deleted'));
+      setOpen(false);
+      await auth.signOut();
+      window.location.href = '/';
+    },
+    onError: (e) => toast(e.message, 'error'),
+  });
+  return (
+    <>
+      <SectionHeader title={t('delete_account')} />
+      <Card className="p-4 flex flex-wrap items-center gap-3">
+        <div className="min-w-[220px] flex-1 text-[13px] text-muted">{owner ? t('delete_account_owner') : t('delete_account_staff')}</div>
+        <Button variant="danger-outline" icon={Trash2} onClick={() => (setPw(''), setWord(''), setOpen(true))}>
+          {t('delete_account')}
+        </Button>
+      </Card>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('delete_account')}
+        icon={Trash2}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button variant="danger" icon={Trash2} loading={del.isPending} disabled={!pw || word.trim().toUpperCase() !== 'DELETE'} onClick={() => del.mutate()}>
+              {t('delete_forever')}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3.5">
+          <p className="text-[13.5px] text-bad font-semibold">{owner ? t('delete_account_owner') : t('delete_account_staff')}</p>
+          <p className="text-[13px] text-muted">{t('delete_account_export_first')}</p>
+          <PasswordInput label={t('password')} value={pw} onChange={setPw} autoComplete="current-password" />
+          <TextInput label={t('type_delete')} value={word} onChange={setWord} placeholder="DELETE" maxLength={10} />
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+/** New email: a code goes to the new address; the email changes once the code is entered. */
+function ChangeEmail({ open, onClose, onDone }) {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [errs, setErrs] = useState({});
+  useEffect(() => {
+    if (open) {
+      setEmail('');
+      setCode('');
+      setErrs({});
+    }
+  }, [open]);
+  const save = useAct((b) => api.post('/auth/email-change', b), {
+    onSuccess: () => {
+      toast(t('email_changed'));
+      onDone?.();
+      onClose();
+    },
+    onError: (e) => (String(e.code || '').startsWith('CODE_') ? setErrs({ code: e.message }) : toast(e.message, 'error')),
+  });
+  const submit = () => {
+    const es = { email: !email.trim() ? t('email_required') : emailError(email), code: code.length !== 6 ? t('code_needed') : null };
+    setErrs(es);
+    if (!Object.values(es).some(Boolean)) save.mutate({ email: email.trim(), code });
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('change_email')}
+      sub={t('change_email_sub')}
+      icon={Mail}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('cancel')}
+          </Button>
+          <Button icon={Check} loading={save.isPending} onClick={submit}>
+            {t('save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-1.5">
+        <TextInput reserve label={t('new_email')} value={email} onChange={setEmail} error={errs.email} type="email" autoComplete="email" placeholder="name@example.com" autoFocus />
+        <EmailCodeField email={email} purpose="change" value={code} onChange={setCode} error={errs.code} onEmailError={(m) => setErrs((s) => ({ ...s, email: m }))} />
+      </div>
+    </Modal>
   );
 }
 

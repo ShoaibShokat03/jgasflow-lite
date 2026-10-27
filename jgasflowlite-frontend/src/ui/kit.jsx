@@ -182,13 +182,14 @@ export function KV({ label, value, strong, tone, className }) {
 }
 
 /** Udhaar in red, advance in green, settled in grey. */
-export function Balance({ value, className, label = true }) {
+/** Balance in plain words: To receive (red), Paid extra (green), Clear. `supplier`: To pay. */
+export function Balance({ value, className, label = true, supplier = false }) {
   const v = Number(value) || 0;
-  if (Math.abs(v) < 0.01) return <span className={cn('text-muted font-semibold', className)}>{label ? t('clear') : money(0)}</span>;
+  if (Math.abs(v) < 0.01) return <span className={cn('text-muted font-semibold', className)}>{label ? t('bal_clear') : money(0)}</span>;
   return (
     <span className={cn('num font-bold whitespace-nowrap', v > 0 ? 'text-bad' : 'text-good', className)}>
       {money(Math.abs(v))}
-      {label && v < 0 ? ` ${t('advance')}` : ''}
+      {label && <span className="ml-1.5 text-[11px] font-semibold opacity-80">{v > 0 ? t(supplier ? 'bal_pay' : 'bal_receive') : t('bal_extra')}</span>}
     </span>
   );
 }

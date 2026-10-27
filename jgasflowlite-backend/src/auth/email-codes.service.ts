@@ -4,7 +4,8 @@ import { ENV } from '../config/env';
 import { Db, Q } from '../db/db.service';
 import { MailService } from '../platform/mail.service';
 
-export type CodePurpose = 'signup' | 'reset';
+/** signup: confirm a new account's email. reset: forgot password. change: confirm a new email for an account. */
+export type CodePurpose = 'signup' | 'reset' | 'change';
 
 const CODE_MINUTES = 10;
 const RESEND_SECONDS = 60;
@@ -44,9 +45,10 @@ export class EmailCodesService {
 
     const user = await this.db.one<any>('SELECT id, name, active FROM users WHERE email = ?', [email]);
     if (purpose === 'signup' && user) throw new ConflictException('This email is already registered. Please log in.');
+    if (purpose === 'change' && user) throw new ConflictException('This email is already used by another account.');
     // Password reset: never say whether an email has an account. Unknown or
     // turned-off accounts get the same answer, but no email is sent.
-    const send = purpose === 'signup' || (user && user.active);
+    const send = purpose !== 'reset' || (user && user.active);
 
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const res = await this.db.run(
@@ -57,9 +59,11 @@ export class EmailCodesService {
       const m =
         purpose === 'signup'
           ? this.mail.layout('Confirm your email', ['Use this code to finish creating your JGasFlow shop account.', `It works for ${CODE_MINUTES} minutes.`], code)
+          : purpose === 'change'
+          ? this.mail.layout('Confirm your new email', ['Use this code to change the email on your JGasFlow account to this address.', `It works for ${CODE_MINUTES} minutes.`], code)
           : this.mail.layout('Reset your password', [`Hello ${user.name || ''},`.replace(' ,', ','), 'Use this code to set a new password for your JGasFlow account.', `It works for ${CODE_MINUTES} minutes.`], code);
       try {
-        await this.mail.send(email, purpose === 'signup' ? `${code} is your JGasFlow code` : `${code} is your JGasFlow password reset code`, m.html, m.text);
+        await this.mail.send(email, purpose === 'reset' ? `${code} is your JGasFlow password reset code` : `${code} is your JGasFlow code`, m.html, m.text);
       } catch (e) {
         // Not sent: do not count it against the wait or the hourly limit.
         await this.db.run('DELETE FROM email_codes WHERE id = ?', [res.insertId]);

@@ -2,7 +2,7 @@
 // Each page: { title: [en, ur], intro: [en, ur], sections: [{ h: [en, ur], p: [en, ur] }] }.
 // Plain words, no em or en dashes. Keep LEGAL_UPDATED current when a page changes.
 
-export const LEGAL_UPDATED = '13 October 2026';
+export const LEGAL_UPDATED = '15 October 2026';
 
 export const LEGAL = {
   terms: {
@@ -95,8 +95,15 @@ export const LEGAL = {
       {
         h: ['Deleting your data', 'Data mitana'],
         p: [
-          'You can export your data at any time. To close your account and delete its data, contact support from the phone number on the account.',
-          'Aap kisi bhi waqt apna data export kar sakte hain. Account band karne aur data mitane ke liye account wale phone number se support se rabta karein.',
+          'You can export your data at any time. To delete your account, open My account on the website or Settings, Account and plan in the app, and click Delete account. A shop owner deletes the shop and all its records at once; staff delete only their own login. We keep only the amount and date of plan payments, for our accounts. Full steps: lite.jgasflow.com/delete-account.',
+          'Aap kisi bhi waqt apna data export kar sakte hain. Account delete karne ke liye website par My account ya app mein Settings, Account and plan khol kar Delete account dabayein. Dukaan ka malik dukaan aur sara record foran delete karta hai; staff sirf apna login. Hum sirf plan payment ki raqam aur tareekh hisab ke liye rakhte hain. Poora tareeqa: lite.jgasflow.com/delete-account.',
+        ],
+      },
+      {
+        h: ['Keeping it safe', 'Hifazat'],
+        p: [
+          'Data travels over an encrypted connection (HTTPS). Passwords are stored only as a one-way hash. The app has no ads and no tracking, and does not use your location, contacts, camera or microphone.',
+          'Data encrypted connection (HTTPS) par jata hai. Password sirf one-way hash ki shakal mein rakha jata hai. App mein na ads hain na tracking, aur yeh aap ki location, contacts, camera ya microphone istemal nahi karti.',
         ],
       },
     ],
