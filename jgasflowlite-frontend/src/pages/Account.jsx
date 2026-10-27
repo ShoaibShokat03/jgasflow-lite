@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { BadgeCheck, Check, KeyRound, Laptop, LogOut, Mail, Pencil, Smartphone, Trash2, UserRound } from 'lucide-react';
-import { api, useAct, useGet } from '@/lib/api';
+import { BadgeCheck, Check, KeyRound, Laptop, LogOut, Mail, Pencil, RotateCcw, Smartphone, Trash2, UserRound } from 'lucide-react';
+import { api, queryClient, useAct, useGet } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { daysAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -84,6 +84,7 @@ export function AccountPanel() {
         <ChangePassword />
       </div>
       <Sessions />
+      {auth.isOwner && !auth.user?.is_super && <ResetData />}
       {!auth.user?.is_super && <DeleteAccount />}
       <ChangeEmail open={changing} onClose={() => setChanging(false)} onDone={() => auth.refresh()} />
     </>
@@ -91,6 +92,62 @@ export function AccountPanel() {
 }
 
 /** Delete my account. An owner deletes the whole shop and all its records. */
+/** Owner only: erase the shop's records and start from zero, keeping profile, settings, types, team and plan. */
+export function ResetData() {
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [word, setWord] = useState('');
+  const reset = useAct(() => api.post('/sync/reset', { password: pw, confirm: word.trim().toUpperCase() }), {
+    onSuccess: async (r) => {
+      setOpen(false);
+      await queryClient.invalidateQueries();
+      toast(t('reset_done', { n: r.erased }));
+    },
+    onError: (e) => toast(e.message, 'error'),
+  });
+  return (
+    <>
+      <SectionHeader title={t('reset_data')} />
+      <Card className="p-4 flex flex-wrap items-center gap-3">
+        <div className="min-w-[220px] flex-1 text-[13px] text-muted">{t('reset_data_sub')}</div>
+        <Button variant="danger-outline" icon={RotateCcw} onClick={() => (setPw(''), setWord(''), setOpen(true))}>
+          {t('reset_data')}
+        </Button>
+      </Card>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('reset_data')}
+        icon={RotateCcw}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button variant="danger" icon={RotateCcw} loading={reset.isPending} disabled={!pw || word.trim().toUpperCase() !== 'RESET'} onClick={() => reset.mutate()}>
+              {t('reset_now')}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3.5">
+          <div className="rounded-[var(--radius-ctl)] border border-bad/30 bg-bad/5 px-3 py-2.5 text-[13px]">
+            <div className="font-bold text-bad">{t('reset_erased')}</div>
+            <div className="mt-0.5">{t('reset_erased_list')}</div>
+          </div>
+          <div className="rounded-[var(--radius-ctl)] border border-line bg-bg px-3 py-2.5 text-[13px]">
+            <div className="font-bold text-good">{t('reset_kept')}</div>
+            <div className="mt-0.5">{t('reset_kept_list')}</div>
+          </div>
+          <p className="text-[13px] text-muted">{t('reset_export_first')}</p>
+          <PasswordInput label={t('password')} value={pw} onChange={setPw} autoComplete="current-password" />
+          <TextInput label={t('type_reset')} value={word} onChange={setWord} placeholder="RESET" maxLength={10} />
+        </div>
+      </Modal>
+    </>
+  );
+}
+
 export function DeleteAccount() {
   const auth = useAuth();
   const [open, setOpen] = useState(false);

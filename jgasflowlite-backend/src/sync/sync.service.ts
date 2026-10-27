@@ -8,6 +8,7 @@ import { subscriptionOf } from '../billing/plans';
 import { networkInterfaces } from 'os';
 import { ENV } from '../config/env';
 import { round2 } from '../common/util';
+import bcrypt from 'bcryptjs';
 
 export type Row = Record<string, any>;
 
@@ -259,6 +260,37 @@ export class SyncService {
     });
     const state = await this.shopState(this.db, tid(u));
     return { ok: true, accepted, skipped: rejected.length, ...state };
+  }
+
+  /**
+   * Start the shop's records again from zero, keeping its setup: the profile,
+   * settings, cylinder types and prices, team, plan, Cash / Bank accounts and
+   * chart of accounts stay. Records are tombstoned with new versions (not
+   * removed), so every phone deletes them too on its next sync.
+   */
+  async resetData(u: AuthUser, password: string) {
+    const row = await this.db.one<any>('SELECT password_hash FROM users WHERE id = ?', [u.id]);
+    if (!row || !(await bcrypt.compare(password, row.password_hash))) throw new BadRequestException('Wrong password');
+    let erased = 0;
+    await withWriter(this.db, tid(u), u.id, async (w) => {
+      for (const spec of TABLES) {
+        if (spec.name === 'cylinder_types') continue;
+        const live = await w.q.all<{ uid: string }>(`SELECT uid FROM ${spec.name} WHERE tenant_id = ? AND deleted = 0`, [w.tenantId]);
+        for (let i = 0; i < live.length; i += CHUNK) {
+          const part = live.slice(i, i + CHUNK).map((r) => r.uid);
+          const first = await w.reserve(part.length);
+          await w.q.run('SET @v = ?', [first - 1]);
+          await w.q.run(`UPDATE ${spec.name} SET deleted = 1, version = (@v := @v + 1), updated_at = ?, by_user = ? WHERE tenant_id = ? AND uid IN (?)`, [Date.now(), u.id, w.tenantId, part]);
+        }
+        erased += live.length;
+      }
+      await w.resetDocCounters();
+      // Accounting entries go too; accounts stay, with no opening money.
+      for (const tb of ['acc_entries', 'acc_vouchers', 'acc_money_tags']) await w.q.run(`DELETE FROM ${tb} WHERE tenant_id = ?`, [w.tenantId]);
+      await w.q.run('UPDATE acc_money_accounts SET opening_balance = 0 WHERE tenant_id = ?', [w.tenantId]);
+      await w.q.run("INSERT INTO billing_events (tenant_id, action, detail, by_user) VALUES (?, 'data_reset', ?, ?)", [w.tenantId, `Shop data reset by the owner (${erased} records)`, u.id]);
+    });
+    return { ok: true, erased, ...(await this.shopState(this.db, tid(u))) };
   }
 
   async status(u: AuthUser) {

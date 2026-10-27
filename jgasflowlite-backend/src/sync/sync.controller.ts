@@ -38,6 +38,15 @@ export class SyncController {
 
   @Roles('owner')
   @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('reset')
+  reset(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(z.object({ password: z.string().min(1, 'Enter your password').max(100), confirm: z.literal('RESET', { errorMap: () => ({ message: 'Type RESET to confirm' }) }) }), body);
+    return this.sync.resetData(u, b.password);
+  }
+
+  @Roles('owner')
+  @HttpCode(200)
   @Post('import')
   importAll(@CurrentUser() u: AuthUser, @Body() body: unknown) {
     const b = parse(z.object({ mode: z.enum(['replace', 'merge']), data: z.any() }), body);

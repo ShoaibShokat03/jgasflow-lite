@@ -93,12 +93,26 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 }
 
-/* Printing: only the receipt / statement area prints. */
+/* Printing: only the receipt / statement area prints (printNow copies it into #jgf-print-root). */
+@media screen {
+  #jgf-print-root { display: none !important; }
+}
 @media print {
   @page { margin: 8mm; }
-  body { background: #fff !important; }
-  body * { visibility: hidden !important; }
-  .print-area, .print-area * { visibility: visible !important; }
-  .print-area { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; box-shadow: none !important; border: 0 !important; }
+  html, body { background: #fff !important; height: auto !important; min-height: 0 !important; overflow: visible !important; }
+  body.jgf-printing > *:not(#jgf-print-root) { display: none !important; }
+  #jgf-print-root { display: block; color: #111; }
+  #jgf-print-root .print-area { position: static !important; box-shadow: none !important; border: 0 !important; border-radius: 0 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #jgf-print-root .print-area + .print-area { break-before: page; }
+  /* Tables use the page width and never cut a row in half. */
+  #jgf-print-root .overflow-x-auto, #jgf-print-root .overflow-hidden { overflow: visible !important; }
+  #jgf-print-root table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
+  #jgf-print-root thead { display: table-header-group; }
+  #jgf-print-root tr { break-inside: avoid; }
+  #jgf-print-root .num, #jgf-print-root td { word-break: normal; }
+  /* Printing with Ctrl+P instead of the Print button: hide everything but the area. */
+  body:not(.jgf-printing) * { visibility: hidden !important; }
+  body:not(.jgf-printing) .print-area, body:not(.jgf-printing) .print-area * { visibility: visible !important; }
+  body:not(.jgf-printing) .print-area { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; box-shadow: none !important; border: 0 !important; }
   .no-print { display: none !important; }
 }

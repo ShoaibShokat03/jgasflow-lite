@@ -20,7 +20,7 @@ export function PrinterSettings() {
     toast(t('saved'));
   };
   return (
-    <Card id="printer" className="p-4 space-y-4 scroll-mt-24">
+    <Card id="printer" className="p-4 space-y-4 scroll-mt-24 h-full">
       <div className="flex items-center gap-3">
         <IconBox icon={Printer} color="#1565C0" size={40} />
         <div>
@@ -49,7 +49,7 @@ export function PrinterSettings() {
       </Button>
 
       {/* the test page (only on paper) */}
-      <div className="hidden print:block">
+      <div className="hidden">
         <Paper>
           <ShopHead title={t('test_print')} />
           <div className="mt-3">

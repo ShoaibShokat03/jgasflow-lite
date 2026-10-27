@@ -7,11 +7,11 @@
 const KEY = 'jgf-print';
 
 export const RECEIPT_PAPERS = [
-  { value: '58', label: '58 mm roll', sub: 'Small thermal printer', width: '48mm', page: '58mm auto', margin: '3mm' },
-  { value: '80', label: '80 mm roll', sub: 'Standard thermal printer', width: '72mm', page: '80mm auto', margin: '4mm' },
-  { value: 'a5', label: 'A5 paper', sub: 'Half page, laser or inkjet', width: '128mm', page: 'A5 portrait', margin: '10mm' },
-  { value: 'a4', label: 'A4 paper', sub: 'Full page, laser or inkjet', width: '150mm', page: 'A4 portrait', margin: '12mm' },
-  { value: 'letter', label: 'Letter paper', sub: '8.5 x 11 inch', width: '150mm', page: 'letter portrait', margin: '12mm' },
+  { value: '58', label: '58 mm roll', sub: 'Small thermal printer', mm: 48, page: '58mm auto', margin: '2mm 3mm' },
+  { value: '80', label: '80 mm roll', sub: 'Standard thermal printer', mm: 72, page: '80mm auto', margin: '3mm 4mm' },
+  { value: 'a5', label: 'A5 paper', sub: 'Half page, laser or inkjet', mm: 110, page: 'A5 portrait', margin: '10mm' },
+  { value: 'a4', label: 'A4 paper', sub: 'Full page, laser or inkjet', mm: 120, page: 'A4 portrait', margin: '12mm' },
+  { value: 'letter', label: 'Letter paper', sub: '8.5 x 11 inch', mm: 120, page: 'letter portrait', margin: '12mm' },
 ];
 
 export const DOC_PAPERS = [
@@ -21,9 +21,9 @@ export const DOC_PAPERS = [
 ];
 
 export const FONT_SIZES = [
-  { value: 'small', label: 'Small', px: 11 },
-  { value: 'normal', label: 'Normal', px: 12.5 },
-  { value: 'large', label: 'Large', px: 14 },
+  { value: 'small', label: 'Small', px: 11, zoom: 0.9 },
+  { value: 'normal', label: 'Normal', px: 12.5, zoom: 1 },
+  { value: 'large', label: 'Large', px: 14, zoom: 1.12 },
 ];
 
 const DEFAULTS = { receipt: '80', doc: 'a4', font: 'normal', copies: 1, logo: true };
@@ -44,20 +44,29 @@ export function setPrintSettings(s) {
   }
 }
 
-/** Print the current page's .print-area as a receipt or a document. */
+/**
+ * Print the page's .print-area as a receipt or a document.
+ * The area is copied into its own top-level box and everything else is taken
+ * out of the page while printing, so nothing else prints, no blank pages
+ * follow and a thermal roll stops right after the slip.
+ */
 export function printNow(kind = 'receipt') {
   const s = getPrintSettings();
-  const font = FONT_SIZES.find((f) => f.value === s.font)?.px ?? 12.5;
+  const f = FONT_SIZES.find((x) => x.value === s.font) ?? FONT_SIZES[1];
   let css;
   if (kind === 'receipt') {
     const p = RECEIPT_PAPERS.find((x) => x.value === s.receipt) ?? RECEIPT_PAPERS[1];
     const roll = p.value === '58' || p.value === '80';
+    // Small rolls get slightly smaller type; the width is set before zoom so the slip still fills the roll.
+    const z = Math.round(f.zoom * (p.value === '58' ? 0.85 : roll ? 0.95 : 1) * 100) / 100;
     css = `@page { size: ${p.page}; margin: ${p.margin}; }
-      .print-area { width: ${p.width} !important; max-width: ${p.width} !important; ${roll ? 'padding: 0 !important;' : 'padding: 4mm !important; left: 50% !important; transform: translateX(-50%);'} font-size: ${p.value === '58' ? font - 1.5 : font}px !important; }
-      .print-area .print-logo { display: ${s.logo ? 'flex' : 'none'} !important; }`;
+      #jgf-print-root .print-area { width: ${Math.floor((p.mm / z) * 10) / 10}mm !important; max-width: none !important; margin: 0 ${roll ? '0' : 'auto'} !important; padding: ${roll ? '0' : '4mm 0'} !important; zoom: ${z}; color: #000 !important; }
+      #jgf-print-root .print-area .text-muted { color: #222 !important; }
+      #jgf-print-root .print-area [class*="border-dashed"] { border-color: #000 !important; }
+      #jgf-print-root .print-area .print-logo { display: ${s.logo ? 'flex' : 'none'} !important; }`;
   } else {
     const p = DOC_PAPERS.find((x) => x.value === s.doc) ?? DOC_PAPERS[0];
-    css = `@page { size: ${p.page}; margin: 10mm; } .print-area { font-size: ${font}px !important; }`;
+    css = `@page { size: ${p.page}; margin: 10mm; } #jgf-print-root .print-area { zoom: ${f.zoom}; }`;
   }
   let el = document.getElementById('jgf-print-style');
   if (!el) {
@@ -66,8 +75,29 @@ export function printNow(kind = 'receipt') {
     document.head.appendChild(el);
   }
   el.textContent = `@media print { ${css} }`;
+
+  // The areas to print: outermost ones only, in page order.
+  const areas = [...document.querySelectorAll('.print-area')].filter((a) => !a.parentElement?.closest('.print-area'));
+  document.getElementById('jgf-print-root')?.remove();
+  const root = document.createElement('div');
+  root.id = 'jgf-print-root';
+  root.className = kind === 'receipt' ? 'is-receipt' : 'is-doc';
+  for (const a of areas) root.appendChild(a.cloneNode(true));
+  document.body.appendChild(root);
+  document.body.classList.add('jgf-printing');
   const copies = Math.min(Math.max(Number(s.copies) || 1, 1), 3);
+  let left = copies;
+  const cleanup = () => {
+    window.removeEventListener('afterprint', after);
+    root.remove();
+    document.body.classList.remove('jgf-printing');
+  };
+  const after = () => {
+    left -= 1;
+    if (left <= 0) cleanup();
+  };
+  window.addEventListener('afterprint', after);
   // Extra copies are separate print jobs (browsers have no copies option for scripts).
-  window.print();
-  for (let i = 1; i < copies; i++) window.print();
+  for (let i = 0; i < copies; i++) window.print();
+  setTimeout(() => document.body.contains(root) && left <= 0 && cleanup(), 0);
 }

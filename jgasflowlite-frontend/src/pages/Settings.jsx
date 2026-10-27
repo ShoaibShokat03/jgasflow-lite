@@ -18,30 +18,26 @@ export default function Settings() {
   return (
     <div>
       <PageHeader title={t('settings')} />
-      <div className="grid lg:grid-cols-2 gap-4 items-start">
+      <div className="grid lg:grid-cols-2 gap-4 items-stretch">
         <ShopProfile canEdit={auth.isManager} />
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <IconBox icon={Languages} color="#3B3A8F" size={40} />
-            <div>
-              <div className="font-bold">{t('language')}</div>
-              <div className="text-[12.5px] text-muted">{t('language_sub')}</div>
-            </div>
-          </div>
-          <Chips
-            className="mt-3"
-            value={getLang()}
-            onChange={setLang}
-            options={[
-              { value: 'en', label: 'English' },
-              { value: 'ur', label: 'Roman Urdu' },
-            ]}
-          />
-        </Card>
-      </div>
-      <div className="mt-4">
         <PrinterSettings />
       </div>
+      <Card className="p-4 mt-4 flex flex-wrap items-center gap-3">
+        <IconBox icon={Languages} color="#3B3A8F" size={40} />
+        <div className="min-w-[180px] flex-1">
+          <div className="font-bold">{t('language')}</div>
+          <div className="text-[12.5px] text-muted">{t('language_sub')}</div>
+        </div>
+        <Chips
+          className="!grid grid-cols-2 w-full sm:w-[280px]"
+          value={getLang()}
+          onChange={setLang}
+          options={[
+            { value: 'en', label: 'English' },
+            { value: 'ur', label: 'Roman Urdu' },
+          ]}
+        />
+      </Card>
       <AccountPanel />
     </div>
   );
@@ -69,7 +65,7 @@ function ShopProfile({ canEdit }) {
     if (!Object.values(es).some(Boolean)) save.mutate(f);
   };
   return (
-    <Card className="p-4 space-y-3.5">
+    <Card className="p-4 space-y-3.5 h-full">
       <div className="flex items-center gap-3">
         <IconBox icon={Store} color="#020033" size={40} />
         <div>

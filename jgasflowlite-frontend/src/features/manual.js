@@ -3,7 +3,7 @@
  * English (en) and Roman Urdu (ur). Steps quote on-screen labels in **bold**.
  * Keep it current when a screen changes. No em or en dashes.
  */
-export const MANUAL_UPDATED = '27 Oct 2026';
+export const MANUAL_UPDATED = '28 Oct 2026';
 
 export const MANUAL = [
   {
@@ -591,8 +591,9 @@ export const MANUAL = [
         'Owner only: **Import data file** brings in a file from the web or from the phone app (**Settings** > **Export data file** in the app).',
         'Choose **Add to online data** (keep what is online, newer edits win) or **Replace online data** (online becomes exactly the file).',
         'Click **Choose file** and confirm.',
+        'Owner only: **Settings** > **Reset data** erases every record (sales, payments, customers, suppliers, purchases, stock, udhaar, expenses and loans) and starts from zero. Shop profile, settings, cylinder types and prices, team, plan and Cash / Bank accounts stay. Enter your password and type **RESET**. Phones remove the records on their next sync.',
       ],
-      tips: ['Export works even when your plan has expired, so your data is always yours.'],
+      tips: ['Export works even when your plan has expired, so your data is always yours.', 'Download a backup file before **Reset data**: it cannot be undone.'],
     },
     ur: {
       title: 'Export, import aur backup',
@@ -602,8 +603,9 @@ export const MANUAL = [
         'Sirf malik: **Import data file** web ya phone app ki file laata hai (app mein **Settings** > **Export data file**).',
         '**Add to online data** (online data rahe, nayi tabdeeli jeete) ya **Replace online data** (online bilkul file jaisa) chunein.',
         '**Choose file** daba kar tasdeeq karein.',
+        'Sirf malik: **Settings** > **Reset data** saare record (sales, wasooli, customers, suppliers, khareed, stock, udhaar, kharche aur qarz) mita kar zero se shuru karta hai. Dukaan ki profile, settings, cylinder types aur qeematein, team, plan aur Cash / Bank accounts rehte hain. Password daalein aur **RESET** likhein. Phone agli sync par record hata dete hain.',
       ],
-      tips: ['Plan khatam ho tab bhi export chalta hai, aap ka data hamesha aap ka hai.'],
+      tips: ['Plan khatam ho tab bhi export chalta hai, aap ka data hamesha aap ka hai.', '**Reset data** se pehle backup file download karein: yeh wapas nahi hota.'],
     },
   },
   {
