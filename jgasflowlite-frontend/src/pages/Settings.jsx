@@ -3,7 +3,8 @@ import { Check, ImagePlus, Languages, Store, Trash2 } from 'lucide-react';
 import { api, queryClient, useAct } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getLang, setLang, t, useLang } from '@/lib/i18n';
-import { Button, Card, IconBox, PageHeader } from '@/ui/kit';
+import { Button, Card, IconBox, PageHeader, SectionHeader } from '@/ui/kit';
+import { AppDownloadCard } from '@/ui/AppDownload';
 import { businessNameError, Chips, personNameError, phoneError, Textarea, TextInput } from '@/ui/form';
 import { toast, useConfirm } from '@/ui/overlay';
 import { PrintLogo, useShopLogo } from '@/ui/receipt';
@@ -39,6 +40,8 @@ export default function Settings() {
           ]}
         />
       </Card>
+      <SectionHeader title={t('get_apps')} />
+      <AppDownloadCard />
       <AccountPanel />
     </div>
   );

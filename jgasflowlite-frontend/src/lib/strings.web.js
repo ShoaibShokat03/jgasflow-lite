@@ -885,4 +885,5 @@ export const WEB_STRINGS = {
   empties_short_msg: ['You cannot send more empty cylinders than you have. Lower the number or correct the stock first.', 'Jitne khali cylinder hain us se zyada nahi bhej sakte. Tadaad kam karein ya pehle stock theek karein.'],
   owe_money: ['Owe money', 'Udhaar wale'],
   all_customers: ['All customers', 'Saare customer'],
+  get_apps: ['Phone and computer apps', 'Phone aur computer ki app'],
 };

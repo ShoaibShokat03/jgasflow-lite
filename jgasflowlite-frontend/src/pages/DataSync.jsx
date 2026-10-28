@@ -4,6 +4,7 @@ import { api, queryClient, useGet } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { dayKey, daysAgo, num0 } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { AppDownloadCard } from '@/ui/AppDownload';
 import { Async, Button, Card, cn, Empty, IconBox, PageHeader, SectionHeader, Tag } from '@/ui/kit';
 import { toast, useConfirm } from '@/ui/overlay';
 
@@ -76,6 +77,8 @@ export default function DataSync() {
           </>
         )}
       </Async>
+      <SectionHeader title={t('get_apps')} />
+      <AppDownloadCard />
     </div>
   );
 }
