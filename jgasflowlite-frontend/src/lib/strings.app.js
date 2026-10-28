@@ -93,8 +93,8 @@ export const APP_STRINGS = {
 "Sara data sirf isi phone mein mehfooz hai. Waqtan fawaqtan backup zaroor lein."
 ],
 "greeting": [
-"Assalam-o-Alaikum",
-"Assalam-o-Alaikum"
+"Hi",
+"Hi"
 ],
 "setup_sub": [
 "Gas cylinders, prices, udhaar and payments in one place.",
