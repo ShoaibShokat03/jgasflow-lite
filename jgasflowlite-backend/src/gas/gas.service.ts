@@ -548,7 +548,30 @@ export class GasService {
        ORDER BY s.date DESC, s.id DESC LIMIT ${cap(limit, 500)}`,
       args,
     );
-    return rows.map((r) => ({ ...out(r), ref: docNo('S', r.no), qty: Number(r.qty), due: round2(r.total - r.paid) }));
+    return this.openDues(t, rows.map((r) => ({ ...out(r), ref: docNo('S', r.no), qty: Number(r.qty), due: round2(r.total - r.paid) })));
+  }
+
+  /**
+   * Later payments clear a customer's bills: what the customer still owes is
+   * laid on the newest bills first, so older bills show as paid once the
+   * balance is cleared (the phone app does the same).
+   */
+  private async openDues<T extends { uid: string; customer_uid?: string | null; due: number }>(t: number, rows: T[]): Promise<T[]> {
+    const ids = [...new Set(rows.map((r) => r.customer_uid).filter((x): x is string => !!x))];
+    if (!ids.length) return rows;
+    const bals = await this.db.all<any>(`SELECT c.uid, ${CUST_BAL} AS b FROM customers c WHERE c.tenant_id = ? AND c.uid IN (?)`, [t, ids]);
+    const left = new Map(bals.map((b) => [b.uid as string, Math.max(0, Number(b.b) || 0)]));
+    const bills = await this.db.all<any>('SELECT uid, customer_uid, total, paid FROM sales WHERE tenant_id = ? AND deleted = 0 AND customer_uid IN (?) ORDER BY date DESC, id DESC', [t, ids]);
+    const open = new Map<string, number>();
+    for (const s of bills) {
+      const own = round2(Number(s.total) - Number(s.paid));
+      const l = left.get(s.customer_uid) ?? 0;
+      const due = own <= 0 ? 0 : Math.min(own, l);
+      left.set(s.customer_uid, round2(l - due));
+      open.set(s.uid, round2(due));
+    }
+    for (const r of rows) if (r.customer_uid && open.has(r.uid)) r.due = open.get(r.uid)!;
+    return rows;
   }
 
   async sale(t: number, uid: string) {
@@ -573,7 +596,8 @@ export class GasService {
       const b = await this.db.one<any>(`SELECT ${CUST_BAL} AS b FROM customers c WHERE c.tenant_id = ? AND c.uid = ?`, [t, r.customer_uid]);
       balance = Number(b?.b ?? 0);
     }
-    return { ...out(r), ref: docNo('S', r.no), due: round2(r.total - r.paid), customer_balance: balance, items: items.map(out) };
+    const [open] = await this.openDues(t, [{ uid: r.uid as string, customer_uid: r.customer_uid as string | null, due: round2(r.total - r.paid) }]);
+    return { ...out(r), ref: docNo('S', r.no), due: open.due, customer_balance: balance, items: items.map(out) };
   }
 
   /** Deletes a sale and reverses its stock, customer cylinders and payment. */
@@ -588,6 +612,11 @@ export class GasService {
       if (!s) throw new NotFoundException('Sale not found');
       const ref = docNo('S', s.no);
       const items = await w.q.all<any>('SELECT * FROM sale_items WHERE tenant_id = ? AND sale_uid = ? AND deleted = 0', [t, uid]);
+      for (const it of items) {
+        if (Number(it.empty_qty) > 0 && Number(it.empty_qty) > (await this.stockOf(w.q, t, it.type_uid)).empty) {
+          throw new BadRequestException('The empty cylinders from this sale were already sent to a supplier, so it cannot be deleted.');
+        }
+      }
       for (const it of items) {
         await this.move(w, it.type_uid, it.qty, -it.empty_qty, 'sale_del', now, ref, Number(it.kg) || 0);
         if (s.customer_uid && !(Number(it.kg) > 0)) await this.held(w, s.customer_uid, it.type_uid, -(it.qty - it.empty_qty), -Number(it.deposit), 'sale_del', now, ref);
@@ -707,6 +736,10 @@ export class GasService {
       for (const l of used) {
         const ty = await w.q.one<any>('SELECT name, unit FROM cylinder_types WHERE tenant_id = ? AND uid = ?', [t, l.type_uid]);
         if (ty?.unit === 'kg') throw new BadRequestException(`${ty.name} is sold by kg. Buy full cylinders, then use Fill from cylinder.`);
+        if (l.empty_sent > 0) {
+          const have = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).empty);
+          if (l.empty_sent > have) throw new BadRequestException(`Not enough empty ${ty?.name ?? ''} cylinders: ${have} in stock, sending ${l.empty_sent}.`);
+        }
       }
       const sid = b.supplier_uid || null;
       if (sid) {
@@ -774,6 +807,9 @@ export class GasService {
       if (!p) throw new NotFoundException('Purchase not found');
       const ref = docNo('P', p.no);
       const items = await w.q.all<any>('SELECT * FROM purchase_items WHERE tenant_id = ? AND purchase_uid = ? AND deleted = 0', [t, uid]);
+      for (const it of items) {
+        if (Number(it.qty) > (await this.stockOf(w.q, t, it.type_uid)).full) throw new BadRequestException('Cylinders from this purchase are already sold, so it cannot be deleted. Correct the stock instead.');
+      }
       for (const it of items) {
         await this.move(w, it.type_uid, -it.qty, it.empty_sent, 'purchase_del', now, ref);
         await w.remove('purchase_items', it.uid);
@@ -884,8 +920,9 @@ export class GasService {
       today_payments: Number(p?.t ?? 0),
       outstanding: Number(o?.t ?? 0),
       udhaar_customers: Number(o?.n ?? 0),
-      full_total: types.reduce((a, x) => a + x.full_qty, 0),
-      empty_total: types.reduce((a, x) => a + x.empty_qty, 0),
+      // Never shown below zero (older records may have sent more empties than were in stock).
+      full_total: types.reduce((a, x) => a + Math.max(0, x.full_qty), 0),
+      empty_total: types.reduce((a, x) => a + Math.max(0, x.empty_qty), 0),
       with_customers: Number(h?.q ?? 0),
       deposit_held: Number(h?.d ?? 0),
       customer_count: Number(counts?.c ?? 0),

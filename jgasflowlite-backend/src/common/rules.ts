@@ -69,11 +69,13 @@ export const zEmailOpt = z
 export const zPassword = z.string().min(6, 'Password must be at least 6 characters').max(100);
 
 export const zText = (max = 255) => z.string().trim().max(max).optional().default('');
-export const zMoney = z.coerce.number().min(0).max(999999999);
+/** One amount (payment, balance, discount, entry): at most Rs 1 crore. */
+export const MAX_AMOUNT = 10000000;
+export const zMoney = z.coerce.number().min(0).max(MAX_AMOUNT, 'An amount cannot be more than Rs 1,00,00,000');
 /** One cylinder's price or deposit. Nothing an LPG shop sells costs more. */
 export const MAX_UNIT_PRICE = 500000;
 export const zUnitPrice = z.coerce.number().min(0).max(MAX_UNIT_PRICE, 'A cylinder price cannot be more than Rs 500,000');
-export const zMoneySigned = z.coerce.number().min(-999999999).max(999999999);
+export const zMoneySigned = z.coerce.number().min(-MAX_AMOUNT, 'An amount cannot be more than Rs 1,00,00,000').max(MAX_AMOUNT, 'An amount cannot be more than Rs 1,00,00,000');
 export const zQty = z.coerce.number().int().min(0).max(100000);
 export const zMethod = z.enum(['cash', 'bank', 'jazzcash', 'easypaisa', 'cheque']).default('cash');
 export const zUid = z.string().trim().min(8).max(64);

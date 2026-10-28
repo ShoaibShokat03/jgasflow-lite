@@ -47,6 +47,19 @@
   @keyframes slide-left { from { transform: translateX(-24px); opacity: 0; } }
 }
 
+/* Money moving from one account to another (Cash / Bank > Deposit, Withdraw, Transfer). */
+@keyframes jgf-coin {
+  0% { left: 0; opacity: 0; transform: scale(0.7); }
+  15% { opacity: 1; transform: scale(1); }
+  85% { opacity: 1; transform: scale(1); }
+  100% { left: calc(100% - 1.25rem); opacity: 0; transform: scale(0.7); }
+}
+.jgf-coin { animation: jgf-coin 1.35s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .jgf-coin { animation: none; left: calc(50% - 0.625rem); }
+  .jgf-coin + .jgf-coin { display: none; }
+}
+
 @layer base {
   /* The vertical scrollbar is always there (also behind popups), so opening a
      dialog or a short page never shifts the layout sideways. Nothing may

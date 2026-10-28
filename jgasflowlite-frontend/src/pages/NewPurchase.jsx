@@ -81,14 +81,16 @@ function Form({ types }) {
     if (!lines.some((l) => l.qty || l.sent)) return toast(t('add_qty_first'), 'error');
     if (paidAmount > total + 0.009) return toast(t('paid_more_than_total'), 'error');
     if (paidAmount > 0 && !moneyId) return toast(t('choose_cash_bank'), 'error');
-    const short = lines.filter((l) => l.sent > l.type.empty_qty);
+    // Never send more empties than the shop has: stock cannot go below zero.
+    const short = lines.filter((l) => l.sent > Math.max(0, l.type.empty_qty));
     if (short.length) {
-      const ok = await confirm({
+      await confirm({
         title: t('empties_low_title'),
-        message: `${short.map((l) => `${l.type.name}: ${t('empty')} ${l.type.empty_qty}, ${t('sending')} ${l.sent}`).join('\n')}\n\n${t('stock_low_msg')}`,
-        okLabel: t('save'),
+        message: `${short.map((l) => `${l.type.name}: ${t('empty')} ${Math.max(0, l.type.empty_qty)}, ${t('sending')} ${l.sent}`).join('\n')}\n\n${t('empties_short_msg')}`,
+        okLabel: t('ok'),
+        cancelLabel: false,
       });
-      if (!ok) return;
+      return;
     }
     setSaving(true);
     try {

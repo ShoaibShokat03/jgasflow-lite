@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, ChevronDown, Eye, EyeOff, Minus, Plus, Search, X } from 'lucide-react';
-import { getCurrency, PAYMENT_METHODS } from '@/lib/format';
+import { getCurrency, MAX_AMOUNT, parseNum, PAYMENT_METHODS } from '@/lib/format';
 import { methodLabel, t } from '@/lib/i18n';
 import { cn } from './kit';
 
@@ -120,7 +120,10 @@ export function TextInput({ label, error, hint, value, onChange, filter, prefix,
   );
 }
 
-export const MoneyInput = (p) => <TextInput filter="decimal" prefix={getCurrency()} placeholder="0" {...p} />;
+/** Money field; typing past [max] (default Rs 1 crore) is ignored. */
+export const MoneyInput = ({ max = MAX_AMOUNT, onChange, ...p }) => (
+  <TextInput filter="decimal" prefix={getCurrency()} placeholder="0" {...p} onChange={(v) => (parseNum(v) > max ? undefined : onChange(v))} />
+);
 
 export function PasswordInput({ label, error, hint, value, onChange, className, reserve, ...rest }) {
   const [show, setShow] = useState(false);

@@ -37,25 +37,39 @@ export default function Udhaar() {
 
 function UdhaarList() {
   const [q, setQ] = useState('');
+  // Owing customers, or every customer (so the count matches Customers on the home screen).
+  const [all, setAll] = useState(false);
   const navigate = useNavigate();
-  const list = useGet('/customers', { filter: 'udhaar', q });
+  const list = useGet('/customers', { filter: all ? 'all' : 'udhaar', q });
   return (
     <>
       <div className="flex flex-wrap items-center gap-2.5 mb-3">
         <SearchBox value={q} onChange={setQ} placeholder={t('search_customer')} className="w-full sm:w-80" />
+        <Chips
+          value={all ? 'all' : 'owe'}
+          onChange={(v) => setAll(v === 'all')}
+          options={[
+            { value: 'owe', label: t('owe_money') },
+            { value: 'all', label: t('all_customers') },
+          ]}
+        />
         <ExportMenu className="ml-auto" title={t('x_udhaar_list')} columns={customerColumns} rows={list.data} all={() => api.get('/customers', { params: { filter: 'udhaar' } })} />
       </div>
       <Async q={list}>
         {(rows) =>
           rows.length === 0 ? (
             <Card>
-              <Empty icon={PartyPopper} title={q ? t('nothing_found') : t('no_udhaar')} />
+              <Empty
+                icon={PartyPopper}
+                title={q ? t('nothing_found') : t('no_udhaar')}
+                action={!q && !all ? <Button variant="outline" onClick={() => setAll(true)}>{t('all_customers')}</Button> : undefined}
+              />
             </Card>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2.5 mb-3">
-                <Summary label={t('total_outstanding')} value={money(rows.reduce((a, c) => a + c.balance, 0))} tone="red" />
-                <Summary label={t('customers')} value={rows.length} />
+                <Summary label={t('total_outstanding')} value={money(rows.reduce((a, c) => a + Math.max(0, c.balance), 0))} tone="red" />
+                <Summary label={t('customers')} value={all ? `${rows.filter((c) => c.balance > 0.009).length} / ${rows.length}` : rows.length} />
               </div>
               <Card className="overflow-hidden divide-rows">
                 {rows.map((c) => (

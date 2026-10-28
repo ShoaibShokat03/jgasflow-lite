@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
 import { parse, z } from '../common/util';
-import { zMoney, zText } from '../common/rules';
+import { MAX_AMOUNT, zMoney, zText } from '../common/rules';
 import { AuthUser, CurrentUser, OnlineOnly, Roles, tid } from '../auth/auth.decorators';
 import { AccountsService } from './accounts.service';
 import { METHODS, MoneyService } from './money.service';
@@ -48,7 +48,7 @@ export class AccountsController {
         title: zText(120),
         number: zText(60),
         branch: zText(120),
-        opening_balance: z.coerce.number().min(0, 'Opening balance cannot be below zero').max(999999999).default(0),
+        opening_balance: z.coerce.number().min(0, 'Opening balance cannot be below zero').max(MAX_AMOUNT, 'An amount cannot be more than Rs 1,00,00,000').default(0),
         opening_date: zDayOpt,
         methods: z.array(z.enum(METHODS)).max(5).default([]),
       }),

@@ -6,13 +6,14 @@ import { dayKey, fDate, money, numInput, parseNum } from '@/lib/format';
 import { methodLabel, opt, t } from '@/lib/i18n';
 import { printNow } from '@/lib/print';
 import { Async, Button, Card, cn, Empty, IconBox, PageHeader, Tag } from '@/ui/kit';
-import { DateInput, MoneyInput, Switch, TextInput, Select } from '@/ui/form';
+import { DateInput, MoneyInput, Switch, TextInput } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { ExportMenu } from '@/ui/ExportMenu';
 import { PrintCredit } from '@/ui/receipt';
 import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 import { useGet } from '@/lib/api';
-import { EntryForm, useChart, useLowBalance, useMoneyAccounts } from './Accounts';
+import { useLowBalance, useMoneyAccounts } from './Accounts';
+import { MoveMoney } from './MoveMoney';
 import { Summary } from './Sales';
 
 const METHODS = ['cash', 'bank', 'jazzcash', 'easypaisa', 'cheque'];
@@ -22,15 +23,13 @@ const linkOf = (m) => (m.ref_type === 'payment' && m.link ? `/app/payments/${m.l
 
 export default function BankAccounts() {
   const q = useMoneyAccounts();
-  const chart = useChart();
   const [form, setForm] = useState(null); // 'new' | account
-  const [entry, setEntry] = useState(null); // preset for the entry form
+  const [move, setMove] = useState(null); // { mode, account }
   const [statement, setStatement] = useState(null);
   const confirm = useConfirm();
   const del = useAct((id) => api.delete(`/accounts/money/${id}`), { onSuccess: () => toast(t('deleted')), onError: (e) => toast(e.message, 'error') });
   const below = (q.data ?? []).filter((a) => a.balance < -0.009);
   const list = q.data ?? [];
-  const cashId = String(list.find((a) => a.kind === 'cash')?.id ?? '');
   return (
     <div>
       <PageHeader
@@ -38,7 +37,7 @@ export default function BankAccounts() {
         sub={t('acc_banks_sub')}
         actions={
           <>
-            <Button variant="outline" icon={ArrowLeftRight} onClick={() => setEntry({ kind: 'transfer' })}>
+            <Button variant="outline" icon={ArrowLeftRight} disabled={list.length < 2} onClick={() => setMove({ mode: 'transfer' })}>
               {t('acc_transfer')}
             </Button>
             <Button icon={Plus} onClick={() => setForm('new')}>
@@ -92,16 +91,12 @@ export default function BankAccounts() {
                         )}
                       </div>
                       <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line">
-                        {a.kind === 'bank' && (
-                          <>
-                            <Button size="sm" variant="soft" icon={ArrowDownToLine} onClick={() => setEntry({ kind: 'transfer', from: cashId, to: String(a.id) })}>
-                              {t('acc_deposit')}
-                            </Button>
-                            <Button size="sm" variant="soft" icon={ArrowUpFromLine} onClick={() => setEntry({ kind: 'transfer', from: String(a.id), to: cashId })}>
-                              {t('acc_withdraw')}
-                            </Button>
-                          </>
-                        )}
+                        <Button size="sm" variant="soft" icon={ArrowDownToLine} onClick={() => setMove({ mode: 'deposit', account: a })}>
+                          {t(a.kind === 'cash' ? 'mm_add_cash' : 'acc_deposit')}
+                        </Button>
+                        <Button size="sm" variant="soft" icon={ArrowUpFromLine} onClick={() => setMove({ mode: 'withdraw', account: a })}>
+                          {t(a.kind === 'cash' ? 'mm_take_cash' : 'acc_withdraw')}
+                        </Button>
                         <Button size="sm" variant="outline" icon={FileText} onClick={() => setStatement(a)}>
                           {t('acc_statement')}
                         </Button>
@@ -126,14 +121,14 @@ export default function BankAccounts() {
         }}
       </Async>
       <BankForm open={!!form} initial={form === 'new' ? null : form} onClose={() => setForm(null)} all={list} />
-      <EntryForm open={!!entry} initial={null} preset={entry} onClose={() => setEntry(null)} chart={chart.data} />
+      <MoveMoney open={!!move} mode={move?.mode} account={move?.account} list={list} onClose={() => setMove(null)} />
       <Statement account={statement} onClose={() => setStatement(null)} />
     </div>
   );
 }
 
 function BankForm({ open, initial, onClose, all }) {
-  const blank = { name: '', kind: 'bank', title: '', number: '', branch: '', opening_balance: '', opening_date: dayKey(), methods: [] };
+  const blank = { name: '', kind: '', title: '', number: '', branch: '', opening_balance: '', opening_date: dayKey(), methods: [] };
   const [f, setF] = useState(blank);
   useEffect(() => {
     if (!open) return;
@@ -166,7 +161,9 @@ function BankForm({ open, initial, onClose, all }) {
             icon={Check}
             loading={save.isPending}
             onClick={() =>
-              f.name.trim().length < 2
+              !f.kind
+                ? toast(t('acc_choose_kind'), 'error')
+                : f.name.trim().length < 2
                 ? toast(t('required'), 'error')
                 : save.mutate({
                     name: f.name.trim(),
@@ -187,17 +184,35 @@ function BankForm({ open, initial, onClose, all }) {
     >
       <div className="grid grid-cols-2 gap-3.5">
         {!initial && (
-          <Select
-            className="col-span-2"
-            label={t('acc_type')}
-            value={f.kind}
-            onChange={(v) => setF((s) => ({ ...s, kind: v, methods: [] }))}
-            options={[
-              { value: 'bank', label: t('acc_bank_or_wallet') },
-              { value: 'cash', label: t('acc_cash_drawer') },
-            ]}
-          />
+          <div className="col-span-2">
+            <div className="label">{t('acc_type')}</div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'cash', icon: Banknote, label: t('acc_cash_drawer'), sub: t('acc_cash_drawer_sub') },
+                { value: 'bank', icon: Building2, label: t('acc_bank_or_wallet'), sub: t('acc_bank_or_wallet_sub') },
+              ].map((k) => {
+                const on = f.kind === k.value;
+                const KIcon = k.icon;
+                return (
+                  <button
+                    key={k.value}
+                    type="button"
+                    onClick={() => setF((s) => ({ ...s, kind: k.value, methods: k.value === 'cash' ? ['cash'].filter((m) => !all.some((a) => a.methods.includes(m))) : [], title: '', number: '', branch: '' }))}
+                    className={cn('flex items-start gap-2.5 rounded-[var(--radius-card)] border px-3 py-2.5 text-left transition', on ? 'border-primary bg-soft ring-2 ring-primary/15' : 'border-line bg-white hover:bg-bg')}
+                  >
+                    <KIcon className={cn('size-5 mt-0.5 shrink-0', on ? 'text-primary' : 'text-muted')} />
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-[13.5px]">{k.label}</span>
+                      <span className="block text-[11.5px] text-muted">{k.sub}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
+        {f.kind && (
+          <>
         <TextInput className="col-span-2" label={t('name')} value={f.name} onChange={set('name')} maxLength={120} placeholder={f.kind === 'cash' ? t('acc_cash_drawer') : 'Meezan Bank, JazzCash'} autoFocus />
         {f.kind === 'bank' && (
           <>
@@ -208,6 +223,7 @@ function BankForm({ open, initial, onClose, all }) {
         )}
         <MoneyInput label={opt(t('acc_opening'))} value={f.opening_balance} onChange={set('opening_balance')} />
         <DateInput label={t('acc_opening_date')} value={f.opening_date} onChange={set('opening_date')} max={dayKey()} />
+        <p className="col-span-2 -mt-1.5 text-[12px] text-muted">{t('acc_opening_help')}</p>
         <div className="col-span-2">
           <div className="label">{t('acc_methods_here')}</div>
           <div className="space-y-1.5">
@@ -226,6 +242,8 @@ function BankForm({ open, initial, onClose, all }) {
           </div>
           <p className="mt-1.5 text-[12px] text-muted">{t('acc_methods_help')}</p>
         </div>
+          </>
+        )}
       </div>
       {lowUi}
     </Modal>

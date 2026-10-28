@@ -80,6 +80,8 @@ export const parseNum = (s) => Number(String(s ?? '').replace(/,/g, '').trim()) 
 
 /** One cylinder's price or deposit; the API refuses more (same limit). */
 export const MAX_UNIT_PRICE = 500000;
+/** One amount (payment, balance, discount, entry): at most Rs 1 crore, same as the server. */
+export const MAX_AMOUNT = 10000000;
 /** Loss per cylinder when buying costs more than selling, else 0. */
 export const lossPerCylinder = (sale, purchase) => (sale > 0 && purchase > 0 && purchase > sale ? purchase - sale : 0);
 
