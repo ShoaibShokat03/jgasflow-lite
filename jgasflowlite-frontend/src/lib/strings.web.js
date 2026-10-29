@@ -1009,4 +1009,7 @@ export const WEB_STRINGS = {
   bill_one: ['bill', 'bill'],
   item_one: ['item', 'saman'],
   days_left_1: ['1 day left', '1 din baqi'],
+  upd_title: ['A new version of JGasFlow is ready', 'JGasFlow ka naya version tayyar hai'],
+  upd_sub: ['Save what you are doing, then update', 'Jo kar rahe hain save karein, phir update karein'],
+  upd_now: ['Update now', 'Abhi update karein'],
 };

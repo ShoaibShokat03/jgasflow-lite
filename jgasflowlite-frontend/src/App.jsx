@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/i18n';
 import { Loading } from '@/ui/kit';
 import { Shell } from '@/ui/Shell';
+import { UpdateWatcher } from '@/lib/update';
 import Landing from '@/pages/public/Landing';
 import Login from '@/pages/public/Login';
 import Signup from '@/pages/public/Signup';
@@ -66,6 +67,8 @@ export default function App() {
   const mgr = (el) => <ShopOnly who="mgr">{el}</ShopOnly>;
   const owner = (el) => <ShopOnly who="owner">{el}</ShopOnly>;
   return (
+    <>
+    <UpdateWatcher />
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
@@ -125,5 +128,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
