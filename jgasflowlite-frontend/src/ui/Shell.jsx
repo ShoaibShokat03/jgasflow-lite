@@ -42,10 +42,12 @@ import {
   TrendingUp,
   ListChecks,
   FileSpreadsheet,
+  AlarmClock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getLang, setLang, t, useLang } from '@/lib/i18n';
-import { fDay } from '@/lib/format';
+import { dayKey, fDate, fDay } from '@/lib/format';
+import { Modal } from './overlay';
 import { Brand, Button, cn, Initials } from './kit';
 import OfflineAccount, { OFFLINE_ALLOWED } from '@/pages/OfflineAccount';
 import { useShopLogo } from './receipt';
@@ -324,6 +326,77 @@ function ExpiryBanner() {
   );
 }
 
+/**
+ * Popup when the plan ends in 2 days or less, or has ended: Renew or Skip.
+ * Skip hides it until tomorrow (per shop, in this browser). Lifetime plans never see it.
+ */
+function ExpiryPopup() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const loc = useLocation();
+  const sub = auth.sub;
+  const key = `jgf-expiry-skip-${auth.shop?.id ?? ''}`;
+  const due = !!sub && !sub.lifetime && ((sub.status === 'active' && sub.days_left <= 2) || sub.status === 'expired');
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!due || loc.pathname.startsWith('/app/billing')) return;
+    let skipped = '';
+    try {
+      skipped = localStorage.getItem(key) || '';
+    } catch {
+      /* shows every visit */
+    }
+    if (skipped !== dayKey(new Date())) setOpen(true);
+  }, [due, key, loc.pathname]);
+  if (!due) return null;
+  const skip = () => {
+    try {
+      localStorage.setItem(key, dayKey(new Date()));
+    } catch {
+      /* shows again next visit */
+    }
+    setOpen(false);
+  };
+  const renew = () => {
+    setOpen(false);
+    navigate('/app/billing');
+  };
+  const ended = sub.status === 'expired';
+  const title = ended ? t('exp_title_ended') : sub.days_left <= 1 ? t('exp_title_1') : t('exp_title_n', { n: sub.days_left });
+  return (
+    <Modal
+      open={open}
+      onClose={skip}
+      title={title}
+      sub={sub.expires_at ? `${t('exp_on')} ${fDate(sub.expires_at)}` : sub.plan_name}
+      icon={AlarmClock}
+      iconColor={ended ? '#C62828' : '#F26B1D'}
+      size="sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={skip}>
+            {t('exp_skip')}
+          </Button>
+          {auth.isOwner && (
+            <Button variant="accent" icon={CreditCard} onClick={renew}>
+              {t('renew_now')}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div className="grid gap-3 text-[13.5px] leading-relaxed">
+        <p>{ended ? t('exp_msg_ended') : t('exp_msg_soon', { plan: sub.plan_name })}</p>
+        <ul className="grid gap-1.5 text-[13px] text-muted">
+          <li>• {t('exp_keep_1')}</li>
+          <li>• {t('exp_keep_2')}</li>
+        </ul>
+        {!auth.isOwner && <p className="text-[12.5px] font-semibold text-ink">{t('exp_ask_owner')}</p>}
+      </div>
+    </Modal>
+  );
+}
+
 function BottomBar() {
   const items = [
     { to: '/app', end: true, icon: Home, label: t('home') },
@@ -424,6 +497,7 @@ export function Shell({ admin = false }) {
 
       {!admin && auth.role && <BottomBar />}
       {!admin && <GlobalKeys />}
+      {!admin && <ExpiryPopup />}
     </div>
   );
 }

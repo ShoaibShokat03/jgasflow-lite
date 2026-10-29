@@ -625,7 +625,7 @@ export const MANUAL = [
       title: 'Subscription and renewal',
       intro: 'Start free, then pay monthly by bank transfer. Offline (one phone) or Online (web and every phone).',
       steps: [
-        'Open **Subscription** to see your **Plan** and days left. A yellow bar appears 5 days before it ends.',
+        'Open **Subscription** to see your **Plan** and days left. A yellow bar appears 5 days before it ends. From 2 days before, a popup asks you to **Renew now** or **Skip for today** (it comes back the next day).',
         'Choose a plan (**Basic** or **Pro**) and **Months**. 6 months save 10% and 12 months save 20%.',
         'Some plans also show **or Rs ... once for lifetime**. Choose **Lifetime** under **Months** to pay once: the plan never ends, online or offline, and the phone app works without monthly checks.',
         'Under **Pay by bank transfer**, transfer the **Amount to pay** to the bank account shown. Use **Copy** to copy the account number or IBAN.',
@@ -642,7 +642,7 @@ export const MANUAL = [
       title: 'Subscription aur renewal',
       intro: 'Free shuru karein, phir mahana bank transfer se ada karein. Offline (aik phone) ya Online (web aur sab phones).',
       steps: [
-        '**Subscription** khol kar **Plan** aur baqi din dekhein. Khatam hone se 5 din pehle peeli bar aati hai.',
+        '**Subscription** khol kar **Plan** aur baqi din dekhein. Khatam hone se 5 din pehle peeli bar aati hai. 2 din pehle se popup **Renew now** ya **Skip for today** poochta hai (agle din phir aata hai).',
         'Plan (**Basic** ya **Pro**) aur **Months** chunein. 6 mahine par 10% aur 12 par 20% bachat.',
         'Kuch plans par **or Rs ... once for lifetime** bhi likha hota hai. **Months** mein **Lifetime** chun kar aik dafa ada karein: plan kabhi khatam nahi hota, online ho ya offline, aur phone app ko har mahine check ki zaroorat nahi.',
         '**Pay by bank transfer** mein diye bank account mein **Amount to pay** transfer karein. Account number ya IBAN **Copy** se copy karein.',
