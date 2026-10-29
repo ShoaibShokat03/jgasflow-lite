@@ -55,7 +55,7 @@ function Current() {
           <div className="flex flex-wrap items-center gap-2.5 mb-3">
             <p className="text-[13px] text-muted flex-1 min-w-[200px]">{t('tap_to_update_price')}</p>
             <ExportMenu title={t('x_prices')} columns={priceColumns} rows={list} />
-            <Button icon={Plus} onClick={() => setForm('new')}>
+            <Button data-shortcut="add" icon={Plus} onClick={() => setForm('new')}>
               {t('add_cylinder_type')}
             </Button>
           </div>
@@ -176,7 +176,7 @@ function UpdatePrice({ type, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={submit}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>
@@ -257,7 +257,7 @@ function Special() {
       <div className="flex flex-wrap items-center gap-2.5 mb-3">
         <p className="text-[13px] text-muted flex-1 min-w-[200px]">{t('customer_prices_help')}</p>
         <ExportMenu title={t('x_special_prices')} columns={specialPriceColumns} rows={list.data} />
-        <Button icon={Plus} onClick={() => setForm('new')}>
+        <Button data-shortcut="add" icon={Plus} onClick={() => setForm('new')}>
           {t('add_special_price')}
         </Button>
       </div>
@@ -346,7 +346,7 @@ function SpecialPriceForm({ open, row, onClose }) {
             <Button variant="outline" onClick={onClose}>
               {t('cancel')}
             </Button>
-            <Button icon={Check} loading={save.isPending} onClick={submit}>
+            <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
               {t('save')}
             </Button>
           </>

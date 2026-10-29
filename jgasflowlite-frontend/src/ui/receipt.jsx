@@ -90,7 +90,7 @@ export function ReceiptActions({ text, phone, children }) {
   };
   return (
     <div className="no-print flex flex-wrap justify-center gap-2 mt-4">
-      <Button icon={Printer} onClick={() => printNow('receipt')}>
+      <Button data-shortcut="print" icon={Printer} onClick={() => printNow('receipt')}>
         {t('print')}
       </Button>
       <Button variant="good" icon={MessageCircle} onClick={share}>

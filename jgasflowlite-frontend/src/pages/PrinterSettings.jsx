@@ -44,7 +44,7 @@ export function PrinterSettings() {
       </div>
       <Switch checked={s.logo} onChange={set('logo')} label={t('print_logo')} sub={t('print_logo_sub')} />
       <div className="rounded-[var(--radius-ctl)] bg-bg px-3 py-2.5 text-[12.5px] text-muted whitespace-pre-line">{t('printer_tips')}</div>
-      <Button variant="outline" icon={Printer} onClick={() => printNow('receipt')}>
+      <Button data-shortcut="print" variant="outline" icon={Printer} onClick={() => printNow('receipt')}>
         {t('test_print')}
       </Button>
 

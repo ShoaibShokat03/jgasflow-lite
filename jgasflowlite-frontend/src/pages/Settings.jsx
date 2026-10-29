@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, ImagePlus, Languages, Store, Trash2 } from 'lucide-react';
+import { Check, ImagePlus, Keyboard, Languages, Store, Trash2 } from 'lucide-react';
 import { api, queryClient, useAct } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getLang, setLang, t, useLang } from '@/lib/i18n';
@@ -8,6 +8,8 @@ import { AppDownloadCard } from '@/ui/AppDownload';
 import { businessNameError, Chips, personNameError, phoneError, Textarea, TextInput } from '@/ui/form';
 import { toast, useConfirm } from '@/ui/overlay';
 import { PrintLogo, useShopLogo } from '@/ui/receipt';
+import { Kbd, openShortcuts } from '@/ui/Shortcuts';
+import { keyOf } from '@/lib/shortcuts';
 import { AccountPanel } from './Account';
 import { PrinterSettings } from './PrinterSettings';
 
@@ -39,6 +41,19 @@ export default function Settings() {
             { value: 'ur', label: 'Roman Urdu' },
           ]}
         />
+      </Card>
+      <Card className="p-4 mt-4 flex flex-wrap items-center gap-3">
+        <IconBox icon={Keyboard} color="#F26B1D" size={40} />
+        <div className="min-w-[180px] flex-1">
+          <div className="font-bold">{t('sc_title')}</div>
+          <div className="text-[12.5px] text-muted">{t('sc_settings_sub')}</div>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Kbd combo={keyOf('help')} className="max-sm:hidden" />
+          <Button variant="outline" icon={Keyboard} className="max-sm:flex-1" onClick={openShortcuts}>
+            {t('sc_see_change')}
+          </Button>
+        </div>
       </Card>
       <SectionHeader title={t('get_apps')} />
       <AppDownloadCard />
@@ -211,7 +226,7 @@ function ShopProfile({ canEdit }) {
         <Textarea label={t('receipt_footer')} value={f.receipt_note} onChange={set('receipt_note')} maxLength={255} />
       </fieldset>
       {canEdit && (
-        <Button icon={Check} loading={save.isPending} onClick={submit}>
+        <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
           {t('save')}
         </Button>
       )}

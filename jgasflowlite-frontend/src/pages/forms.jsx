@@ -57,7 +57,7 @@ export function PartyForm({ open, onClose, kind = 'customer', initial, onSaved, 
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={submit}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>
@@ -137,7 +137,7 @@ export function ReceivePayment({ open, onClose, customer: fixed }) {
             <Button variant="outline" onClick={onClose}>
               {t('cancel')}
             </Button>
-            <Button variant="good" icon={Check} loading={save.isPending} onClick={submit}>
+            <Button data-shortcut="save" variant="good" icon={Check} loading={save.isPending} onClick={submit}>
               {t('save_payment')}
             </Button>
           </>
@@ -220,7 +220,7 @@ export function ReturnEmpties({ open, onClose, customer }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button
+          <Button data-shortcut="save"
             icon={Check}
             loading={save.isPending}
             onClick={() => (typeUid && qty > 0 ? save.mutate({ type_uid: typeUid, qty, refund: parseNum(refund), money_id: parseNum(refund) > 0 && moneyId ? Number(moneyId) : undefined, note }) : toast(t('add_qty_first'), 'error'))}
@@ -292,7 +292,7 @@ export function SetHeld({ open, onClose, customer }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate({ type_uid: typeUid, qty, deposit: parseNum(dep) })}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={() => save.mutate({ type_uid: typeUid, qty, deposit: parseNum(dep) })}>
             {t('save')}
           </Button>
         </>

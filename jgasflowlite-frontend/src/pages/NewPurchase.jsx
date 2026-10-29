@@ -244,7 +244,7 @@ function Form({ types }) {
               <KV label={t('total')} value={money(total)} strong />
               {supplier && <KV label={t('payable')} value={money(total - paidAmount)} tone={total - paidAmount > 0.009 ? 'red' : undefined} />}
             </div>
-            <Button size="lg" full icon={Check} loading={saving} onClick={save}>
+            <Button data-shortcut="save" size="lg" full icon={Check} loading={saving} onClick={save}>
               {t('save')}
             </Button>
           </Card>

@@ -106,7 +106,7 @@ function View({ c }) {
             <Button variant="outline" icon={Undo2} onClick={openReturn}>
               {t('return_cylinders')}
             </Button>
-            <Button variant="outline" icon={FileText} onClick={() => printNow('doc')}>
+            <Button data-shortcut="print" variant="outline" icon={FileText} onClick={() => printNow('doc')}>
               {t('statement')}
             </Button>
           </div>

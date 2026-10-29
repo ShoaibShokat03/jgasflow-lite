@@ -37,7 +37,7 @@ export default function CylinderTypes() {
         actions={
           <>
             <ExportMenu title={t('manage_cylinder_types')} columns={stockColumns} rows={q.data} />
-            <Button icon={Plus} onClick={() => setForm('new')}>
+            <Button data-shortcut="add" icon={Plus} onClick={() => setForm('new')}>
               {t('add_cylinder_type')}
             </Button>
           </>

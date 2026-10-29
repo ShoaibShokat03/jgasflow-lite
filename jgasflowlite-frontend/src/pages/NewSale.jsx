@@ -441,7 +441,7 @@ function SaleForm({ types }) {
               </div>
             </div>
             <div className="hidden lg:block">
-              <Button variant="accent" size="lg" full icon={Check} loading={saving} onClick={save}>
+              <Button data-shortcut="save" variant="accent" size="lg" full icon={Check} loading={saving} onClick={save}>
                 {t('save_sale')}
               </Button>
             </div>
@@ -456,7 +456,7 @@ function SaleForm({ types }) {
             <div className="text-[11.5px] font-semibold text-muted">{t('total')}</div>
             <div className="text-[21px] font-black text-primary num truncate">{money(total)}</div>
           </div>
-          <Button variant="accent" size="lg" icon={Check} loading={saving} onClick={save}>
+          <Button data-shortcut="save" variant="accent" size="lg" icon={Check} loading={saving} onClick={save}>
             {t('save_sale')}
           </Button>
         </div>
@@ -503,7 +503,7 @@ function PriceDialog({ line, field = 'price', onClose, onSave }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} onClick={() => onSave(parseNum(v))}>
+          <Button data-shortcut="save" icon={Check} onClick={() => onSave(parseNum(v))}>
             {t('set')}
           </Button>
         </>

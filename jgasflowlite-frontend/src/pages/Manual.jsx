@@ -23,6 +23,7 @@ import {
   Users,
   UsersRound,
   Wallet,
+  Keyboard,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getLang, t, useLang } from '@/lib/i18n';
@@ -53,6 +54,7 @@ const ICONS = {
   printer: [Printer, '#1565C0'],
   shield: [ShieldCheck, '#2E7D32'],
   help: [HelpCircle, '#6A3FB5'],
+  keyboard: [Keyboard, '#F26B1D'],
 };
 const ROLE_TONE = { owner: 'orange', manager: 'blue', salesman: 'green' };
 
@@ -105,7 +107,7 @@ export default function Manual() {
         title={t('user_manual')}
         sub={`${t('manual_sub')} · ${t('manual_updated')} ${MANUAL_UPDATED}`}
         actions={
-          <Button variant="outline" icon={Printer} onClick={() => printNow('doc')}>
+          <Button data-shortcut="print" variant="outline" icon={Printer} onClick={() => printNow('doc')}>
             {t('print')}
           </Button>
         }

@@ -82,7 +82,7 @@ export default function PurchaseView() {
             <PrintCredit />
           </Paper>
           <div className="no-print flex justify-center gap-2 mt-4">
-            <Button icon={Printer} onClick={() => printNow('receipt')}>
+            <Button data-shortcut="print" icon={Printer} onClick={() => printNow('receipt')}>
               {t('print')}
             </Button>
             {p.supplier_uid && (

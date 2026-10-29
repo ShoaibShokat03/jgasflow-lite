@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ShortcutsButton, ShortcutsDialog, useGlobalShortcuts } from './Shortcuts';
 import {
   BarChart3,
 
@@ -290,6 +291,7 @@ function TopBar({ admin }) {
         )}
         <LangToggle />
         <FullscreenButton />
+        {!admin && <ShortcutsButton />}
         {!admin && !loc.pathname.startsWith('/app/sales/new') && (
           <Button variant="accent" icon={Plus} to="/app/sales/new">
             {t('new_sale')}
@@ -368,6 +370,12 @@ function BottomBar() {
 }
 
 /** App frame: navy sidebar (desktop), top bar + drawer + bottom bar (phone). */
+/** Keyboard shortcuts for shop pages (see "Keyboard shortcuts"). */
+function GlobalKeys() {
+  useGlobalShortcuts();
+  return <ShortcutsDialog />;
+}
+
 export function Shell({ admin = false }) {
   useLang();
   const auth = useAuth();
@@ -415,6 +423,7 @@ export function Shell({ admin = false }) {
       </main>
 
       {!admin && auth.role && <BottomBar />}
+      {!admin && <GlobalKeys />}
     </div>
   );
 }

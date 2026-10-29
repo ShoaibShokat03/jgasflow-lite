@@ -40,7 +40,7 @@ export default function BankAccounts() {
             <Button variant="outline" icon={ArrowLeftRight} disabled={list.length < 2} onClick={() => setMove({ mode: 'transfer' })}>
               {t('acc_transfer')}
             </Button>
-            <Button icon={Plus} onClick={() => setForm('new')}>
+            <Button data-shortcut="add" icon={Plus} onClick={() => setForm('new')}>
               {t('acc_add_bank')}
             </Button>
           </>
@@ -157,7 +157,7 @@ function BankForm({ open, initial, onClose, all }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button
+          <Button data-shortcut="save"
             icon={Check}
             loading={save.isPending}
             onClick={() =>
@@ -278,7 +278,7 @@ function Statement({ account, onClose }) {
                 ]}
                 rows={[{ date: '', description: t('acc_opening'), money_in: 0, money_out: 0, balance: r.opening }, ...r.entries]}
               />
-              <Button size="sm" variant="outline" icon={Printer} onClick={() => printNow('doc')}>
+              <Button data-shortcut="print" size="sm" variant="outline" icon={Printer} onClick={() => printNow('doc')}>
                 {t('print')}
               </Button>
             </div>

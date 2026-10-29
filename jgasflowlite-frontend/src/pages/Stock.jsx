@@ -37,7 +37,7 @@ export default function Stock() {
         actions={
           <>
             <ExportMenu title={t('x_stock')} columns={stockColumns} rows={types.data} />
-            <Button variant="outline" icon={Plus} onClick={() => setForm('new')}>
+            <Button data-shortcut="add" variant="outline" icon={Plus} onClick={() => setForm('new')}>
               {t('add_stock_item')}
             </Button>
             <Button icon={PackagePlus} to="/app/purchases/new">
@@ -238,7 +238,7 @@ function AdjustStock({ type, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate(byKg ? { kg: parseNum(kg), note } : { full, empty: item ? 0 : empty, note })}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={() => save.mutate(byKg ? { kg: parseNum(kg), note } : { full, empty: item ? 0 : empty, note })}>
             {t('save')}
           </Button>
         </>
@@ -349,7 +349,7 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={submit}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>
@@ -501,7 +501,7 @@ function FillGas({ gas, types, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} disabled={!src || count < 1} onClick={() => save.mutate()}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} disabled={!src || count < 1} onClick={() => save.mutate()}>
             {t('save')}
           </Button>
         </>

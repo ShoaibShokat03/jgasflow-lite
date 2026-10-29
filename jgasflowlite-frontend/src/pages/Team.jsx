@@ -24,7 +24,7 @@ export default function Team() {
         actions={
           <>
             <ExportMenu title={t('x_team')} columns={() => teamColumns(daysAgo)} rows={q.data?.users} />
-            <Button icon={UserPlus} onClick={() => setForm('new')}>
+            <Button data-shortcut="add" icon={UserPlus} onClick={() => setForm('new')}>
               {t('add_staff')}
             </Button>
           </>
@@ -130,7 +130,7 @@ function StaffForm({ open, initial, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={submit}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>

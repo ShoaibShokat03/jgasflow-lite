@@ -240,20 +240,20 @@ export function PageHeader({ title, sub, back, actions, className }) {
   );
 }
 
-/** Simple bar chart (7 days, by day). */
-export function Bars({ data, height = 120, valueLabel = (v) => money(v) }) {
+/** Simple bar chart: one slot per entry, bars never wider than 34px. [showValues] writes each amount above its bar. */
+export function Bars({ data, height = 120, valueLabel = (v) => money(v), showValues = false }) {
   const max = Math.max(1, ...data.map((d) => d.value));
+  const gap = data.length > 20 ? 'gap-[3px]' : 'gap-2';
   return (
-    <div className="flex items-end gap-2" style={{ height }}>
+    <div className={cn('flex items-end', gap)} style={{ height }}>
       {data.map((d, i) => (
-        <div key={i} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group">
-          <div className="text-[10.5px] font-semibold text-muted mb-1 opacity-0 group-hover:opacity-100 transition whitespace-nowrap">{d.value ? valueLabel(d.value) : ''}</div>
+        <div key={d.key ?? i} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group" title={`${d.title ?? d.label}: ${valueLabel(d.value)}`}>
+          <div className={cn('text-[10.5px] font-semibold text-muted mb-1 whitespace-nowrap transition', !showValues && 'opacity-0 group-hover:opacity-100')}>{d.value ? valueLabel(d.value) : ''}</div>
           <div
-            className={cn('w-full max-w-[34px] rounded-t-[6px] rounded-b-[2px] transition-all', d.highlight ? 'bg-accent' : 'bg-primary-3')}
+            className={cn('w-full max-w-[34px] rounded-t-[6px] rounded-b-[2px] transition-all group-hover:brightness-125', d.highlight ? 'bg-accent' : 'bg-primary-3')}
             style={{ height: `${Math.max(d.value ? 6 : 2, (d.value / max) * (height - 34))}px`, opacity: d.value ? 1 : 0.25 }}
-            title={valueLabel(d.value)}
           />
-          <div className={cn('mt-1.5 text-[11px] truncate', d.highlight ? 'font-bold text-ink' : 'text-muted')}>{d.label}</div>
+          <div className={cn('mt-1.5 text-[11px] truncate max-w-full', d.highlight ? 'font-bold text-ink' : 'text-muted')}>{d.label}</div>
         </div>
       ))}
     </div>

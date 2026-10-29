@@ -63,7 +63,7 @@ export default function SupplierView() {
                 <Button variant="good" icon={HandCoins} onClick={() => setDlg('pay')}>
                   {t('pay_supplier')}
                 </Button>
-                <Button variant="outline" icon={FileText} className="col-span-2" onClick={() => printNow('doc')}>
+                <Button data-shortcut="print" variant="outline" icon={FileText} className="col-span-2" onClick={() => printNow('doc')}>
                   {t('statement')}
                 </Button>
               </div>
@@ -168,7 +168,7 @@ function PaySupplier({ open, supplier, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button
+          <Button data-shortcut="save"
             variant="good"
             icon={Check}
             loading={save.isPending}

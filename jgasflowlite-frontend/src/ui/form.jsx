@@ -218,7 +218,7 @@ export function SearchBox({ value, onChange, placeholder, className, autoFocus }
   return (
     <div className={cn('relative', className)}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-[18px] text-muted pointer-events-none" />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || t('search')} autoComplete="off" className="ctl pl-10 pr-9" autoFocus={autoFocus} />
+      <input data-shortcut="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || t('search')} autoComplete="off" className="ctl pl-10 pr-9" autoFocus={autoFocus} />
       {value && (
         <button type="button" onClick={() => onChange('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center size-7 rounded-md text-muted hover:text-primary" aria-label={t('clear')}>
           <X className="size-4" />

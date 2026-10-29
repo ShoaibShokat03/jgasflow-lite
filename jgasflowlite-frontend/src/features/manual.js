@@ -689,6 +689,36 @@ export const MANUAL = [
     },
   },
   {
+    id: 'shortcuts',
+    icon: 'keyboard',
+    roles: ['owner', 'manager', 'salesman'],
+    to: '/app/settings',
+    en: {
+      title: 'Keyboard shortcuts',
+      intro: 'On a computer, press a key instead of clicking: open pages, save, print, export and search.',
+      steps: [
+        'Press **?** (or click the keyboard button at the top, or **Settings** > **Keyboard shortcuts** > **See and change keys**) to see every key.',
+        'Open a page: **Alt+N** new sale, **Alt+H** home, **Alt+S** sales, **Alt+C** customers, **Alt+U** udhaar, **Alt+K** stock, **Alt+B** new purchase, **Alt+P** purchases, **Alt+R** reports, **Alt+A** accounts, **Alt+G** settings.',
+        'On the open page: **Ctrl+S** saves the sale, purchase or open form, **Ctrl+P** prints the receipt or report, **Ctrl+E** opens **Export** (CSV or Excel), **Alt+I** adds a new customer, supplier, item or entry, and **/** goes to the search box.',
+        'To use your own key, click **Change** next to it and press the new key. **Esc** cancels and **Backspace** turns the key off. If the key was used by another action, that one is turned off.',
+        'Click **Default keys** to set every key back.',
+      ],
+      tips: ['Changed keys are saved in this browser, so each computer can have its own keys.', 'Keys with Ctrl or Alt work while typing in a box. **/** and **?** work when the cursor is not in a box.'],
+    },
+    ur: {
+      title: 'Keyboard shortcuts',
+      intro: 'Computer par click ki jagah key dabayein: page kholna, save, print, export aur talash.',
+      steps: [
+        '**?** dabayein (ya upar keyboard ka button, ya **Settings** > **Keyboard shortcuts** > **See and change keys**) aur har key dekhein.',
+        'Page kholein: **Alt+N** nayi sale, **Alt+H** home, **Alt+S** sales, **Alt+C** customers, **Alt+U** udhaar, **Alt+K** stock, **Alt+B** nayi kharidari, **Alt+P** kharidari, **Alt+R** reports, **Alt+A** accounts, **Alt+G** settings.',
+        'Khule page par: **Ctrl+S** sale, kharidari ya khula form save karta hai, **Ctrl+P** raseed ya report print karta hai, **Ctrl+E** **Export** kholta hai (CSV ya Excel), **Alt+I** naya customer, supplier, saman ya entry shamil karta hai, aur **/** talash ke box mein le jata hai.',
+        'Apni key lagane ke liye us ke sath **Change** dabayein aur nayi key dabayein. **Esc** se wapas aur **Backspace** se key band. Agar woh key kisi aur kaam par thi to woh band ho jati hai.',
+        '**Default keys** se saari keys pehle jaisi.',
+      ],
+      tips: ['Badli hui keys isi browser mein save hoti hain, har computer ki apni keys ho sakti hain.', 'Ctrl ya Alt wali keys box mein likhte hue bhi chalti hain. **/** aur **?** tab chalti hain jab cursor box mein na ho.'],
+    },
+  },
+  {
     id: 'account',
     icon: 'shield',
     roles: ['owner', 'manager', 'salesman'],

@@ -69,7 +69,7 @@ export function AccountPanel() {
               </div>
             </div>
           )}
-          <Button
+          <Button data-shortcut="save"
             icon={Check}
             loading={save.isPending}
             onClick={() => {
@@ -236,7 +236,7 @@ function ChangeEmail({ open, onClose, onDone }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={submit}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>

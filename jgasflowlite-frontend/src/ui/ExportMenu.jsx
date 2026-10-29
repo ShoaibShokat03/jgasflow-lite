@@ -60,7 +60,7 @@ export function ExportMenu({ title, columns, rows, all, className, align = 'righ
 
   return (
     <div ref={ref} className={cn('relative', className)}>
-      <Button variant="outline" icon={Download} iconRight={ChevronDown} aria-haspopup="menu" aria-expanded={open} disabled={!rows} onClick={() => setOpen(!open)}>
+      <Button data-shortcut="export" variant="outline" icon={Download} iconRight={ChevronDown} aria-haspopup="menu" aria-expanded={open} disabled={!rows} onClick={() => setOpen(!open)}>
         {t('export')}
       </Button>
       {open && (

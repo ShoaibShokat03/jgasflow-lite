@@ -54,7 +54,7 @@ function Page({ title, sub, print, actions, children }) {
             <>
               {actions}
               {print && (
-                <Button variant="outline" icon={Printer} onClick={() => printNow('doc')}>
+                <Button data-shortcut="print" variant="outline" icon={Printer} onClick={() => printNow('doc')}>
                   {t('print')}
                 </Button>
               )}
@@ -174,7 +174,7 @@ export function LoansPage() {
           <Button variant="outline" icon={HandCoins} onClick={() => setForm({ kind: 'loan_given' })}>
             {t('give_loan')}
           </Button>
-          <Button icon={Plus} onClick={() => setForm({ kind: 'loan_taken' })}>
+          <Button data-shortcut="add" icon={Plus} onClick={() => setForm({ kind: 'loan_taken' })}>
             {t('take_loan')}
           </Button>
         </>
@@ -759,7 +759,7 @@ export function EntryForm({ open, initial, onClose, chart, preset, noLoan }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={submit}>
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={submit}>
             {t('save')}
           </Button>
         </>
@@ -831,7 +831,7 @@ function EntriesTab({ p, only }) {
           rows={q.data}
         />
         {!only && (
-          <Button icon={Plus} onClick={() => setForm('new')}>
+          <Button data-shortcut="add" icon={Plus} onClick={() => setForm('new')}>
             {t('acc_new_entry')}
           </Button>
         )}
@@ -914,7 +914,7 @@ function ChartTab() {
         <>
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <span className="flex-1" />
-            <Button icon={Plus} onClick={() => setForm('new')}>
+            <Button data-shortcut="add" icon={Plus} onClick={() => setForm('new')}>
               {t('acc_add_account')}
             </Button>
           </div>
@@ -955,7 +955,7 @@ function ChartTab() {
                 <Button variant="outline" onClick={() => setForm(null)}>
                   {t('cancel')}
                 </Button>
-                <Button icon={Check} loading={save.isPending} onClick={() => (name.trim().length < 2 ? toast(t('required'), 'error') : save.mutate(form === 'new' ? { name: name.trim(), type } : { name: name.trim() }))}>
+                <Button data-shortcut="save" icon={Check} loading={save.isPending} onClick={() => (name.trim().length < 2 ? toast(t('required'), 'error') : save.mutate(form === 'new' ? { name: name.trim(), type } : { name: name.trim() }))}>
                   {t('save')}
                 </Button>
               </>

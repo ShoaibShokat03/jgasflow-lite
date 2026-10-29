@@ -108,7 +108,7 @@ export function MoveMoney({ open, mode, account, list, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} disabled={!!short} onClick={submit} className="max-w-full">
+          <Button data-shortcut="save" icon={Check} loading={save.isPending} disabled={!!short} onClick={submit} className="max-w-full">
             <span className="truncate">{okLabel}</span>
           </Button>
         </>

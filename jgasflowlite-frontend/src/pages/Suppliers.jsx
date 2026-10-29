@@ -21,7 +21,7 @@ export default function Suppliers() {
         actions={
           <>
             <ExportMenu title={t('suppliers')} columns={supplierColumns} rows={list.data} all={() => api.get('/suppliers')} />
-            <Button icon={UserPlus} onClick={() => setForm(true)}>
+            <Button data-shortcut="add" icon={UserPlus} onClick={() => setForm(true)}>
               {t('add_supplier')}
             </Button>
           </>

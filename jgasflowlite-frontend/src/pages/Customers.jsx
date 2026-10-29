@@ -26,7 +26,7 @@ export default function Customers() {
         actions={
           <>
             <ExportMenu title={t('customers')} columns={customerColumns} rows={list.data} all={() => api.get('/customers')} />
-            <Button icon={UserPlus} onClick={() => setParams({ new: '1' })}>
+            <Button data-shortcut="add" icon={UserPlus} onClick={() => setParams({ new: '1' })}>
               {t('add_customer')}
             </Button>
           </>
