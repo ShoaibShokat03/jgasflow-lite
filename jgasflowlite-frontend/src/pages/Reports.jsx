@@ -175,8 +175,8 @@ function SalesChart({ byDay, range }) {
             {monthly ? t('chart_avg_month') : t('chart_avg_day')}: <b className="text-ink">{money(bars.length ? Math.round(sum / bars.length) : 0)}</b>
           </span>
         </div>
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: Math.max(280, bars.length * 22) }}>
+        <div className={bars.length > 40 ? 'overflow-x-auto' : ''}>
+          <div style={{ minWidth: bars.length > 40 ? bars.length * 14 : undefined }}>
             <Bars data={bars} height={170} showValues={bars.length <= 12} />
           </div>
         </div>

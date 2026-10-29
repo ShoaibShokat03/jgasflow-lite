@@ -97,7 +97,7 @@ export default function Stock() {
                       </div>
                     ) : ty.unit === 'pcs' ? (
                       <div className="grid grid-cols-3 gap-2 mt-3">
-                        <Count label={t('in_stock')} value={Math.max(0, ty.full_qty)} tone="text-primary" />
+                        <Count label={t('in_stock_label')} value={Math.max(0, ty.full_qty)} tone="text-primary" />
                         <Count label={t('low_stock_alert')} value={ty.low_level} tone="text-muted" />
                         <div />
                       </div>

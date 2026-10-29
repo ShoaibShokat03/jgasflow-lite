@@ -313,7 +313,7 @@ function ExpiryBanner() {
   if (!sub) return null;
   const warn = sub.status === 'active' && sub.days_left <= 5;
   if (sub.status === 'active' && !warn) return null;
-  const msg = sub.status === 'suspended' ? t('banner_suspended') : sub.status === 'expired' ? t('banner_expired') : t('banner_ending', { n: sub.days_left, plan: sub.plan_name });
+  const msg = sub.status === 'suspended' ? t('banner_suspended') : sub.status === 'expired' ? t('banner_expired') : t(sub.days_left === 1 ? 'banner_ending_1' : 'banner_ending', { n: sub.days_left, plan: sub.plan_name });
   return (
     <div className={cn('no-print rounded-[var(--radius-card)] border px-4 py-3 mb-4 flex flex-wrap items-center gap-3', sub.status === 'active' ? 'bg-[#fff8e6] border-[#f3dca0]' : 'bg-[#fff6f5] border-[#f6cfcb]')}>
       <div className="flex-1 min-w-[200px] text-[13.5px] font-medium">{msg}</div>

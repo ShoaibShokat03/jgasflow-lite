@@ -691,8 +691,11 @@ export function EntryForm({ open, initial, onClose, chart, preset, noLoan }) {
   const firstBank = defaultFor(list, '1002');
   const blank = { kind: 'expense', date: dayKey(), amount: '', account: '', money: '', from: '', to: '', party: '', note: '' };
   const [f, setF] = useState(blank);
+  // The form opens only after it holds the right values (no flash of the previous kind).
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) return setReady(false);
+    setReady(true);
     if (initial) {
       const k = initial.kind;
       const out = OUT_KINDS.includes(k);
@@ -750,7 +753,7 @@ export function EntryForm({ open, initial, onClose, chart, preset, noLoan }) {
   const incomeOpts = of('income').filter((o) => o.value !== '3001');
   return (
     <Modal
-      open={open}
+      open={open && ready}
       onClose={onClose}
       title={initial ? `${t('edit')} ${initial.ref}` : t('acc_new_entry')}
       icon={NotebookPen}

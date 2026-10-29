@@ -90,6 +90,7 @@ export function comboOf(e) {
   let k;
   if (/^Key[A-Z]$/.test(e.code)) k = e.code.slice(3);
   else if (/^Digit[0-9]$/.test(e.code)) k = e.code.slice(5);
+  else if (e.code === 'Slash' && e.shiftKey) k = '?';
   else if (e.key === ' ') k = 'Space';
   else if (e.key.length === 1) k = e.key.toUpperCase();
   else k = e.key;

@@ -875,7 +875,7 @@ export class GasService {
     );
     if (!r) throw new NotFoundException('Purchase not found');
     const items = await this.db.all<any>(
-      `SELECT pi.*, ty.name AS type_name FROM purchase_items pi
+      `SELECT pi.*, ty.name AS type_name, ty.unit FROM purchase_items pi
        JOIN cylinder_types ty ON ty.tenant_id = pi.tenant_id AND ty.uid = pi.type_uid
        WHERE pi.tenant_id = ? AND pi.purchase_uid = ? AND pi.deleted = 0 ORDER BY pi.id`,
       [t, uid],

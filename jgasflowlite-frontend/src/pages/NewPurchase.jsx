@@ -151,7 +151,7 @@ function Form({ types }) {
               const active = l.qty || l.sent || l.emptyBuy;
               const item = l.type.unit === 'pcs';
               return (
-                <div key={l.type.uid} className={cn('bg-white rounded-[var(--radius-card)] p-3 border transition', active ? 'border-primary ring-1 ring-primary/30' : 'border-line')}>
+                <div key={l.type.uid} className={cn('flex flex-col bg-white rounded-[var(--radius-card)] p-3 border transition', active ? 'border-primary ring-1 ring-primary/30' : 'border-line')}>
                   <div className="flex items-center gap-2.5">
                     <StockArt type={l.type} size={36} />
                     <div className="min-w-0 flex-1">
@@ -179,25 +179,25 @@ function Form({ types }) {
                     (l.more || l.emptyBuy > 0 ? (
                       <div className="mt-2 pt-2 border-t border-dashed border-line">
                         <div className="flex items-center justify-between">
-                          <span className="text-[13px] font-semibold">{t('buy_empty_cyl')}</span>
+                          <span className="text-[13px] font-semibold truncate">{t('buy_empty_cyl')}</span>
                           <QtyStepper value={l.emptyBuy} onChange={(v) => set(i, { emptyBuy: v })} tone="orange" />
                         </div>
                         <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className="text-[13px] font-semibold">{t('empty_cyl_rate')}</span>
+                          <span className="text-[13px] font-semibold truncate">{t('empty_cyl_rate')}</span>
                           <MoneyInput value={l.emptyRate} onChange={(v) => set(i, { emptyRate: v })} className="w-[148px]" aria-label={t('empty_cyl_rate')} />
                         </div>
                       </div>
                     ) : (
-                      <button type="button" onClick={() => set(i, { more: true })} className="mt-2 w-full h-8 rounded-[var(--radius-xs)] bg-bg text-[12.5px] font-bold text-primary hover:bg-soft">
+                      <button type="button" onClick={() => set(i, { more: true, emptyRate: l.emptyRate || (l.type.cyl_price ? numInput(l.type.cyl_price) : '') })} className="mt-2 w-full h-8 rounded-[var(--radius-xs)] bg-bg text-[12.5px] font-bold text-primary hover:bg-soft">
                         {t('buy_empty_more')}
                       </button>
                     ))}
-                  {(l.qty > 0 || l.emptyBuy > 0) && (
-                    <div className="mt-2.5 pt-2.5 border-t border-line flex justify-between">
+                  <div className="mt-auto pt-2.5">
+                    <div className="pt-2.5 border-t border-line flex justify-between">
                       <span className="text-[12px] font-bold text-muted">{t('amount')}</span>
-                      <span className="font-black num">{money(l.qty * parseNum(l.price) + l.emptyBuy * parseNum(l.emptyRate))}</span>
+                      <span className={cn('font-black num whitespace-nowrap', !(l.qty > 0 || l.emptyBuy > 0) && 'text-muted/60')}>{money(l.qty * parseNum(l.price) + l.emptyBuy * parseNum(l.emptyRate))}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}

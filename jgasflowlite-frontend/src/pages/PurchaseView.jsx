@@ -53,7 +53,7 @@ export default function PurchaseView() {
               <thead>
                 <tr className="text-muted">
                   <th className="text-left font-semibold py-1">{t('item')}</th>
-                  <th className="text-right font-semibold">{t('full_recv')}</th>
+                  <th className="text-right font-semibold">{t('qty')}</th>
                   <th className="text-right font-semibold">{t('empty_sent')}</th>
                   <th className="text-right font-semibold">{t('amount')}</th>
                 </tr>
@@ -68,7 +68,7 @@ export default function PurchaseView() {
                       </div>
                     </td>
                     <td className="text-right num">{i.qty}</td>
-                    <td className="text-right num">{i.empty_sent}</td>
+                    <td className="text-right num">{i.mode === 'empty' || i.unit === 'pcs' ? '-' : i.empty_sent}</td>
                     <td className="text-right num font-semibold">{num0(i.amount)}</td>
                   </tr>
                 ))}

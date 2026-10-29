@@ -303,7 +303,7 @@ function SaleForm({ types }) {
                   : `${t('full')}: ${full} · ${t('empty')}: ${empties}`;
               const more = l.more || l.newQty > 0 || l.emptySold > 0;
               return (
-                <div key={l.type.uid} className={cn('bg-white rounded-[var(--radius-card)] p-3 transition border', active ? 'border-primary ring-1 ring-primary/30 shadow-[var(--shadow-card)]' : 'border-line')}>
+                <div key={l.type.uid} className={cn('flex flex-col bg-white rounded-[var(--radius-card)] p-3 transition border', active ? 'border-primary ring-1 ring-primary/30 shadow-[var(--shadow-card)]' : 'border-line')}>
                   <div className="flex items-center gap-2.5">
                     <StockArt type={l.type} size={40} />
                     <div className="min-w-0 flex-1">
@@ -367,14 +367,15 @@ function SaleForm({ types }) {
                       )}
                     </>
                   )}
-                  {active && (
-                    <div className="mt-2.5 pt-2.5 border-t border-line flex items-center justify-between">
-                      <span className={cn('text-[12px] font-bold', customer && unreturned(l) > 0 ? 'text-warn' : 'text-muted')}>
+                  {/* Always shown, so a card never changes height when the first number is added. */}
+                  <div className="mt-auto pt-2.5">
+                    <div className="pt-2.5 border-t border-line flex items-center justify-between">
+                      <span className={cn('text-[12px] font-bold truncate', customer && unreturned(l) > 0 ? 'text-warn' : 'text-muted')}>
                         {customer && unreturned(l) > 0 ? `${unreturned(l)} ${t('not_returned')}` : t('amount')}
                       </span>
-                      <span className="font-black text-[15px] num">{money(lineAmount(l))}</span>
+                      <span className={cn('font-black text-[15px] num whitespace-nowrap', !active && 'text-muted/60')}>{money(lineAmount(l))}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
