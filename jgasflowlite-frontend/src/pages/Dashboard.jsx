@@ -20,7 +20,7 @@ import {
 import { useGet } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fDateShort, fDay, fTime, money, num0 } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { nBills, t } from '@/lib/i18n';
 import { Async, Bars, Button, Card, cn, Empty, IconBox, Initials, SectionHeader, StatTile, Tag } from '@/ui/kit';
 
 export default function Dashboard() {
@@ -75,7 +75,7 @@ function Body({ d }) {
             <button type="button" onClick={() => navigate('/app/sales')} className="flex items-end gap-2 flex-wrap text-left">
               <span className="text-[34px] lg:text-[40px] font-black tracking-tight num leading-tight">{money(d.today_sales)}</span>
               <span className="mb-2 text-[12.5px] font-semibold text-white/60 whitespace-nowrap">
-                {d.today_sales_count} {t('bills')} · {d.today_qty} {t('cyl')}
+                {nBills(d.today_sales_count)} · {d.today_qty} {t('cyl')}
               </span>
             </button>
           </div>

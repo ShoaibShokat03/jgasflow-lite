@@ -51,3 +51,8 @@ export const methodLabel = (m) => t(`pm_${m || 'cash'}`);
 /** A field label marked as not required: "Note (optional)". */
 export const opt = (label) => `${label} (${t('optional')})`;
 export const moveLabel = (r) => (S[`mv_${r}`] ? t(`mv_${r}`) : r === 'set' ? t('set_cylinders_held') : r);
+
+/** "1 bill" / "3 bills". */
+export const nBills = (n) => `${n} ${t(Number(n) === 1 ? 'bill_one' : 'bills')}`;
+/** "1 item" / "3 items". */
+export const nItems = (n) => `${n} ${t(Number(n) === 1 ? 'item_one' : 'items_short')}`;

@@ -63,7 +63,7 @@ export default function Support() {
           <KV label={t('shop_name')} value={auth.shop?.name ?? '-'} />
           <KV label={t('shop_id')} value={auth.shop ? `#${auth.shop.id}` : '-'} />
           <KV label={t('logged_in_as')} value={`${auth.user?.name ?? ''} · ${t(`role_${auth.role}`)}`} />
-          {auth.sub && <KV label={t('current_plan')} value={`${auth.sub.plan_name} · ${auth.sub.status !== 'active' ? t('expired') : auth.sub.lifetime ? t('lifetime_access') : t('days_left', { n: auth.sub.days_left })}`} />}
+          {auth.sub && <KV label={t('current_plan')} value={`${auth.sub.plan_name} · ${auth.sub.status !== 'active' ? t('expired') : auth.sub.lifetime ? t('lifetime_access') : t(auth.sub.days_left === 1 ? 'days_left_1' : 'days_left', { n: auth.sub.days_left })}`} />}
           <KV label={t('app_version')} value="JGasFlow Online 1.1" />
           <div className="mt-3 flex gap-2">
             <Button size="sm" variant="soft" icon={BookOpen} to="/app/manual">

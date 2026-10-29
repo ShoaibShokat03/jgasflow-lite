@@ -5,7 +5,7 @@ import { reportColumns, reportRows } from '@/features/exports';
 import { ExportMenu } from '@/ui/ExportMenu';
 import { useAuth } from '@/lib/auth';
 import { dayKey, fDate, money, num0, periodRange } from '@/lib/format';
-import { methodLabel, t } from '@/lib/i18n';
+import { methodLabel, nBills, nItems, t } from '@/lib/i18n';
 import { Async, Bars, Button, Card, Empty, KV, PageHeader, SectionHeader } from '@/ui/kit';
 import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
 import { Summary } from './Sales';
@@ -50,10 +50,10 @@ export default function Reports() {
               <Summary
                 label={t('sales')}
                 value={money(r.sales.total)}
-                sub={[`${r.sales.count} ${t('bills')}`, `${r.qty} ${t('cyl')}`, r.items_qty ? `${r.items_qty} ${t('items_short')}` : '', r.cyl_sold ? `${r.cyl_sold} ${t('cyl_bodies_short')}` : ''].filter(Boolean).join(' · ')}
+                sub={[nBills(r.sales.count), `${r.qty} ${t('cyl')}`, r.items_qty ? nItems(r.items_qty) : '', r.cyl_sold ? `${r.cyl_sold} ${t('cyl_bodies_short')}` : ''].filter(Boolean).join(' · ')}
               />
               <Summary label={t('cash_received')} value={money(r.money_in_total)} tone="green" />
-              <Summary label={t('purchases')} value={money(r.purchases.total)} sub={`${r.purchases.count} ${t('bills')}`} />
+              <Summary label={t('purchases')} value={money(r.purchases.total)} sub={nBills(r.purchases.count)} />
               <Summary label={t('est_profit')} value={money(r.est_profit)} sub={t('est_profit_sub')} tone={r.est_profit >= 0 ? 'green' : 'red'} />
             </div>
 

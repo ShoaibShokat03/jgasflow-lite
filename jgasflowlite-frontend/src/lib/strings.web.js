@@ -1006,4 +1006,7 @@ export const WEB_STRINGS = {
   banner_ending_1: ['Your {plan} ends in 1 day. Renew to keep adding sales and syncing phones.', 'Aap ka {plan} 1 din mein khatam hoga. Sale aur phone sync jari rakhne ke liye renew karein.'],
   in_stock_label: ['In stock', 'Stock mein'],
   qty: ['Qty', 'Tadaad'],
+  bill_one: ['bill', 'bill'],
+  item_one: ['item', 'saman'],
+  days_left_1: ['1 day left', '1 din baqi'],
 };

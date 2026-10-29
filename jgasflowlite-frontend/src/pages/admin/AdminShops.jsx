@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Store } from 'lucide-react';
 import { useGet } from '@/lib/api';
 import { daysAgo, fDate } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { nBills, t } from '@/lib/i18n';
 import { Async, Card, Empty, Initials, PageHeader, Tag } from '@/ui/kit';
 import { Chips, SearchBox } from '@/ui/form';
 
@@ -53,7 +53,7 @@ export default function AdminShops() {
                         {s.name} {s.pending > 0 && <Tag tone="amber">{t('req_pending')}</Tag>}
                       </div>
                       <div className="text-[12px] text-muted truncate">
-                        {s.owner_name} · {s.phone} · {t('joined')} {fDate(s.created_at)} · {s.users} {t('users')} · {s.sales} {t('bills')}
+                        {s.owner_name} · {s.phone} · {t('joined')} {fDate(s.created_at)} · {s.users} {t('users')} · {nBills(s.sales)}
                         {s.last_active_at ? ` · ${t('active_word')} ${daysAgo(s.last_active_at)}` : ''}
                       </div>
                     </div>

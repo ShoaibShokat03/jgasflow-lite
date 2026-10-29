@@ -3,7 +3,7 @@ import { Plus, ReceiptText } from 'lucide-react';
 import { api, useGet } from '@/lib/api';
 import { salesColumns } from '@/features/exports';
 import { money, periodRange } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { nBills, t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, PageHeader } from '@/ui/kit';
 import { Chips, SearchBox } from '@/ui/form';
 import { PeriodFilter, usePeriod } from '@/ui/PeriodFilter';
@@ -43,7 +43,7 @@ export default function Sales() {
           return (
             <>
               <div className="grid grid-cols-3 gap-2.5 mb-3">
-                <Summary label={t('sales')} value={money(total)} sub={`${list.length} ${t('bills')}`} />
+                <Summary label={t('sales')} value={money(total)} sub={nBills(list.length)} />
                 <Summary label={t('cylinders')} value={qty} sub={t('full_sold')} />
                 <Summary label={t('udhaar')} value={money(due)} sub={t('on_these_bills')} tone="red" />
               </div>

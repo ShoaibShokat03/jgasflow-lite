@@ -5,7 +5,7 @@ import { api, useGet } from '@/lib/api';
 import { purchaseColumns } from '@/features/exports';
 import { ExportMenu } from '@/ui/ExportMenu';
 import { fDateShort, money, periodRange } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { nBills, t } from '@/lib/i18n';
 import { Async, Button, Card, Empty, Initials, PageHeader, Tag } from '@/ui/kit';
 import { Chips } from '@/ui/form';
 import { Summary } from './Sales';
@@ -33,7 +33,7 @@ export default function Purchases() {
         {(rows) => (
           <>
             <div className="grid grid-cols-2 gap-2.5 mb-3">
-              <Summary label={t('purchases')} value={money(rows.reduce((a, p) => a + p.total, 0))} sub={`${rows.length} ${t('bills')}`} />
+              <Summary label={t('purchases')} value={money(rows.reduce((a, p) => a + p.total, 0))} sub={nBills(rows.length)} />
               <Summary label={t('payable')} value={money(rows.reduce((a, p) => a + Math.max(0, p.due), 0))} tone="red" />
             </div>
             <Card className="overflow-hidden">

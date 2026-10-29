@@ -187,7 +187,7 @@ function SideBody({ admin, onPick, footer = true }) {
               <Crown className="size-3.5 text-[#FFC23D]" /> {sub.plan_name}
             </div>
             <div className={cn('text-[11.5px]', sub.status === 'active' ? 'text-white/60' : 'text-[#ff9a8a] font-semibold')}>
-              {sub.status === 'active' ? (sub.lifetime ? t('lifetime_access') : t('days_left', { n: sub.days_left })) : sub.status === 'expired' ? t('plan_expired_short') : t('suspended')}
+              {sub.status === 'active' ? (sub.lifetime ? t('lifetime_access') : t(sub.days_left === 1 ? 'days_left_1' : 'days_left', { n: sub.days_left })) : sub.status === 'expired' ? t('plan_expired_short') : t('suspended')}
             </div>
           </button>
         )}

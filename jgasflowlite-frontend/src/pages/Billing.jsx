@@ -82,7 +82,7 @@ function Current({ s }) {
           {s.expires_at && (
             <div className="text-[12.5px] text-white/70 mt-1">
               {active ? t('valid_till') : t('ended_on')} {fDate(s.expires_at)}
-              {active ? ` (${t('days_left', { n: s.days_left })})` : ''}
+              {active ? ` (${t(s.days_left === 1 ? 'days_left_1' : 'days_left', { n: s.days_left })})` : ''}
             </div>
           )}
         </div>
