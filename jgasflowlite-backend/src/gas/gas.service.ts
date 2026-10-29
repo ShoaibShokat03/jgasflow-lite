@@ -604,7 +604,8 @@ export class GasService {
     }
     const rows = await this.db.all<any>(
       `SELECT s.*, c.name AS customer_name, c.phone AS customer_phone, ${SALE_ITEMS_TEXT} AS items_text,
-         (SELECT IFNULL(SUM(si.qty),0) FROM sale_items si WHERE si.tenant_id = s.tenant_id AND si.sale_uid = s.uid AND si.deleted = 0) AS qty
+         (SELECT IFNULL(SUM(IF(ty.unit = '' AND si.mode <> 'empty', si.qty, 0)),0) FROM sale_items si JOIN cylinder_types ty ON ty.tenant_id = si.tenant_id AND ty.uid = si.type_uid
+           WHERE si.tenant_id = s.tenant_id AND si.sale_uid = s.uid AND si.deleted = 0) AS qty
        FROM sales s LEFT JOIN customers c ON c.tenant_id = s.tenant_id AND c.uid = s.customer_uid
        WHERE s.tenant_id = ? AND s.deleted = 0 AND s.date >= ? AND s.date < ?${extra}
        ORDER BY s.date DESC, s.id DESC LIMIT ${cap(limit, 500)}`,
@@ -974,7 +975,8 @@ export class GasService {
     const [s, qty, p, o, h, counts, types, recent] = await Promise.all([
       q.one<any>('SELECT IFNULL(SUM(total),0) AS t, COUNT(*) AS n FROM sales WHERE tenant_id = ? AND deleted = 0 AND date >= ? AND date < ?', [t, from, to]),
       q.one<any>(
-        `SELECT IFNULL(SUM(si.qty),0) AS q, IFNULL(SUM(si.kg),0) AS k FROM sale_items si JOIN sales s ON s.tenant_id = si.tenant_id AND s.uid = si.sale_uid
+        `SELECT IFNULL(SUM(IF(ty.unit = '' AND si.mode <> 'empty', si.qty, 0)),0) AS q, IFNULL(SUM(si.kg),0) AS k FROM sale_items si JOIN sales s ON s.tenant_id = si.tenant_id AND s.uid = si.sale_uid
+         JOIN cylinder_types ty ON ty.tenant_id = si.tenant_id AND ty.uid = si.type_uid
          WHERE si.tenant_id = ? AND si.deleted = 0 AND s.deleted = 0 AND s.date >= ? AND s.date < ?`,
         [t, from, to],
       ),
@@ -1035,12 +1037,14 @@ export class GasService {
         [t, f, tt],
       ),
       q.all<any>(
-        `SELECT ty.uid AS type_uid, ty.name AS type_name, ty.purchase_price, ty.unit, SUM(si.qty) AS qty, SUM(si.empty_qty) AS empty_qty, SUM(si.kg) AS kg, SUM(si.amount) AS amount
+        `SELECT ty.uid AS type_uid, ty.name AS type_name, ty.purchase_price, ty.cyl_price, ty.unit, ty.category,
+                SUM(IF(si.mode = 'empty', 0, si.qty)) AS qty, SUM(si.empty_qty) AS empty_qty, SUM(si.kg) AS kg, SUM(si.amount) AS amount,
+                SUM(IF(si.mode = 'new', si.qty, 0)) AS new_qty, SUM(IF(si.mode = 'empty', si.qty, 0)) AS empty_sold, SUM(IF(si.mode = 'empty', si.amount, 0)) AS empty_amount
          FROM sale_items si
          JOIN sales s ON s.tenant_id = si.tenant_id AND s.uid = si.sale_uid AND s.deleted = 0
          JOIN cylinder_types ty ON ty.tenant_id = si.tenant_id AND ty.uid = si.type_uid
          WHERE si.tenant_id = ? AND si.deleted = 0 AND s.date >= ? AND s.date < ?
-         GROUP BY ty.uid, ty.name, ty.purchase_price, ty.unit, ty.sort ORDER BY ty.sort`,
+         GROUP BY ty.uid, ty.name, ty.purchase_price, ty.cyl_price, ty.unit, ty.category, ty.sort ORDER BY ty.unit = 'pcs', ty.sort`,
         [t, f, tt],
       ),
       q.all<any>(
@@ -1057,16 +1061,36 @@ export class GasService {
         [t, f, tt],
       ),
     ]);
+    // Profit: gas and items earn price minus purchase price. A cylinder itself (sold with the gas or
+    // empty) is taken at its cylinder price, so it adds no profit and no cost is guessed for it.
     const types = byType.map((r) => {
       const amount = Number(r.amount);
+      const unit = r.unit === 'kg' ? 'kg' : r.unit === 'pcs' ? 'pcs' : '';
+      const cylPart = Number(r.empty_amount) + Number(r.new_qty) * Number(r.cyl_price || 0);
       const cost = (Number(r.qty) + Number(r.kg)) * Number(r.purchase_price);
-      return { type_uid: r.type_uid, type_name: r.type_name, unit: r.unit === 'kg' ? 'kg' : '', qty: Number(r.qty), kg: round2(Number(r.kg)), empty_qty: Number(r.empty_qty), amount, est_profit: round2(amount - cost) };
+      return {
+        type_uid: r.type_uid,
+        type_name: r.type_name,
+        unit,
+        category: r.category ?? '',
+        qty: Number(r.qty),
+        kg: round2(Number(r.kg)),
+        empty_qty: Number(r.empty_qty),
+        cyl_sold: Number(r.new_qty) + Number(r.empty_sold),
+        empty_sold: Number(r.empty_sold),
+        amount,
+        cyl_amount: round2(cylPart),
+        est_profit: round2(amount - cylPart - cost),
+      };
     });
     return {
       from: f,
       to: tt,
       sales: { count: Number(sales.n), subtotal: Number(sales.subtotal), deposit: Number(sales.deposit), discount: Number(sales.discount), total: Number(sales.total), paid_at_sale: Number(sales.paid) },
-      qty: types.reduce((a, x) => a + x.qty, 0),
+      // Gas cylinders sold (refill or with the cylinder); other items and empties are counted apart.
+      qty: types.reduce((a, x) => a + (x.unit === '' ? x.qty : 0), 0),
+      items_qty: types.reduce((a, x) => a + (x.unit === 'pcs' ? x.qty : 0), 0),
+      cyl_sold: types.reduce((a, x) => a + x.cyl_sold, 0),
       est_profit: round2(types.reduce((a, x) => a + x.est_profit, 0) - Number(sales.discount)),
       by_type: types,
       money_in: byMethod.map((r) => ({ method: r.method || 'cash', count: Number(r.n), amount: Number(r.amount) })),

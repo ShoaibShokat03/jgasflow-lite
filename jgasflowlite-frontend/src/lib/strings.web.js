@@ -250,7 +250,7 @@ export const WEB_STRINGS = {
 
   // reports
   est_profit: ['Est. profit', 'Andazan munafa'],
-  est_profit_sub: ['Sale price minus purchase price', 'Farokht minus khareed qeemat'],
+  est_profit_sub: ['Gas and items: price minus purchase price. Cylinders sold are taken at their price (no profit).', 'Gas aur saman: qeemat minus khareed. Beche gaye cylinder apni qeemat par (nafa nahi).'],
   sales_by_day: ['Sales by day', 'Din war farokht'],
   sales_by_type: ['Sales by cylinder', 'Cylinder war farokht'],
   money_in: ['Money in', 'Aayi raqam'],
@@ -936,4 +936,6 @@ export const WEB_STRINGS = {
   col_grey: ['Grey', 'Surmai'],
   col_navy: ['Navy', 'Gehra neela'],
   col_brown: ['Brown', 'Bhoora'],
+  items_short: ['items', 'saman'],
+  cyl_bodies_short: ['cylinders sold', 'cylinder beche'],
 };

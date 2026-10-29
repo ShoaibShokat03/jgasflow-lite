@@ -47,7 +47,11 @@ export default function Reports() {
               </div>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <Summary label={t('sales')} value={money(r.sales.total)} sub={`${r.sales.count} ${t('bills')} · ${r.qty} ${t('cyl')}`} />
+              <Summary
+                label={t('sales')}
+                value={money(r.sales.total)}
+                sub={[`${r.sales.count} ${t('bills')}`, `${r.qty} ${t('cyl')}`, r.items_qty ? `${r.items_qty} ${t('items_short')}` : '', r.cyl_sold ? `${r.cyl_sold} ${t('cyl_bodies_short')}` : ''].filter(Boolean).join(' · ')}
+              />
               <Summary label={t('cash_received')} value={money(r.money_in_total)} tone="green" />
               <Summary label={t('purchases')} value={money(r.purchases.total)} sub={`${r.purchases.count} ${t('bills')}`} />
               <Summary label={t('est_profit')} value={money(r.est_profit)} sub={t('est_profit_sub')} tone={r.est_profit >= 0 ? 'green' : 'red'} />
@@ -83,8 +87,15 @@ export default function Reports() {
                       <tbody>
                         {r.by_type.map((x) => (
                           <tr key={x.type_uid} className="border-t border-line">
-                            <td className="px-4 py-2.5 font-semibold">{x.type_name}</td>
-                            <td className="px-2 text-right num">{num0(x.qty)}</td>
+                            <td className="px-4 py-2.5 font-semibold">
+                              <div className="truncate max-w-[220px]">{x.type_name}</div>
+                              {(x.cyl_sold > 0 || x.unit === 'pcs') && (
+                                <div className="text-[11.5px] text-muted font-normal truncate max-w-[220px]">
+                                  {x.unit === 'pcs' ? x.category || t('cat_other_items') : `${x.cyl_sold} ${t('cyl_bodies_short')} · ${money(x.cyl_amount)}`}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-2 text-right num whitespace-nowrap">{x.unit === 'kg' ? `${num0(x.kg)} ${t('kg')}` : num0(x.qty)}</td>
                             <td className="px-2 text-right num">{money(x.amount)}</td>
                             <td className="px-4 text-right num text-good">{money(x.est_profit)}</td>
                           </tr>

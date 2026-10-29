@@ -371,11 +371,11 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
                     key={k.value}
                     type="button"
                     onClick={() => setF((s) => ({ ...s, unit: k.value }))}
-                    className={cn('flex flex-col items-center gap-1 rounded-[var(--radius-card)] border px-2 py-2.5 text-center transition', on ? 'border-primary bg-soft ring-2 ring-primary/15' : 'border-line bg-white hover:bg-bg')}
+                    className={cn('h-[112px] flex flex-col items-center justify-start gap-1 rounded-[var(--radius-card)] border px-2 py-2.5 text-center transition overflow-hidden', on ? 'border-primary bg-soft ring-2 ring-primary/15' : 'border-line bg-white hover:bg-bg')}
                   >
                     <StockArt type={{ unit: k.value, color: f.color, category: f.category || 'Chulha' }} size={30} />
-                    <span className="font-semibold text-[12.5px] leading-tight">{k.label}</span>
-                    <span className="text-[10.5px] text-muted leading-tight">{k.sub}</span>
+                    <span className="font-semibold text-[12.5px] leading-tight line-clamp-1">{k.label}</span>
+                    <span className="text-[10.5px] text-muted leading-tight line-clamp-2">{k.sub}</span>
                   </button>
                 );
               })}

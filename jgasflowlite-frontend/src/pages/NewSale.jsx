@@ -313,7 +313,7 @@ function SaleForm({ types }) {
                     <button
                       type="button"
                       onClick={() => setEditPrice({ i, field: 'price' })}
-                      className="inline-flex items-center gap-1 h-8 px-2 rounded-[var(--radius-xs)] bg-[#fff0e6] text-accent-dark font-extrabold text-[13px] whitespace-nowrap num hover:bg-[#ffe2cf]"
+                      className="inline-flex shrink-0 items-center gap-1 h-8 px-2 rounded-[var(--radius-xs)] bg-[#fff0e6] text-accent-dark font-extrabold text-[13px] whitespace-nowrap num hover:bg-[#ffe2cf]"
                     >
                       {money(l.price)}
                       {byKg && <span className="text-[11px] font-bold">/{t('kg')}</span>}
@@ -331,24 +331,34 @@ function SaleForm({ types }) {
                       <Row label={t('empty_recv')} value={l.empty} onChange={(v) => set(i, { empty: v })} tone="orange" />
                       {more ? (
                         <div className="mt-2 pt-2 border-t border-dashed border-line">
+                          <button
+                            type="button"
+                            onClick={() => setEditPrice({ i, field: 'cylPrice' })}
+                            className={cn(
+                              'w-full flex items-center justify-between gap-2 h-9 px-2.5 rounded-[var(--radius-xs)] text-[12.5px] font-bold whitespace-nowrap',
+                              l.cylPrice > 0 ? 'bg-bg text-ink hover:bg-soft' : 'bg-[#fff0e6] text-accent-dark hover:bg-[#ffe2cf]',
+                            )}
+                          >
+                            <span className="truncate">{l.cylPrice > 0 ? t('cyl_price') : t('cyl_price_set')}</span>
+                            <span className="inline-flex items-center gap-1 num shrink-0">
+                              {money(l.cylPrice)} <Pencil className="size-3.5" />
+                            </span>
+                          </button>
                           <Row
                             label={t('sell_with_cyl')}
-                            sub={l.cylPrice > 0 ? `${money(l.price + l.cylPrice)} ${t('each')}` : t('cyl_price_set')}
+                            sub={`${money(l.price + l.cylPrice)} ${t('each')}`}
                             value={l.newQty}
                             onChange={(v) => set(i, { newQty: v })}
-                            max={Math.max(0, full - l.qty)}
+                            max={l.cylPrice > 0 ? Math.max(0, full - l.qty) : 0}
                           />
                           <Row
                             label={t('sell_empty_cyl')}
-                            sub={l.cylPrice > 0 ? `${money(l.cylPrice)} ${t('each')}` : t('cyl_price_set')}
+                            sub={`${money(l.cylPrice)} ${t('each')}`}
                             value={l.emptySold}
                             onChange={(v) => set(i, { emptySold: v })}
-                            max={empties + l.empty}
+                            max={l.cylPrice > 0 ? empties + l.empty : 0}
                             tone="orange"
                           />
-                          <button type="button" onClick={() => setEditPrice({ i, field: 'cylPrice' })} className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-primary hover:underline">
-                            <Pencil className="size-3" /> {t('cyl_price')}: {money(l.cylPrice)}
-                          </button>
                         </div>
                       ) : (
                         <button type="button" onClick={() => set(i, { more: true })} className="mt-2 w-full inline-flex items-center justify-center gap-1 h-8 rounded-[var(--radius-xs)] bg-bg text-[12.5px] font-bold text-primary hover:bg-soft">
