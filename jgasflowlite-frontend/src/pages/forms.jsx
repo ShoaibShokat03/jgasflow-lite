@@ -204,7 +204,7 @@ export function ReturnEmpties({ open, onClose, customer }) {
     },
     onError: onLow,
   });
-  const options = (types.data ?? []).filter((ty) => ty.unit !== 'kg').map((ty) => {
+  const options = (types.data ?? []).filter((ty) => ty.unit === '').map((ty) => {
     const hh = held.find((x) => x.type_uid === ty.uid);
     return { value: ty.uid, label: `${ty.name}${hh ? ` (${hh.qty})` : ''}` };
   });
@@ -300,7 +300,7 @@ export function SetHeld({ open, onClose, customer }) {
     >
       <div className="space-y-3.5">
         <p className="text-[13px] text-muted">{t('set_held_help')}</p>
-        <Select label={t('cylinder_type')} value={typeUid} onChange={setTypeUid} options={(types.data ?? []).filter((ty) => ty.unit !== 'kg').map((ty) => ({ value: ty.uid, label: ty.name }))} />
+        <Select label={t('cylinder_type')} value={typeUid} onChange={setTypeUid} options={(types.data ?? []).filter((ty) => ty.unit === '').map((ty) => ({ value: ty.uid, label: ty.name }))} />
         <div className="flex items-center justify-between">
           <span className="font-semibold">{t('cylinders')}</span>
           <QtyStepper value={qty} onChange={setQty} />

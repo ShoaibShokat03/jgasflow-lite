@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, ClipboardList, Cylinder, Flame, History, PackagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, ClipboardList, Cylinder, Flame, History, Package, PackagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, useAct, useGet } from '@/lib/api';
 import { moveColumns, stockColumns } from '@/features/exports';
 import { ExportMenu } from '@/ui/ExportMenu';
@@ -9,12 +9,14 @@ import { Async, Button, Card, cn, Empty, IconBox, PageHeader, SectionHeader, Sta
 import { Chips, MoneyInput, QtyStepper, Switch, TextInput } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { StockValueTiles } from '@/ui/StockValue';
+import { CYL_COLORS, CylinderArt, DEFAULT_CYL, groupOf, groupOptions, ITEM_CATEGORIES, StockArt } from '@/ui/StockArt';
 
 export default function Stock() {
   const types = useGet('/types', { all: 1 });
   const [form, setForm] = useState(null); // 'new' | type
   const [adjust, setAdjust] = useState(null);
   const [fill, setFill] = useState(null);
+  const [group, setGroup] = useState('');
   const confirm = useConfirm();
   const del = useAct((uid) => api.delete(`/types/${uid}`), {
     onSuccess: (r) => toast(r.deleted ? t('deleted') : t('type_hidden_web')),
@@ -22,19 +24,21 @@ export default function Stock() {
   });
 
   const remove = async (ty) => {
-    const msg = `${t('delete_type_msg')}\n\n${t('delete_type_stock')} ${ty.full_qty} ${t('full')}, ${ty.empty_qty} ${t('empty')}\n${t('delete_type_used_web')}`;
+    const stock = ty.unit === 'pcs' ? `${ty.full_qty} ${t('in_stock')}` : `${ty.full_qty} ${t('full')}, ${ty.empty_qty} ${t('empty')}`;
+    const msg = `${t('delete_type_msg')}\n\n${t('delete_type_stock')} ${stock}\n${t('delete_type_used_web')}`;
     if (await confirm({ title: `${t('delete')} ${ty.name}?`, message: msg, okLabel: t('delete'), danger: true })) del.mutate(ty.uid);
   };
 
   return (
     <div>
       <PageHeader
-        title={t('stock_cylinders')}
+        title={t('stock')}
+        sub={t('stock_sub')}
         actions={
           <>
             <ExportMenu title={t('x_stock')} columns={stockColumns} rows={types.data} />
             <Button variant="outline" icon={Plus} onClick={() => setForm('new')}>
-              {t('add_cylinder_type')}
+              {t('add_stock_item')}
             </Button>
             <Button icon={PackagePlus} to="/app/purchases/new">
               {t('new_purchase')}
@@ -45,21 +49,26 @@ export default function Stock() {
       <Async q={types}>
         {(list) => {
           const live = list.filter((x) => x.active);
+          const cyl = live.filter((x) => x.unit === '');
+          const items = live.filter((x) => x.unit === 'pcs');
+          const shown = list.filter((x) => !group || groupOf(x) === group);
           return (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <StatTile label={t('ready_to_sell')} value={num0(live.reduce((a, x) => a + x.full_qty, 0))} icon={Cylinder} color="#020033" />
-                <StatTile label={t('to_refill')} value={num0(live.reduce((a, x) => a + x.empty_qty, 0))} icon={Cylinder} color="#B77D00" />
-                <StatTile label={t('with_customers')} value={num0(live.reduce((a, x) => a + x.with_customers, 0))} icon={Cylinder} color="#6A3FB5" />
-                <StatTile label={t('total_owned')} value={num0(live.reduce((a, x) => a + x.full_qty + x.empty_qty + x.with_customers, 0))} icon={ClipboardList} color="#2E7D32" />
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <StatTile label={t('ready_to_sell')} value={num0(cyl.reduce((a, x) => a + Math.max(0, x.full_qty), 0))} icon={Cylinder} color="#020033" />
+                <StatTile label={t('to_refill')} value={num0(cyl.reduce((a, x) => a + Math.max(0, x.empty_qty), 0))} icon={Cylinder} color="#B77D00" />
+                <StatTile label={t('with_customers')} value={num0(cyl.reduce((a, x) => a + x.with_customers, 0))} icon={Cylinder} color="#6A3FB5" />
+                <StatTile label={t('total_owned')} value={num0(cyl.reduce((a, x) => a + Math.max(0, x.full_qty) + Math.max(0, x.empty_qty) + x.with_customers, 0))} icon={ClipboardList} color="#2E7D32" />
+                <StatTile label={t('other_items_stock')} value={num0(items.reduce((a, x) => a + Math.max(0, x.full_qty), 0))} icon={Package} color="#00897B" />
               </div>
               <StockValueTiles list={list} className="mt-2.5" />
-              <SectionHeader title={t('manage_cylinder_types')} />
+              <SectionHeader title={t('stock_items')} />
+              {groupOptions(list).length > 2 && <Chips className="mb-3" size="sm" value={group} onChange={setGroup} options={groupOptions(list)} />}
               <div className="grid md:grid-cols-2 gap-3">
-                {list.map((ty) => (
+                {shown.map((ty) => (
                   <Card key={ty.uid} className={cn('p-4', !ty.active && 'opacity-70')}>
                     <div className="flex items-start gap-3">
-                      <IconBox icon={Cylinder} color={ty.is_low && ty.active ? '#C62828' : '#020033'} size={40} />
+                      <StockArt type={ty} size={44} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-[15px]">{ty.name}</span>
@@ -67,7 +76,11 @@ export default function Stock() {
                           {ty.active && ty.is_low && <Tag tone="red">{t('low')}</Tag>}
                         </div>
                         <div className="text-[12.5px] text-muted">
-                          {ty.unit === 'kg' ? `${t('sale_price')} ${money(ty.price)}/${t('kg')}` : `${t('sale_price')} ${money(ty.price)} · ${t('security')} ${money(ty.deposit)}`}
+                          {ty.unit === 'kg'
+                            ? `${t('sale_price')} ${money(ty.price)}/${t('kg')}`
+                            : ty.unit === 'pcs'
+                              ? `${ty.category || t('cat_other_items')} · ${t('sale_price')} ${money(ty.price)}`
+                              : `${t('sale_price')} ${money(ty.price)} · ${t('security')} ${money(ty.deposit)}${ty.cyl_price > 0 ? ` · ${t('cyl_price')} ${money(ty.cyl_price)}` : ''}`}
                         </div>
                         {(ty.unit === 'kg' ? ty.gas_kg : ty.full_qty) > 0 && (
                           <div className="text-[12.5px] text-muted whitespace-nowrap">
@@ -79,6 +92,12 @@ export default function Stock() {
                     {ty.unit === 'kg' ? (
                       <div className="grid grid-cols-3 gap-2 mt-3">
                         <Count label={t('gas_kg_label')} value={ty.gas_kg} tone="text-primary" />
+                        <Count label={t('low_stock_alert')} value={ty.low_level} tone="text-muted" />
+                        <div />
+                      </div>
+                    ) : ty.unit === 'pcs' ? (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <Count label={t('in_stock')} value={Math.max(0, ty.full_qty)} tone="text-primary" />
                         <Count label={t('low_stock_alert')} value={ty.low_level} tone="text-muted" />
                         <div />
                       </div>
@@ -192,6 +211,7 @@ function AdjustStock({ type, onClose }) {
   const [kg, setKg] = useState('');
   const [note, setNote] = useState('');
   const byKg = type?.unit === 'kg';
+  const item = type?.unit === 'pcs';
   useEffect(() => {
     if (type) {
       setFull(type.full_qty);
@@ -218,7 +238,7 @@ function AdjustStock({ type, onClose }) {
           <Button variant="outline" onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate(byKg ? { kg: parseNum(kg), note } : { full, empty, note })}>
+          <Button icon={Check} loading={save.isPending} onClick={() => save.mutate(byKg ? { kg: parseNum(kg), note } : { full, empty: item ? 0 : empty, note })}>
             {t('save')}
           </Button>
         </>
@@ -228,6 +248,11 @@ function AdjustStock({ type, onClose }) {
         <p className="text-[13px] text-muted">{t('adjust_help')}</p>
         {byKg ? (
           <TextInput label={t('gas_in_stock')} value={kg} onChange={setKg} filter="decimal" />
+        ) : item ? (
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">{t('in_stock')}</span>
+            <QtyStepper value={full} onChange={setFull} />
+          </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
@@ -249,7 +274,9 @@ function AdjustStock({ type, onClose }) {
 /** noOpening: added from a purchase, so the purchase brings the stock (no opening counts). */
 export function TypeForm({ open, initial, onClose, onSaved, noOpening = false }) {
   const confirm = useConfirm();
-  const blank = { name: '', kg: '', price: '', wholesale_price: '', purchase_price: '', deposit: '', low_level: '5', sort: '', active: true, full_qty: 0, empty_qty: 0, unit: '', gas_kg: '' };
+  const blank = { name: '', kg: '', price: '', wholesale_price: '', purchase_price: '', deposit: '', low_level: '5', sort: '', active: true, full_qty: 0, empty_qty: 0, unit: '', gas_kg: '', category: '', color: DEFAULT_CYL, cyl_price: '' };
+  const all = useGet(open ? '/types' : null, { all: 1 });
+  const cats = [...new Set([...(all.data ?? []).filter((x) => x.unit === 'pcs' && x.category).map((x) => x.category), ...ITEM_CATEGORIES])];
   const [f, setF] = useState(blank);
   const [err, setErr] = useState('');
   useEffect(() => {
@@ -257,13 +284,28 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
     setErr('');
     setF(
       initial
-        ? { ...blank, ...initial, kg: numInput(initial.kg), price: numInput(initial.price), wholesale_price: numInput(initial.wholesale_price), purchase_price: numInput(initial.purchase_price), deposit: numInput(initial.deposit), low_level: String(initial.low_level), sort: String(initial.sort) }
+        ? {
+            ...blank,
+            ...initial,
+            kg: numInput(initial.kg),
+            price: numInput(initial.price),
+            wholesale_price: numInput(initial.wholesale_price),
+            purchase_price: numInput(initial.purchase_price),
+            deposit: numInput(initial.deposit),
+            low_level: String(initial.low_level),
+            sort: String(initial.sort),
+            color: initial.color || DEFAULT_CYL,
+            cyl_price: numInput(initial.cyl_price),
+            category: initial.category || '',
+          }
         : blank,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const byKg = f.unit === 'kg';
+  const item = f.unit === 'pcs';
+  const cylinder = !byKg && !item;
   const save = useAct((b) => (initial ? api.put(`/types/${initial.uid}`, b) : api.post('/types', b)), {
     onSuccess: (res) => {
       toast(t('saved'));
@@ -274,8 +316,9 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
   });
   const submit = async () => {
     if (!f.name.trim()) return setErr(t('required'));
-    const [sale, wholesale, purchase, deposit] = [f.price, f.wholesale_price, f.purchase_price, f.deposit].map(parseNum);
-    if ([sale, wholesale, purchase, deposit].some((v) => v > MAX_UNIT_PRICE)) return toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error');
+    if (item && !f.category.trim()) return toast(t('item_category_needed'), 'error');
+    const [sale, wholesale, purchase, deposit, cylPrice] = [f.price, f.wholesale_price, f.purchase_price, f.deposit, f.cyl_price].map(parseNum);
+    if ([sale, wholesale, purchase, deposit, cylPrice].some((v) => v > MAX_UNIT_PRICE)) return toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error');
     if (parseNum(f.kg) > 1000) return toast(t('weight_too_big'), 'error');
     const loss = Math.max(lossPerCylinder(sale, purchase), lossPerCylinder(wholesale, purchase));
     if (loss > 0 && !(await confirm({ title: t('loss_title'), message: t('loss_msg', { loss: money(loss) }), okLabel: t('save_anyway'), danger: true }))) return;
@@ -289,15 +332,18 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
       low_level: parseNum(f.low_level),
       sort: parseNum(f.sort),
       active: f.active,
-      ...(initial ? {} : { full_qty: noOpening ? 0 : f.full_qty, empty_qty: noOpening ? 0 : f.empty_qty, unit: byKg ? 'kg' : '', gas_kg: byKg ? parseNum(f.gas_kg) : 0 }),
+      category: item ? f.category.trim() : '',
+      color: cylinder ? f.color : '',
+      cyl_price: cylinder ? parseNum(f.cyl_price) : 0,
+      ...(initial ? {} : { full_qty: noOpening ? 0 : f.full_qty, empty_qty: noOpening || item ? 0 : f.empty_qty, unit: f.unit, gas_kg: byKg ? parseNum(f.gas_kg) : 0 }),
     });
   };
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={initial ? t('edit_cylinder_type') : t('add_cylinder_type')}
-      icon={Cylinder}
+      title={initial ? `${t('edit')} ${initial.name}` : t('add_stock_item')}
+      icon={item ? Package : Cylinder}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -310,29 +356,96 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
       }
     >
       <div className="grid grid-cols-2 gap-3.5">
-        {!initial && !noOpening && (
+        {!initial && (
           <div className="col-span-2">
-            <div className="label">{t('sold_by')}</div>
-            <Chips
-              value={f.unit}
-              onChange={set('unit')}
-              options={[
-                { value: '', label: t('by_cylinder'), icon: Cylinder },
-                { value: 'kg', label: t('by_kg'), icon: Flame },
-              ]}
-            />
+            <div className="label">{t('item_kind')}</div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: '', label: t('kind_cylinder'), sub: t('kind_cylinder_sub') },
+                ...(noOpening ? [] : [{ value: 'kg', label: t('kind_loose_gas'), sub: t('kind_loose_gas_sub') }]),
+                { value: 'pcs', label: t('kind_item'), sub: t('kind_item_sub') },
+              ].map((k) => {
+                const on = f.unit === k.value;
+                return (
+                  <button
+                    key={k.value}
+                    type="button"
+                    onClick={() => setF((s) => ({ ...s, unit: k.value }))}
+                    className={cn('flex flex-col items-center gap-1 rounded-[var(--radius-card)] border px-2 py-2.5 text-center transition', on ? 'border-primary bg-soft ring-2 ring-primary/15' : 'border-line bg-white hover:bg-bg')}
+                  >
+                    <StockArt type={{ unit: k.value, color: f.color, category: f.category || 'Chulha' }} size={30} />
+                    <span className="font-semibold text-[12.5px] leading-tight">{k.label}</span>
+                    <span className="text-[10.5px] text-muted leading-tight">{k.sub}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
-        <TextInput label={t('name')} value={f.name} onChange={set('name')} error={err} maxLength={60} placeholder={byKg ? t('loose_gas') : '11.8 kg'} className={cn('col-span-2', !byKg && 'sm:col-span-1')} autoFocus />
-        {!byKg && <TextInput label={t('weight_kg')} value={f.kg} onChange={set('kg')} filter="decimal" className="col-span-2 sm:col-span-1" />}
+        <TextInput
+          label={t('name')}
+          value={f.name}
+          onChange={set('name')}
+          error={err}
+          maxLength={60}
+          placeholder={byKg ? t('loose_gas') : item ? t('item_name_ph') : '11.8 kg'}
+          className={cn('col-span-2', cylinder && 'sm:col-span-1')}
+          autoFocus
+        />
+        {cylinder && <TextInput label={t('weight_kg')} value={f.kg} onChange={set('kg')} filter="decimal" className="col-span-2 sm:col-span-1" />}
+        {item && (
+          <div className="col-span-2">
+            <TextInput label={t('item_category')} value={f.category} onChange={set('category')} maxLength={60} list="jgf-item-cats" placeholder={ITEM_CATEGORIES[0]} />
+            <datalist id="jgf-item-cats">
+              {cats.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {cats.slice(0, 8).map((c) => (
+                <button key={c} type="button" onClick={() => set('category')(c)} className={cn('h-7 px-2.5 rounded-full border text-[12px] font-semibold whitespace-nowrap', f.category === c ? 'bg-primary text-white border-primary' : 'bg-white border-line hover:border-primary')}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {cylinder && (
+          <div className="col-span-2">
+            <div className="label">{t('cyl_color')}</div>
+            <div className="flex items-center gap-3">
+              <CylinderArt color={f.color} size={56} />
+              <div className="flex flex-wrap gap-1.5">
+                {CYL_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={t(c.key)}
+                    aria-label={t(c.key)}
+                    onClick={() => set('color')(c.value)}
+                    className={cn('size-8 rounded-full border-2 transition', f.color === c.value ? 'border-ink scale-110' : 'border-white ring-1 ring-line')}
+                    style={{ background: c.value }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         <MoneyInput label={byKg ? t('price_per_kg') : t('sale_price')} value={f.price} onChange={set('price')} />
         <MoneyInput label={byKg ? t('wholesale_per_kg') : t('wholesale_price')} value={f.wholesale_price} onChange={set('wholesale_price')} />
         <MoneyInput label={byKg ? t('purchase_per_kg') : t('purchase_price')} value={f.purchase_price} onChange={set('purchase_price')} />
-        {!byKg && <MoneyInput label={t('security_per_cyl')} value={f.deposit} onChange={set('deposit')} />}
-        <TextInput label={byKg ? `${t('low_stock_alert')} (${t('kg')})` : t('low_stock_alert')} value={f.low_level} onChange={set('low_level')} filter="int" hint={byKg ? undefined : t('low_stock_help')} />
+        {cylinder && <MoneyInput label={t('security_per_cyl')} value={f.deposit} onChange={set('deposit')} />}
+        {cylinder && <MoneyInput label={t('cyl_price')} value={f.cyl_price} onChange={set('cyl_price')} hint={t('cyl_price_help')} className="col-span-2" />}
+        <TextInput label={byKg ? `${t('low_stock_alert')} (${t('kg')})` : t('low_stock_alert')} value={f.low_level} onChange={set('low_level')} filter="int" hint={cylinder ? t('low_stock_help') : undefined} />
         <TextInput label={t('sort_order')} value={f.sort} onChange={set('sort')} filter="int" />
         {!initial && !noOpening && byKg && <TextInput label={t('gas_in_stock')} value={f.gas_kg} onChange={set('gas_kg')} filter="decimal" className="col-span-2" />}
-        {!initial && !noOpening && !byKg && (
+        {!initial && !noOpening && item && (
+          <div className="col-span-2 flex items-center justify-between">
+            <span className="font-semibold">{t('opening_stock')}</span>
+            <QtyStepper value={f.full_qty} onChange={set('full_qty')} />
+          </div>
+        )}
+        {!initial && !noOpening && cylinder && (
           <>
             <div className="col-span-2 flex items-center justify-between">
               <span className="font-semibold">{t('opening_full')}</span>
@@ -357,7 +470,7 @@ export function TypeForm({ open, initial, onClose, onSaved, noOpening = false })
 
 /** Open full cylinders into loose gas: the cylinders become empty, their kg is added. */
 function FillGas({ gas, types, onClose }) {
-  const sources = types.filter((x) => x.unit !== 'kg' && x.active && Number(x.kg) > 0 && x.full_qty > 0);
+  const sources = types.filter((x) => x.unit === '' && x.active && Number(x.kg) > 0 && x.full_qty > 0);
   const [from, setFrom] = useState('');
   const [count, setCount] = useState(1);
   const [note, setNote] = useState('');

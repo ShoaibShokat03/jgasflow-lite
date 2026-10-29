@@ -74,7 +74,11 @@ export default function SaleView() {
                   .filter((i) => i.qty > 0 || i.kg > 0)
                   .map((i) => (
                     <tr key={i.uid}>
-                      <td className="py-1 font-semibold">{i.type_name}</td>
+                      <td className="py-1 font-semibold">
+                        {i.type_name}
+                        {i.mode === 'new' && <div className="text-[11px] text-muted font-normal">{t('with_cyl_line')}</div>}
+                        {i.mode === 'empty' && <div className="text-[11px] text-muted font-normal">{t('empty_cyl_line')}</div>}
+                      </td>
                       <td className="text-right num whitespace-nowrap">{i.kg > 0 ? `${num0(i.kg)} ${t('kg')}` : i.qty}</td>
                       <td className="text-right num">{num0(i.price)}</td>
                       <td className="text-right num font-semibold">{num0(i.amount)}</td>

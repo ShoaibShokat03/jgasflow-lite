@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Banknote, Building2, Check, ChevronsUpDown, CircleCheck, CircleDashed, Cylinder, FileText, Footprints, Pencil, Smartphone, UserPlus, Wallet } from 'lucide-react';
+import { Banknote, Building2, Check, ChevronDown, ChevronsUpDown, CircleCheck, CircleDashed, FileText, Footprints, Pencil, Smartphone, UserPlus, Wallet } from 'lucide-react';
 import { api, queryClient, useGet } from '@/lib/api';
 import { dayKey, MAX_UNIT_PRICE, money, num0, numInput, parseNum } from '@/lib/format';
 import { opt, t } from '@/lib/i18n';
 import { MoneySelect, useDefaultMoney, useMoneyChoices } from '@/ui/money';
 import { Async, Balance, Button, Card, cn, Initials, KV, PageHeader, SectionHeader } from '@/ui/kit';
-import { DateInput, Dropdown, MoneyInput, QtyStepper, Switch, Textarea } from '@/ui/form';
+import { Chips, DateInput, Dropdown, MoneyInput, QtyStepper, Switch, Textarea } from '@/ui/form';
 import { Modal, toast, useConfirm } from '@/ui/overlay';
 import { CustomerPicker, useLeaveGuard } from '@/ui/pickers';
+import { groupOf, groupOptions, StockArt } from '@/ui/StockArt';
 import { PartyForm } from './forms';
 
 export const METHOD_ICONS = { cash: Banknote, bank: Building2, jazzcash: Smartphone, easypaisa: Smartphone, cheque: FileText };
@@ -21,9 +22,26 @@ const priceFor = (type, customer, custom) => {
 };
 
 const isKg = (ty) => ty.unit === 'kg';
+const isItem = (ty) => ty.unit === 'pcs';
 const round2 = (v) => Math.round(v * 100) / 100;
-/** Amount of one line: cylinders x price, or kg x price per kg for loose gas. */
-const lineAmount = (l) => round2(isKg(l.type) ? parseNum(l.kg) * l.price : l.qty * l.price);
+
+/**
+ * Amount of one card. Cylinders can be sold three ways: refill (an empty comes
+ * back), with the cylinder (gas + cylinder price, the customer keeps it), or
+ * the empty cylinder alone (cylinder price). Loose gas by kg, other items by count.
+ */
+const lineAmount = (l) => {
+  if (isKg(l.type)) return round2(parseNum(l.kg) * l.price);
+  if (isItem(l.type)) return round2(l.qty * l.price);
+  return round2(l.qty * l.price + l.newQty * (l.price + l.cylPrice) + l.emptySold * l.cylPrice);
+};
+const isActive = (l) => (isKg(l.type) ? parseNum(l.kg) > 0 : l.qty > 0 || l.empty > 0 || l.newQty > 0 || l.emptySold > 0);
+/** Stock asked for that the shop does not have. */
+const shortOf = (l) => {
+  if (isKg(l.type)) return parseNum(l.kg) > Math.max(0, l.type.gas_kg) + 0.001;
+  if (isItem(l.type)) return l.qty > Math.max(0, l.type.full_qty);
+  return l.qty + l.newQty > Math.max(0, l.type.full_qty) || l.emptySold > Math.max(0, l.type.empty_qty) + l.empty;
+};
 
 /** Loose gas: type the kg, or the rupees the customer wants (kg is worked out). */
 function KgEntry({ line, onChange, max }) {
@@ -67,6 +85,19 @@ function KgEntry({ line, onChange, max }) {
   );
 }
 
+/** One stepper row: label, a short line under it, and the counter. */
+function Row({ label, sub, value, onChange, max, tone }) {
+  return (
+    <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold truncate">{label}</div>
+        {sub && <div className="text-[11.5px] text-muted truncate">{sub}</div>}
+      </div>
+      <QtyStepper value={value} onChange={onChange} max={max} tone={tone} />
+    </div>
+  );
+}
+
 export default function NewSale() {
   const types = useGet('/types');
   return <Async q={types}>{(list) => <SaleForm types={list} />}</Async>;
@@ -78,7 +109,8 @@ function SaleForm({ types }) {
   const [params] = useSearchParams();
   const [customer, setCustomer] = useState(null);
   const [custom, setCustom] = useState({});
-  const [lines, setLines] = useState(() => types.map((ty) => ({ type: ty, price: ty.price, qty: 0, empty: 0, kg: '', rs: '' })));
+  const [lines, setLines] = useState(() => types.map((ty) => ({ type: ty, price: ty.price, cylPrice: Number(ty.cyl_price) || 0, qty: 0, empty: 0, newQty: 0, emptySold: 0, kg: '', rs: '', more: false })));
+  const [group, setGroup] = useState('');
   const [chargeDeposit, setChargeDeposit] = useState(false);
   const [payMode, setPayMode] = useState('full');
   const accounts = useMoneyChoices();
@@ -93,6 +125,7 @@ function SaleForm({ types }) {
   const [addCust, setAddCust] = useState(null);
   // Udhaar or partial chosen before a customer: applied once one is picked.
   const [wantMode, setWantMode] = useState(null);
+  // { i, field: 'price' | 'cylPrice' } of the price being changed.
   const [editPrice, setEditPrice] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -132,7 +165,8 @@ function SaleForm({ types }) {
   }, []);
 
   const set = (i, patch) => setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch } : l)));
-  const unreturned = (l) => (l.qty > l.empty ? l.qty - l.empty : 0);
+  // Only a refill leaves the shop's cylinder with the customer (security applies to it).
+  const unreturned = (l) => (!isKg(l.type) && !isItem(l.type) && l.qty > l.empty ? l.qty - l.empty : 0);
   const depositAmt = (l, charge) => (charge ? unreturned(l) * l.type.deposit : 0);
   const subtotal = round2(lines.reduce((a, l) => a + lineAmount(l), 0));
   const deposit = customer ? lines.reduce((a, l) => a + depositAmt(l, chargeDeposit), 0) : 0;
@@ -140,17 +174,19 @@ function SaleForm({ types }) {
   const total = Math.max(0, subtotal + deposit - disc);
   const paidAmount = !customer || payMode === 'full' ? total : payMode === 'udhaar' ? 0 : parseNum(paid);
   const anyUnreturned = lines.some((l) => unreturned(l) > 0 && l.type.deposit > 0);
-  const dirty = lines.some((l) => l.qty || l.empty || parseNum(l.kg)) || !!discount || !!note;
+  const dirty = lines.some(isActive) || !!discount || !!note;
+  const picked = lines.filter(isActive);
   useLeaveGuard(dirty && !saving);
 
   const save = async () => {
     if (saving) return;
-    if (!lines.some((l) => l.qty > 0 || parseNum(l.kg) > 0)) return toast(t('add_qty_first'), 'error');
+    if (!lines.some((l) => l.qty > 0 || l.newQty > 0 || l.emptySold > 0 || parseNum(l.kg) > 0)) return toast(t('add_qty_first'), 'error');
     if (disc > subtotal + deposit) return toast(t('discount_too_big'), 'error');
     if (paidAmount > total + 0.009) return toast(t('paid_more_than_total'), 'error');
     if (paidAmount > 0 && !moneyId) return toast(t('choose_cash_bank'), 'error');
-    // No sale of cylinders the shop does not have: record the purchase first.
-    const short = lines.filter((l) => (isKg(l.type) ? parseNum(l.kg) > Math.max(0, l.type.gas_kg) + 0.001 : l.qty > Math.max(0, l.type.full_qty)));
+    if (lines.some((l) => (l.newQty > 0 || l.emptySold > 0) && !(l.cylPrice > 0))) return toast(t('cyl_price_needed'), 'error');
+    // Nothing is sold that the shop does not have: record the purchase first.
+    const short = lines.filter(shortOf);
     if (short.length) {
       await confirm({
         title: t('stock_short_title'),
@@ -158,7 +194,9 @@ function SaleForm({ types }) {
           .map((l) =>
             isKg(l.type)
               ? `${l.type.name}: ${t('in_stock')} ${num0(Math.max(0, l.type.gas_kg))} ${t('kg')}, ${t('selling')} ${num0(parseNum(l.kg))} ${t('kg')}`
-              : `${l.type.name}: ${t('in_stock')} ${Math.max(0, l.type.full_qty)}, ${t('selling')} ${l.qty}`,
+              : isItem(l.type)
+                ? `${l.type.name}: ${t('in_stock')} ${Math.max(0, l.type.full_qty)}, ${t('selling')} ${l.qty}`
+                : `${l.type.name}: ${t('full')} ${Math.max(0, l.type.full_qty)} / ${l.qty + l.newQty}, ${t('empty')} ${Math.max(0, l.type.empty_qty) + l.empty} / ${l.emptySold}`,
           )
           .join('\n')}\n\n${isKg(short[0].type) ? t('gas_short_msg') : t('stock_short_msg')}`,
         okLabel: t('ok'),
@@ -166,14 +204,25 @@ function SaleForm({ types }) {
       });
       return;
     }
+    const out = [];
+    for (const l of lines) {
+      const uid = l.type.uid;
+      if (isKg(l.type)) {
+        if (parseNum(l.kg) > 0) out.push({ type_uid: uid, qty: 0, empty: 0, kg: round2(parseNum(l.kg)), price: l.price });
+      } else if (isItem(l.type)) {
+        if (l.qty > 0) out.push({ type_uid: uid, qty: l.qty, empty: 0, price: l.price });
+      } else {
+        if (l.qty || l.empty) out.push({ type_uid: uid, qty: l.qty, empty: l.empty, price: l.price, mode: '' });
+        if (l.newQty) out.push({ type_uid: uid, qty: l.newQty, empty: 0, price: round2(l.price + l.cylPrice), mode: 'new' });
+        if (l.emptySold) out.push({ type_uid: uid, qty: l.emptySold, empty: 0, price: l.cylPrice, mode: 'empty' });
+      }
+    }
     setSaving(true);
     try {
       const res = await api.post('/sales', {
         customer_uid: customer?.uid ?? null,
         date: date === dayKey() ? undefined : date,
-        lines: lines
-          .filter((l) => l.qty || l.empty || parseNum(l.kg) > 0)
-          .map((l) => (isKg(l.type) ? { type_uid: l.type.uid, qty: 0, empty: 0, kg: round2(parseNum(l.kg)), price: l.price } : { type_uid: l.type.uid, qty: l.qty, empty: l.empty, price: l.price })),
+        lines: out,
         charge_deposit: !!customer && chargeDeposit,
         discount: disc,
         paid: paidAmount,
@@ -196,6 +245,9 @@ function SaleForm({ types }) {
     navigate(-1);
   };
 
+  const groups = groupOptions(types);
+  const shown = lines.map((l, i) => [l, i]).filter(([l]) => !group || groupOf(l.type) === group);
+
   return (
     <div>
       <PageHeader title={t('new_sale')} actions={<Button variant="outline" onClick={leave}>{t('cancel')}</Button>} />
@@ -203,51 +255,66 @@ function SaleForm({ types }) {
         <div className="min-w-0">
           {/* customer */}
           <div className="flex gap-2.5 items-stretch">
-          <Card as="button" onClick={() => setPicker(true)} className="flex-1 min-w-0 text-left p-3 flex items-center gap-3 hover:border-[#cfd2e6] transition">
-            {customer ? (
-              <Initials name={customer.name} size={42} tone={customer.type === 'wholesale' ? 'purple' : 'navy'} />
-            ) : (
-              <div className="grid place-items-center size-[42px] rounded-[var(--radius-ctl)] bg-bg text-muted">
-                <Footprints className="size-5" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="text-[11.5px] font-semibold text-muted">{t('customer')}</div>
-              <div className="font-extrabold text-[15px] truncate">{customer ? customer.name : t('walk_in')}</div>
-              {customer && (
-                <div className="text-[12px] text-muted truncate">
-                  {t(customer.type)}
-                  {customer.phone ? ` · ${customer.phone}` : ''}
+            <Card as="button" onClick={() => setPicker(true)} className="flex-1 min-w-0 text-left p-3 flex items-center gap-3 hover:border-[#cfd2e6] transition">
+              {customer ? (
+                <Initials name={customer.name} size={42} tone={customer.type === 'wholesale' ? 'purple' : 'navy'} />
+              ) : (
+                <div className="grid place-items-center size-[42px] rounded-[var(--radius-ctl)] bg-bg text-muted">
+                  <Footprints className="size-5" />
                 </div>
               )}
-            </div>
-            {customer && <Balance value={customer.balance} className="text-[13px]" />}
-            <ChevronsUpDown className="size-5 text-muted shrink-0" />
-          </Card>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11.5px] font-semibold text-muted">{t('customer')}</div>
+                <div className="font-extrabold text-[15px] truncate">{customer ? customer.name : t('walk_in')}</div>
+                {customer && (
+                  <div className="text-[12px] text-muted truncate">
+                    {t(customer.type)}
+                    {customer.phone ? ` · ${customer.phone}` : ''}
+                  </div>
+                )}
+              </div>
+              {customer && <Balance value={customer.balance} className="text-[13px]" />}
+              <ChevronsUpDown className="size-5 text-muted shrink-0" />
+            </Card>
             <Button variant="outline" icon={UserPlus} className="!h-auto" onClick={() => setAddCust('')} aria-label={t('add_new_customer')} title={t('add_new_customer')}>
               <span className="hidden sm:inline">{t('add_customer')}</span>
             </Button>
           </div>
 
-          <SectionHeader title={t('cylinders')} action={<span className="text-[11.5px] text-muted">{t('tap_price_to_change')}</span>} />
+          <SectionHeader title={t('what_selling')} action={<span className="text-[11.5px] text-muted">{t('tap_price_to_change')}</span>} />
+          {groups.length > 2 && <Chips className="mb-3" size="sm" value={group} onChange={setGroup} options={groups} />}
           <div className="grid sm:grid-cols-2 gap-2.5">
-            {lines.map((l, i) => {
+            {shown.map(([l, i]) => {
               const byKg = isKg(l.type);
-              const active = byKg ? parseNum(l.kg) > 0 : l.qty > 0 || l.empty > 0;
-              const inStock = byKg ? Math.max(0, l.type.gas_kg) : Math.max(0, l.type.full_qty);
-              const short = byKg ? parseNum(l.kg) > inStock + 0.001 : l.qty > inStock;
-              const out = inStock <= 0;
+              const item = isItem(l.type);
+              const active = isActive(l);
+              const full = Math.max(0, l.type.full_qty);
+              const empties = Math.max(0, l.type.empty_qty);
+              const short = shortOf(l);
+              const out = byKg ? l.type.gas_kg <= 0 : item ? full <= 0 : full <= 0 && empties <= 0;
+              const stockText = byKg
+                ? out
+                  ? t('out_of_stock')
+                  : `${num0(Math.max(0, l.type.gas_kg))} ${t('kg')} ${t('in_stock')}`
+                : item
+                  ? out
+                    ? t('out_of_stock')
+                    : `${num0(full)} ${t('in_stock')}${l.type.category ? ` · ${l.type.category}` : ''}`
+                  : `${t('full')}: ${full} · ${t('empty')}: ${empties}`;
+              const more = l.more || l.newQty > 0 || l.emptySold > 0;
               return (
                 <div key={l.type.uid} className={cn('bg-white rounded-[var(--radius-card)] p-3 transition border', active ? 'border-primary ring-1 ring-primary/30 shadow-[var(--shadow-card)]' : 'border-line')}>
-                  <div className="flex items-center gap-2">
-                    <Cylinder className={cn('size-5 shrink-0', active ? 'text-primary' : 'text-muted')} />
+                  <div className="flex items-center gap-2.5">
+                    <StockArt type={l.type} size={40} />
                     <div className="min-w-0 flex-1">
                       <div className="font-extrabold text-[14.5px] truncate">{l.type.name}</div>
-                      <div className={cn('text-[11.5px] truncate', short || out ? 'text-bad font-bold' : 'text-muted')}>
-                        {byKg ? (out ? t('out_of_stock') : `${num0(inStock)} ${t('kg')} ${t('in_stock')}`) : <>{out ? t('out_of_stock') : `${t('full')}: ${inStock}`} · {t('empty')}: {l.type.empty_qty}</>}
-                      </div>
+                      <div className={cn('text-[11.5px] truncate', short || out ? 'text-bad font-bold' : 'text-muted')}>{stockText}</div>
                     </div>
-                    <button type="button" onClick={() => setEditPrice(i)} className="inline-flex items-center gap-1 h-8 px-2 rounded-[var(--radius-xs)] bg-[#fff0e6] text-accent-dark font-extrabold text-[13px] whitespace-nowrap num hover:bg-[#ffe2cf]">
+                    <button
+                      type="button"
+                      onClick={() => setEditPrice({ i, field: 'price' })}
+                      className="inline-flex items-center gap-1 h-8 px-2 rounded-[var(--radius-xs)] bg-[#fff0e6] text-accent-dark font-extrabold text-[13px] whitespace-nowrap num hover:bg-[#ffe2cf]"
+                    >
                       {money(l.price)}
                       {byKg && <span className="text-[11px] font-bold">/{t('kg')}</span>}
                       <Pencil className="size-3.5" />
@@ -255,17 +322,39 @@ function SaleForm({ types }) {
                     </button>
                   </div>
                   {byKg ? (
-                    <KgEntry line={l} onChange={(p) => set(i, p)} max={inStock} />
+                    <KgEntry line={l} onChange={(p) => set(i, p)} max={Math.max(0, l.type.gas_kg)} />
+                  ) : item ? (
+                    <Row label={t('qty')} value={l.qty} onChange={(v) => set(i, { qty: v })} max={full} />
                   ) : (
                     <>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <span className="text-[13px] font-semibold">{t('qty')}</span>
-                        <QtyStepper value={l.qty} onChange={(v) => set(i, { qty: v })} max={inStock} />
-                      </div>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <span className="text-[13px] font-semibold">{t('empty_recv')}</span>
-                        <QtyStepper value={l.empty} onChange={(v) => set(i, { empty: v })} tone="orange" />
-                      </div>
+                      <Row label={t('sell_refill')} sub={t('sell_refill_sub')} value={l.qty} onChange={(v) => set(i, { qty: v })} max={Math.max(0, full - l.newQty)} />
+                      <Row label={t('empty_recv')} value={l.empty} onChange={(v) => set(i, { empty: v })} tone="orange" />
+                      {more ? (
+                        <div className="mt-2 pt-2 border-t border-dashed border-line">
+                          <Row
+                            label={t('sell_with_cyl')}
+                            sub={l.cylPrice > 0 ? `${money(l.price + l.cylPrice)} ${t('each')}` : t('cyl_price_set')}
+                            value={l.newQty}
+                            onChange={(v) => set(i, { newQty: v })}
+                            max={Math.max(0, full - l.qty)}
+                          />
+                          <Row
+                            label={t('sell_empty_cyl')}
+                            sub={l.cylPrice > 0 ? `${money(l.cylPrice)} ${t('each')}` : t('cyl_price_set')}
+                            value={l.emptySold}
+                            onChange={(v) => set(i, { emptySold: v })}
+                            max={empties + l.empty}
+                            tone="orange"
+                          />
+                          <button type="button" onClick={() => setEditPrice({ i, field: 'cylPrice' })} className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-primary hover:underline">
+                            <Pencil className="size-3" /> {t('cyl_price')}: {money(l.cylPrice)}
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => set(i, { more: true })} className="mt-2 w-full inline-flex items-center justify-center gap-1 h-8 rounded-[var(--radius-xs)] bg-bg text-[12.5px] font-bold text-primary hover:bg-soft">
+                          {t('sell_cyl_more')} <ChevronDown className="size-4" />
+                        </button>
+                      )}
                     </>
                   )}
                   {active && (
@@ -286,6 +375,24 @@ function SaleForm({ types }) {
         <div className="lg:sticky lg:top-5">
           <SectionHeader title={t('payment')} className="lg:mt-0" />
           <Card className="p-4 space-y-4">
+            {picked.length > 0 && (
+              <div className="rounded-[var(--radius-card)] border border-line px-3 py-2 text-[12.5px] space-y-0.5">
+                {picked.map((l) => (
+                  <div key={l.type.uid} className="flex items-center gap-2">
+                    <StockArt type={l.type} size={18} />
+                    <span className="flex-1 min-w-0 truncate font-semibold">
+                      {l.type.name}
+                      <span className="text-muted font-normal">
+                        {isKg(l.type)
+                          ? ` · ${num0(parseNum(l.kg))} ${t('kg')}`
+                          : [l.qty ? ` · ${l.qty}${isItem(l.type) ? '' : ` ${t('refill_short')}`}` : '', l.newQty ? ` · ${l.newQty} ${t('with_cyl_short')}` : '', l.emptySold ? ` · ${l.emptySold} ${t('empty_cyl_short')}` : ''].join('')}
+                      </span>
+                    </span>
+                    <span className="num font-bold whitespace-nowrap">{money(lineAmount(l))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {customer && anyUnreturned && (
               <Switch checked={chargeDeposit} onChange={setChargeDeposit} label={t('charge_security')} sub={`${t('security_deposit')}: ${money(lines.reduce((a, l) => a + depositAmt(l, true), 0))}`} />
             )}
@@ -357,26 +464,30 @@ function SaleForm({ types }) {
       />
       <PartyForm open={addCust !== null} prefill={addCust ?? ''} onClose={() => setAddCust(null)} onSaved={(res) => res?.uid && choose({ uid: res.uid })} />
       <PriceDialog
-        line={editPrice != null ? lines[editPrice] : null}
+        line={editPrice ? lines[editPrice.i] : null}
+        field={editPrice?.field}
         onClose={() => setEditPrice(null)}
-        onSave={(p) => (p > MAX_UNIT_PRICE ? toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error') : (set(editPrice, { price: p, rs: '' }), setEditPrice(null)))}
+        onSave={(p) =>
+          p > MAX_UNIT_PRICE ? toast(t('price_too_big', { max: money(MAX_UNIT_PRICE) }), 'error') : (set(editPrice.i, editPrice.field === 'cylPrice' ? { cylPrice: p } : { price: p, rs: '' }), setEditPrice(null))
+        }
       />
     </div>
   );
 }
 
-function PriceDialog({ line, onClose, onSave }) {
+function PriceDialog({ line, field = 'price', onClose, onSave }) {
   const [v, setV] = useState('');
+  const cyl = field === 'cylPrice';
   useEffect(() => {
-    setV(line ? String(line.price) : '');
-  }, [line]);
+    setV(line ? String(cyl ? line.cylPrice : line.price) : '');
+  }, [line, cyl]);
   if (!line) return null;
   return (
     <Modal
       open
       onClose={onClose}
       size="sm"
-      title={`${t('price')} · ${line.type.name}`}
+      title={`${cyl ? t('cyl_price') : t('price')} · ${line.type.name}`}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -396,8 +507,14 @@ function PriceDialog({ line, onClose, onSave }) {
       >
         <MoneyInput value={v} onChange={setV} autoFocus onFocus={(e) => e.target.select()} />
         <div className="mt-2 text-[12px] text-muted">
-          {t('sale_price')}: {money(line.type.price)}
-          {line.type.wholesale_price ? ` · ${t('wholesale')}: ${money(line.type.wholesale_price)}` : ''}
+          {cyl ? (
+            t('cyl_price_help')
+          ) : (
+            <>
+              {t('sale_price')}: {money(line.type.price)}
+              {line.type.wholesale_price ? ` · ${t('wholesale')}: ${money(line.type.wholesale_price)}` : ''}
+            </>
+          )}
         </div>
       </form>
     </Modal>

@@ -110,7 +110,12 @@ export function saleText(shop, s) {
     fDateTime(s.date),
     s.customer_name ? `${t('customer')}: ${s.customer_name}` : `${t('customer')}: ${t('walk_in')}`,
     '',
-    ...s.items.filter((i) => i.qty > 0 || i.kg > 0).map((i) => (i.kg > 0 ? `${i.type_name}: ${num0(i.kg)} ${t('kg')} x ${num0(i.price)} = ${money(i.amount)}` : `${i.type_name}: ${i.qty} x ${num0(i.price)} = ${money(i.amount)}`)),
+    ...s.items
+      .filter((i) => i.qty > 0 || i.kg > 0)
+      .map((i) => {
+        const name = i.mode === 'new' ? `${i.type_name} (${t('with_cyl_line')})` : i.mode === 'empty' ? `${i.type_name} (${t('empty_cyl_line')})` : i.type_name;
+        return i.kg > 0 ? `${name}: ${num0(i.kg)} ${t('kg')} x ${num0(i.price)} = ${money(i.amount)}` : `${name}: ${i.qty} x ${num0(i.price)} = ${money(i.amount)}`;
+      }),
     ...s.items.filter((i) => i.empty_qty > 0).map((i) => `${t('empty_received')} ${i.type_name}: ${i.empty_qty}`),
     '',
     s.deposit ? `${t('security_deposit')}: ${money(s.deposit)}` : null,

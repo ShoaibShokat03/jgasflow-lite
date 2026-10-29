@@ -41,8 +41,9 @@ const u = (name: string, ref: string, nullable = false): Col => ({ name, kind: '
 export const TABLES: TableSpec[] = [
   {
     name: 'cylinder_types',
-    // unit: '' = sold as cylinders, 'kg' = loose gas sold by weight (prices per kg)
-    cols: [s('name', 60), n('kg'), m('price'), m('wholesale_price'), m('purchase_price'), m('deposit'), i('low_level'), i('sort'), b('active'), s('unit', 10)],
+    // unit: '' = gas cylinder, 'kg' = loose gas sold by weight (prices per kg), 'pcs' = other item (stove, regulator...)
+    // category: group of an other item; color: cylinder colour (#hex); cyl_price: price of the cylinder itself (sold empty or with gas)
+    cols: [s('name', 60), n('kg'), m('price'), m('wholesale_price'), m('purchase_price'), m('deposit'), i('low_level'), i('sort'), b('active'), s('unit', 10), s('category', 60), s('color', 20), m('cyl_price')],
   },
   {
     name: 'customers',
@@ -72,7 +73,8 @@ export const TABLES: TableSpec[] = [
   {
     name: 'sale_items',
     // kg: weight sold for loose gas lines (qty is 0 then)
-    cols: [u('sale_uid', 'sales'), u('type_uid', 'cylinder_types'), i('qty'), i('empty_qty'), m('price'), m('deposit'), m('amount'), n('kg')],
+    // mode: '' = refill (full out, empties back), 'new' = gas with the cylinder (customer keeps it), 'empty' = cylinder without gas
+    cols: [u('sale_uid', 'sales'), u('type_uid', 'cylinder_types'), i('qty'), i('empty_qty'), m('price'), m('deposit'), m('amount'), n('kg'), s('mode', 10)],
     index: [['tenant_id', 'sale_uid']],
   },
   {
@@ -94,7 +96,8 @@ export const TABLES: TableSpec[] = [
   },
   {
     name: 'purchase_items',
-    cols: [u('purchase_uid', 'purchases'), u('type_uid', 'cylinder_types'), i('qty'), i('empty_sent'), m('price'), m('amount')],
+    // mode: '' = gas (full in, empties out) or other items, 'empty' = new empty cylinders bought
+    cols: [u('purchase_uid', 'purchases'), u('type_uid', 'cylinder_types'), i('qty'), i('empty_sent'), m('price'), m('amount'), s('mode', 10)],
     index: [['tenant_id', 'purchase_uid']],
   },
   {

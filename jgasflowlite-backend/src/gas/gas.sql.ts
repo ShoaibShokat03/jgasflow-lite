@@ -10,11 +10,15 @@ export const SUP_BAL = `(s.opening_balance
   + IFNULL((SELECT SUM(p.total) FROM purchases p WHERE p.tenant_id = s.tenant_id AND p.supplier_uid = s.uid AND p.deleted = 0), 0)
   - IFNULL((SELECT SUM(x.amount) FROM supplier_payments x WHERE x.tenant_id = s.tenant_id AND x.supplier_uid = s.uid AND x.deleted = 0), 0))`;
 
-export const SALE_ITEMS_TEXT = `(SELECT GROUP_CONCAT(IF(t.unit = 'kg', CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM si.kg)), ' kg ', t.name), CONCAT(si.qty, ' x ', t.name)) ORDER BY t.sort SEPARATOR ', ')
+export const SALE_ITEMS_TEXT = `(SELECT GROUP_CONCAT(CASE
+      WHEN t.unit = 'kg' THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM si.kg)), ' kg ', t.name)
+      WHEN si.mode = 'new' THEN CONCAT(si.qty, ' x ', t.name, ' + cylinder')
+      WHEN si.mode = 'empty' THEN CONCAT(si.qty, ' x empty ', t.name)
+      ELSE CONCAT(si.qty, ' x ', t.name) END ORDER BY t.sort SEPARATOR ', ')
   FROM sale_items si JOIN cylinder_types t ON t.tenant_id = si.tenant_id AND t.uid = si.type_uid
   WHERE si.tenant_id = s.tenant_id AND si.sale_uid = s.uid AND si.deleted = 0 AND (si.qty > 0 OR si.kg > 0))`;
 
-export const PUR_ITEMS_TEXT = `(SELECT GROUP_CONCAT(CONCAT(pi.qty, ' x ', t.name) ORDER BY t.sort SEPARATOR ', ')
+export const PUR_ITEMS_TEXT = `(SELECT GROUP_CONCAT(IF(pi.mode = 'empty', CONCAT(pi.qty, ' x empty ', t.name), CONCAT(pi.qty, ' x ', t.name)) ORDER BY t.sort SEPARATOR ', ')
   FROM purchase_items pi JOIN cylinder_types t ON t.tenant_id = pi.tenant_id AND t.uid = pi.type_uid
   WHERE pi.tenant_id = p.tenant_id AND pi.purchase_uid = p.uid AND pi.deleted = 0 AND pi.qty > 0)`;
 

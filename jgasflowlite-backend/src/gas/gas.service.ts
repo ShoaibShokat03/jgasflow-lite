@@ -22,6 +22,12 @@ export interface TypeIn {
   empty_qty?: number;
   /** Opening loose gas in kg (kg types). */
   gas_kg?: number;
+  /** Other items: their group (Stoves, Regulators...). */
+  category?: string;
+  /** Cylinder colour (#hex) for the pictures. */
+  color?: string;
+  /** Price of the cylinder itself: sold empty, or added to the gas when sold with the cylinder. */
+  cyl_price?: number;
 }
 export interface PartyIn {
   name: string;
@@ -35,7 +41,8 @@ export interface SaleIn {
   customer_uid?: string | null;
   date?: string;
   /** kg: weight for loose gas lines. */
-  lines: { type_uid: string; qty: number; empty: number; price: number; kg?: number }[];
+  /** mode: '' refill, 'new' gas with the cylinder, 'empty' cylinder without gas. Other items: qty only. */
+  lines: { type_uid: string; qty: number; empty: number; price: number; kg?: number; mode?: '' | 'new' | 'empty' }[];
   charge_deposit: boolean;
   discount: number;
   paid: number;
@@ -47,7 +54,8 @@ export interface SaleIn {
 export interface PurchaseIn {
   supplier_uid?: string | null;
   date?: string;
-  lines: { type_uid: string; qty: number; empty_sent: number; price: number }[];
+  /** mode 'empty': new empty cylinders bought (cylinders only). */
+  lines: { type_uid: string; qty: number; empty_sent: number; price: number; mode?: '' | 'empty' }[];
   paid: number;
   method: string;
   money_id?: number;
@@ -109,7 +117,10 @@ export class GasService {
       const gasKg = round2(Number(r.gas_kg));
       return {
         ...out(r),
-        unit: byKg ? 'kg' : '',
+        unit: byKg ? 'kg' : r.unit === 'pcs' ? 'pcs' : '',
+        category: r.category ?? '',
+        color: r.color ?? '',
+        cyl_price: Number(r.cyl_price) || 0,
         full_qty: Number(r.full_qty),
         empty_qty: Number(r.empty_qty),
         gas_kg: gasKg,
@@ -148,33 +159,37 @@ export class GasService {
 
   async saveType(u: AuthUser, b: TypeIn, uid?: string) {
     const now = toDb();
-    const byKg = b.unit === 'kg';
-    const fields: Record<string, unknown> = {
-      name: b.name,
-      kg: byKg ? 0 : b.kg,
-      price: b.price,
-      wholesale_price: b.wholesale_price,
-      purchase_price: b.purchase_price,
-      // Loose gas has no cylinder, so no security.
-      deposit: byKg ? 0 : b.deposit,
-      low_level: b.low_level,
-      sort: b.sort,
-      active: b.active ? 1 : 0,
+    const fieldsFor = (unit: string): Record<string, unknown> => {
+      const cyl = unit === '';
+      return {
+        name: b.name,
+        // Loose gas and other items have no cylinder: no weight, security or cylinder price.
+        kg: cyl ? b.kg : 0,
+        price: b.price,
+        wholesale_price: b.wholesale_price,
+        purchase_price: b.purchase_price,
+        deposit: cyl ? b.deposit : 0,
+        low_level: b.low_level,
+        sort: b.sort,
+        active: b.active ? 1 : 0,
+        category: unit === 'pcs' ? (b.category ?? '').trim().slice(0, 60) : '',
+        color: cyl ? (b.color ?? '') : '',
+        cyl_price: cyl ? (b.cyl_price ?? 0) : 0,
+      };
     };
     return this.write(u, async (w) => {
       if (!uid) {
-        const id = await w.insert('cylinder_types', { ...fields, unit: byKg ? 'kg' : '' });
+        const unit = b.unit === 'kg' || b.unit === 'pcs' ? b.unit : '';
+        const id = await w.insert('cylinder_types', { ...fieldsFor(unit), unit });
         await this.logPrice(w, id, 'sale', 0, b.price, now, 'opening');
-        if (byKg) await this.move(w, id, 0, 0, 'opening', now, '', b.gas_kg ?? 0);
+        if (unit === 'kg') await this.move(w, id, 0, 0, 'opening', now, '', b.gas_kg ?? 0);
+        else if (unit === 'pcs') await this.move(w, id, b.full_qty ?? 0, 0, 'opening', now);
         else await this.move(w, id, b.full_qty ?? 0, b.empty_qty ?? 0, 'opening', now);
         return { uid: id };
       }
       const old = await this.typeRow(w.q, w.tenantId, uid);
-      // The unit never changes after the type is made (old bills depend on it).
-      if (old.unit === 'kg') {
-        fields.kg = 0;
-        fields.deposit = 0;
-      }
+      // The kind never changes after the type is made (old bills depend on it).
+      const fields = fieldsFor(old.unit === 'kg' || old.unit === 'pcs' ? old.unit : '');
       await w.update('cylinder_types', uid, fields);
       if (old.price !== b.price) await this.logPrice(w, uid, 'sale', old.price, b.price, now);
       if (old.wholesale_price !== b.wholesale_price) await this.logPrice(w, uid, 'wholesale', old.wholesale_price, b.wholesale_price, now);
@@ -249,6 +264,7 @@ export class GasService {
       const ty = await this.typeRow(w.q, w.tenantId, uid);
       const cur = await this.stockOf(w.q, w.tenantId, uid);
       if (ty.unit === 'kg') await this.move(w, uid, 0, 0, 'adjust', toDb(), note, (kg ?? 0) - cur.kg);
+      else if (ty.unit === 'pcs') await this.move(w, uid, full - cur.full, 0, 'adjust', toDb(), note);
       else await this.move(w, uid, full - cur.full, empty - cur.empty, 'adjust', toDb(), note);
       return { ok: true };
     });
@@ -265,7 +281,7 @@ export class GasService {
       const gas = await this.typeRow(w.q, t, uid);
       if (gas.unit !== 'kg') throw new BadRequestException('Choose a gas sold by kg');
       const from = await this.typeRow(w.q, t, fromUid);
-      if (from.unit === 'kg') throw new BadRequestException('Choose a cylinder');
+      if (from.unit === 'kg' || from.unit === 'pcs') throw new BadRequestException('Choose a cylinder');
       const weight = Number(from.kg);
       if (!(weight > 0)) throw new BadRequestException(`Set the weight (kg) of ${from.name} first`);
       if (count < 1) throw new BadRequestException('Enter how many cylinders');
@@ -400,6 +416,7 @@ export class GasService {
   /** Set what a customer currently holds (opening / correction, no stock effect). */
   setHeld(u: AuthUser, customerUid: string, typeUid: string, qty: number, deposit: number) {
     return this.write(u, async (w) => {
+      if ((await this.typeRow(w.q, w.tenantId, typeUid)).unit !== '') throw new BadRequestException('Choose a cylinder');
       const cur = await w.q.one<any>(
         'SELECT IFNULL(SUM(qty_delta),0) AS q, IFNULL(SUM(deposit_delta),0) AS d FROM held_moves WHERE tenant_id = ? AND customer_uid = ? AND type_uid = ? AND deleted = 0',
         [w.tenantId, customerUid, typeUid],
@@ -421,7 +438,7 @@ export class GasService {
     return this.write(u, async (w) => {
       const c = await w.q.one<any>('SELECT name FROM customers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [w.tenantId, customerUid]);
       if (!c) throw new NotFoundException('Customer not found');
-      await this.typeRow(w.q, w.tenantId, typeUid);
+      if ((await this.typeRow(w.q, w.tenantId, typeUid)).unit !== '') throw new BadRequestException('Choose a cylinder');
       await this.held(w, customerUid, typeUid, -qty, -refund, 'return', now);
       const ruid = await w.insert('cylinder_returns', { customer_uid: customerUid, type_uid: typeUid, qty, deposit_refund: refund, date: now, note });
       if (moneyId && refundFrom) await this.money.tag(w.q, w.tenantId, 'return', ruid, refundFrom);
@@ -473,7 +490,7 @@ export class GasService {
   async createSale(u: AuthUser, b: SaleIn) {
     const when = normDate(b.date) ?? toDb();
     const used = b.lines.filter((l) => l.qty > 0 || l.empty > 0 || (l.kg ?? 0) > 0);
-    if (!used.length) throw new BadRequestException('Add at least one cylinder');
+    if (!used.length) throw new BadRequestException('Add at least one item');
     const pay = await this.payFrom(tid(u), { amount: b.paid, method: b.method, money_id: b.money_id, date: when }, false);
     return this.write(u, async (w) => {
       const t = w.tenantId;
@@ -482,28 +499,67 @@ export class GasService {
         const c = await w.q.one('SELECT id FROM customers WHERE tenant_id = ? AND uid = ? AND deleted = 0', [t, cid]);
         if (!c) throw new NotFoundException('Customer not found');
       }
-      const lines: { l: SaleIn['lines'][number]; dep: number; amount: number; kg: number }[] = [];
+      type Line = { l: SaleIn['lines'][number]; dep: number; amount: number; kg: number; kind: 'cyl' | 'kg' | 'pcs'; mode: '' | 'new' | 'empty' };
+      const lines: Line[] = [];
+      // Stock needed per type, checked once for all lines of that type.
+      const need = new Map<string, { full: number; empty: number; emptyIn: number; ty: any }>();
       for (const l of used) {
         const ty = await this.typeRow(w.q, t, l.type_uid);
+        const nd = need.get(l.type_uid) ?? { full: 0, empty: 0, emptyIn: 0, ty };
+        need.set(l.type_uid, nd);
         if (ty.unit === 'kg') {
           // Loose gas: sold by weight, no cylinder, no empties, no security.
           const kg = round2(l.kg ?? 0);
           if (!(kg > 0)) continue;
           const have = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).kg);
           if (kg > have + 0.001) throw new BadRequestException(`Not enough ${ty.name}: ${have} kg in stock, selling ${kg} kg. Fill it from a cylinder first.`);
-          lines.push({ l: { ...l, qty: 0, empty: 0 }, dep: 0, amount: round2(kg * l.price), kg });
+          lines.push({ l: { ...l, qty: 0, empty: 0 }, dep: 0, amount: round2(kg * l.price), kg, kind: 'kg', mode: '' });
           continue;
         }
-        // Never sell full cylinders the shop does not have.
-        if (l.qty > 0) {
-          const inStock = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).full);
-          if (l.qty > inStock) throw new BadRequestException(`Not enough full ${ty.name} cylinders: ${inStock} in stock, selling ${l.qty}. Record the purchase first.`);
+        if (ty.unit === 'pcs') {
+          // Other items (stoves, regulators...): sold by count.
+          if (!(l.qty > 0)) continue;
+          nd.full += l.qty;
+          lines.push({ l: { ...l, empty: 0 }, dep: 0, amount: round2(l.qty * l.price), kg: 0, kind: 'pcs', mode: '' });
+          continue;
         }
+        const mode = l.mode === 'new' || l.mode === 'empty' ? l.mode : '';
+        if (mode === 'new') {
+          // Gas with the cylinder: the customer keeps the cylinder, nothing comes back.
+          if (!(l.qty > 0)) continue;
+          nd.full += l.qty;
+          lines.push({ l: { ...l, empty: 0 }, dep: 0, amount: round2(l.qty * l.price), kg: 0, kind: 'cyl', mode });
+          continue;
+        }
+        if (mode === 'empty') {
+          // An empty cylinder (no gas) sold from the empties in stock.
+          if (!(l.qty > 0)) continue;
+          nd.empty += l.qty;
+          lines.push({ l: { ...l, empty: 0 }, dep: 0, amount: round2(l.qty * l.price), kg: 0, kind: 'cyl', mode });
+          continue;
+        }
+        nd.full += l.qty;
+        nd.emptyIn += l.empty;
         const unreturned = l.qty > l.empty ? l.qty - l.empty : 0;
         const dep = cid && b.charge_deposit ? round2(unreturned * Number(ty.deposit)) : 0;
-        lines.push({ l, dep, amount: round2(l.qty * l.price), kg: 0 });
+        lines.push({ l, dep, amount: round2(l.qty * l.price), kg: 0, kind: 'cyl', mode: '' });
       }
-      if (!lines.length) throw new BadRequestException('Add at least one cylinder');
+      // Never sell what the shop does not have.
+      for (const [uid, nd] of need) {
+        if (!nd.full && !nd.empty) continue;
+        const st = await this.stockOf(w.q, t, uid);
+        if (nd.full > Math.max(0, st.full)) {
+          throw new BadRequestException(
+            nd.ty.unit === 'pcs'
+              ? `Not enough ${nd.ty.name}: ${Math.max(0, st.full)} in stock, selling ${nd.full}. Record the purchase first.`
+              : `Not enough full ${nd.ty.name} cylinders: ${Math.max(0, st.full)} in stock, selling ${nd.full}. Record the purchase first.`,
+          );
+        }
+        if (nd.empty > Math.max(0, st.empty) + nd.emptyIn) {
+          throw new BadRequestException(`Not enough empty ${nd.ty.name} cylinders: ${Math.max(0, st.empty) + nd.emptyIn} available, selling ${nd.empty}.`);
+        }
+      }
+      if (!lines.length) throw new BadRequestException('Add at least one item');
       const subtotal = round2(lines.reduce((a, x) => a + x.amount, 0));
       const deposit = round2(lines.reduce((a, x) => a + x.dep, 0));
       const discount = round2(b.discount);
@@ -513,10 +569,16 @@ export class GasService {
       const no = await w.nextNo('S');
       const saleUid = await w.insert('sales', { no, customer_uid: cid, date: when, subtotal, deposit, discount, total, paid: round2(b.paid), note: b.note, created_at: toDb() });
       const ref = docNo('S', no);
-      for (const { l, dep, amount, kg } of lines) {
-        await w.insert('sale_items', { sale_uid: saleUid, type_uid: l.type_uid, qty: l.qty, empty_qty: l.empty, price: l.price, deposit: dep, amount, kg });
-        await this.move(w, l.type_uid, -l.qty, l.empty, 'sale', when, ref, -kg);
-        if (cid && !kg) await this.held(w, cid, l.type_uid, l.qty - l.empty, dep, 'sale', when, ref);
+      for (const { l, dep, amount, kg, kind, mode } of lines) {
+        await w.insert('sale_items', { sale_uid: saleUid, type_uid: l.type_uid, qty: l.qty, empty_qty: l.empty, price: l.price, deposit: dep, amount, kg, mode });
+        if (kind === 'kg') await this.move(w, l.type_uid, 0, 0, 'sale', when, ref, -kg);
+        else if (kind === 'pcs' || mode === 'new') await this.move(w, l.type_uid, -l.qty, 0, 'sale', when, ref);
+        else if (mode === 'empty') await this.move(w, l.type_uid, 0, -l.qty, 'sale', when, ref);
+        else {
+          await this.move(w, l.type_uid, -l.qty, l.empty, 'sale', when, ref);
+          // Only a refill leaves the shop's cylinders with the customer.
+          if (cid) await this.held(w, cid, l.type_uid, l.qty - l.empty, dep, 'sale', when, ref);
+        }
       }
       if (b.paid > 0) {
         const puid = await w.insert('payments', { customer_uid: cid, sale_uid: saleUid, date: when, amount: round2(b.paid), method: pay.method, note: '', created_at: toDb() });
@@ -611,15 +673,32 @@ export class GasService {
       const s = await w.q.one<any>('SELECT * FROM sales WHERE tenant_id = ? AND uid = ? AND deleted = 0', [t, uid]);
       if (!s) throw new NotFoundException('Sale not found');
       const ref = docNo('S', s.no);
-      const items = await w.q.all<any>('SELECT * FROM sale_items WHERE tenant_id = ? AND sale_uid = ? AND deleted = 0', [t, uid]);
+      const items = await w.q.all<any>(
+        `SELECT si.*, ty.unit FROM sale_items si JOIN cylinder_types ty ON ty.tenant_id = si.tenant_id AND ty.uid = si.type_uid
+         WHERE si.tenant_id = ? AND si.sale_uid = ? AND si.deleted = 0`,
+        [t, uid],
+      );
+      // Taking the sale back must not leave any stock below zero (net per type: what returns minus what leaves).
+      const net = new Map<string, number>();
       for (const it of items) {
-        if (Number(it.empty_qty) > 0 && Number(it.empty_qty) > (await this.stockOf(w.q, t, it.type_uid)).empty) {
+        if (Number(it.kg) > 0 || it.unit === 'pcs') continue;
+        const d = it.mode === 'empty' ? Number(it.qty) : it.mode === 'new' ? 0 : -Number(it.empty_qty);
+        net.set(it.type_uid, (net.get(it.type_uid) ?? 0) + d);
+      }
+      for (const [typeUid, d] of net) {
+        if (d < 0 && (await this.stockOf(w.q, t, typeUid)).empty + d < 0) {
           throw new BadRequestException('The empty cylinders from this sale were already sent to a supplier, so it cannot be deleted.');
         }
       }
       for (const it of items) {
-        await this.move(w, it.type_uid, it.qty, -it.empty_qty, 'sale_del', now, ref, Number(it.kg) || 0);
-        if (s.customer_uid && !(Number(it.kg) > 0)) await this.held(w, s.customer_uid, it.type_uid, -(it.qty - it.empty_qty), -Number(it.deposit), 'sale_del', now, ref);
+        const kg = Number(it.kg) || 0;
+        if (kg > 0) await this.move(w, it.type_uid, 0, 0, 'sale_del', now, ref, kg);
+        else if (it.unit === 'pcs' || it.mode === 'new') await this.move(w, it.type_uid, it.qty, 0, 'sale_del', now, ref);
+        else if (it.mode === 'empty') await this.move(w, it.type_uid, 0, it.qty, 'sale_del', now, ref);
+        else {
+          await this.move(w, it.type_uid, it.qty, -it.empty_qty, 'sale_del', now, ref);
+          if (s.customer_uid) await this.held(w, s.customer_uid, it.type_uid, -(it.qty - it.empty_qty), -Number(it.deposit), 'sale_del', now, ref);
+        }
         await w.remove('sale_items', it.uid);
       }
       await w.removeWhere('payments', 'sale_uid', uid);
@@ -733,13 +812,17 @@ export class GasService {
     const pay = await this.payFrom(tid(u), { amount: b.paid, method: b.method, money_id: b.money_id, date: when }, true);
     return this.write(u, async (w) => {
       const t = w.tenantId;
+      const sent = new Map<string, number>();
       for (const l of used) {
         const ty = await w.q.one<any>('SELECT name, unit FROM cylinder_types WHERE tenant_id = ? AND uid = ?', [t, l.type_uid]);
         if (ty?.unit === 'kg') throw new BadRequestException(`${ty.name} is sold by kg. Buy full cylinders, then use Fill from cylinder.`);
-        if (l.empty_sent > 0) {
-          const have = Math.max(0, (await this.stockOf(w.q, t, l.type_uid)).empty);
-          if (l.empty_sent > have) throw new BadRequestException(`Not enough empty ${ty?.name ?? ''} cylinders: ${have} in stock, sending ${l.empty_sent}.`);
-        }
+        if (ty?.unit === 'pcs' && (l.mode === 'empty' || l.empty_sent > 0)) throw new BadRequestException(`${ty.name} is not a cylinder.`);
+        if (l.mode !== 'empty' && l.empty_sent > 0) sent.set(l.type_uid, (sent.get(l.type_uid) ?? 0) + l.empty_sent);
+      }
+      for (const [uid, n] of sent) {
+        const have = Math.max(0, (await this.stockOf(w.q, t, uid)).empty);
+        const ty = await this.typeRow(w.q, t, uid);
+        if (n > have) throw new BadRequestException(`Not enough empty ${ty.name} cylinders: ${have} in stock, sending ${n}.`);
       }
       const sid = b.supplier_uid || null;
       if (sid) {
@@ -752,9 +835,12 @@ export class GasService {
       const ref = docNo('P', no);
       for (const l of used) {
         const ty = await this.typeRow(w.q, t, l.type_uid);
-        await w.insert('purchase_items', { purchase_uid: pid, type_uid: l.type_uid, qty: l.qty, empty_sent: l.empty_sent, price: l.price, amount: round2(l.qty * l.price) });
-        await this.move(w, l.type_uid, l.qty, -l.empty_sent, 'purchase', when, ref);
-        if (b.update_prices && l.qty > 0 && l.price > 0 && l.price !== Number(ty.purchase_price)) {
+        const empties = l.mode === 'empty';
+        await w.insert('purchase_items', { purchase_uid: pid, type_uid: l.type_uid, qty: l.qty, empty_sent: empties ? 0 : l.empty_sent, price: l.price, amount: round2(l.qty * l.price), mode: empties ? 'empty' : '' });
+        // New empty cylinders join the empties; gas and other items join the stock.
+        if (empties) await this.move(w, l.type_uid, 0, l.qty, 'purchase', when, ref);
+        else await this.move(w, l.type_uid, l.qty, -l.empty_sent, 'purchase', when, ref);
+        if (!empties && b.update_prices && l.qty > 0 && l.price > 0 && l.price !== Number(ty.purchase_price)) {
           await w.update('cylinder_types', l.type_uid, { purchase_price: l.price });
           await this.logPrice(w, l.type_uid, 'purchase', Number(ty.purchase_price), l.price, when, ref);
         }
@@ -808,10 +894,12 @@ export class GasService {
       const ref = docNo('P', p.no);
       const items = await w.q.all<any>('SELECT * FROM purchase_items WHERE tenant_id = ? AND purchase_uid = ? AND deleted = 0', [t, uid]);
       for (const it of items) {
-        if (Number(it.qty) > (await this.stockOf(w.q, t, it.type_uid)).full) throw new BadRequestException('Cylinders from this purchase are already sold, so it cannot be deleted. Correct the stock instead.');
+        const st = await this.stockOf(w.q, t, it.type_uid);
+        if (Number(it.qty) > (it.mode === 'empty' ? st.empty : st.full)) throw new BadRequestException('Items from this purchase are already sold, so it cannot be deleted. Correct the stock instead.');
       }
       for (const it of items) {
-        await this.move(w, it.type_uid, -it.qty, it.empty_sent, 'purchase_del', now, ref);
+        if (it.mode === 'empty') await this.move(w, it.type_uid, 0, -it.qty, 'purchase_del', now, ref);
+        else await this.move(w, it.type_uid, -it.qty, it.empty_sent, 'purchase_del', now, ref);
         await w.remove('purchase_items', it.uid);
       }
       await w.removeWhere('supplier_payments', 'purchase_uid', uid);
@@ -921,8 +1009,9 @@ export class GasService {
       outstanding: Number(o?.t ?? 0),
       udhaar_customers: Number(o?.n ?? 0),
       // Never shown below zero (older records may have sent more empties than were in stock).
-      full_total: types.reduce((a, x) => a + Math.max(0, x.full_qty), 0),
-      empty_total: types.reduce((a, x) => a + Math.max(0, x.empty_qty), 0),
+      full_total: types.reduce((a, x) => a + (x.unit === '' ? Math.max(0, x.full_qty) : 0), 0),
+      empty_total: types.reduce((a, x) => a + (x.unit === '' ? Math.max(0, x.empty_qty) : 0), 0),
+      items_total: types.reduce((a, x) => a + (x.unit === 'pcs' ? Math.max(0, x.full_qty) : 0), 0),
       with_customers: Number(h?.q ?? 0),
       deposit_held: Number(h?.d ?? 0),
       customer_count: Number(counts?.c ?? 0),

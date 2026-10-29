@@ -22,8 +22,11 @@ const zType = z.object({
   active: z.boolean().default(true),
   full_qty: zQty.optional(),
   empty_qty: zQty.optional(),
-  unit: z.enum(['', 'kg']).optional().default(''),
+  unit: z.enum(['', 'kg', 'pcs']).optional().default(''),
   gas_kg: zKg.optional(),
+  category: zText(60),
+  color: z.string().trim().regex(/^(#[0-9a-fA-F]{6})?$/, 'Choose a colour').optional().default(''),
+  cyl_price: zUnitPrice.default(0),
 });
 
 const zParty = z.object({
@@ -42,7 +45,10 @@ const zMoneyId = z.coerce.number().int().positive().optional();
 const zSale = z.object({
   customer_uid: zUid.nullable().optional(),
   date: zDateOpt,
-  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty: zQty.default(0), price: zUnitPrice.default(0), kg: zKg.default(0) })).min(1).max(50),
+  lines: z
+    .array(z.object({ type_uid: zUid, qty: zQty.default(0), empty: zQty.default(0), price: zUnitPrice.default(0), kg: zKg.default(0), mode: z.enum(['', 'new', 'empty']).optional().default('') }))
+    .min(1)
+    .max(150),
   charge_deposit: z.boolean().default(false),
   discount: zMoney.default(0),
   paid: zMoney.default(0),
@@ -54,7 +60,7 @@ const zSale = z.object({
 const zPurchase = z.object({
   supplier_uid: zUid.nullable().optional(),
   date: zDateOpt,
-  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty_sent: zQty.default(0), price: zUnitPrice.default(0) })).min(1).max(50),
+  lines: z.array(z.object({ type_uid: zUid, qty: zQty.default(0), empty_sent: zQty.default(0), price: zUnitPrice.default(0), mode: z.enum(['', 'empty']).optional().default('') })).min(1).max(150),
   paid: zMoney.default(0),
   method: zMethod,
   money_id: zMoneyId,

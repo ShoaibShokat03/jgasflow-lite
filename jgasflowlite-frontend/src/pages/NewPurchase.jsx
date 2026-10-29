@@ -12,6 +12,7 @@ import { toast, useConfirm } from '@/ui/overlay';
 import { SupplierPicker, useLeaveGuard } from '@/ui/pickers';
 import { PartyForm } from './forms';
 import { TypeForm } from './Stock';
+import { StockArt } from '@/ui/StockArt';
 
 export default function NewPurchase() {
   const types = useGet('/types');
@@ -29,7 +30,7 @@ function Form({ types }) {
   // Partial or payable chosen before a supplier: applied once one is picked.
   const [wantMode, setWantMode] = useState(null);
   // Loose gas (sold by kg) comes from opening full cylinders, not from purchases.
-  const [lines, setLines] = useState(() => types.filter((ty) => ty.unit !== 'kg').map((ty) => ({ type: ty, price: numInput(ty.purchase_price), qty: 0, sent: 0 })));
+  const [lines, setLines] = useState(() => types.filter((ty) => ty.unit !== 'kg').map((ty) => ({ type: ty, price: numInput(ty.purchase_price), qty: 0, sent: 0, emptyBuy: 0, emptyRate: '', more: false })));
   const [payMode, setPayMode] = useState('full');
   const [paid, setPaid] = useState('');
   const accounts = useMoneyChoices();
@@ -42,9 +43,10 @@ function Form({ types }) {
   const [saving, setSaving] = useState(false);
 
   const set = (i, p) => setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...p } : l)));
-  const total = lines.reduce((a, l) => a + l.qty * parseNum(l.price), 0);
+  // Gas or items at their rate, plus new empty cylinders bought at theirs.
+  const total = lines.reduce((a, l) => a + l.qty * parseNum(l.price) + l.emptyBuy * parseNum(l.emptyRate), 0);
   const paidAmount = !supplier || payMode === 'full' ? total : payMode === 'udhaar' ? 0 : parseNum(paid);
-  const dirty = lines.some((l) => l.qty || l.sent) || !!note;
+  const dirty = lines.some((l) => l.qty || l.sent || l.emptyBuy) || !!note;
   useLeaveGuard(dirty && !saving);
 
   const pickSupplier = (s) => {
@@ -78,7 +80,7 @@ function Form({ types }) {
   };
 
   const save = async () => {
-    if (!lines.some((l) => l.qty || l.sent)) return toast(t('add_qty_first'), 'error');
+    if (!lines.some((l) => l.qty || l.sent || l.emptyBuy)) return toast(t('add_qty_first'), 'error');
     if (paidAmount > total + 0.009) return toast(t('paid_more_than_total'), 'error');
     if (paidAmount > 0 && !moneyId) return toast(t('choose_cash_bank'), 'error');
     // Never send more empties than the shop has: stock cannot go below zero.
@@ -97,7 +99,10 @@ function Form({ types }) {
       const res = await api.post('/purchases', {
         supplier_uid: supplier?.uid ?? null,
         date: date === dayKey() ? undefined : date,
-        lines: lines.filter((l) => l.qty || l.sent).map((l) => ({ type_uid: l.type.uid, qty: l.qty, empty_sent: l.sent, price: parseNum(l.price) })),
+        lines: lines.flatMap((l) => [
+          ...(l.qty || l.sent ? [{ type_uid: l.type.uid, qty: l.qty, empty_sent: l.type.unit === 'pcs' ? 0 : l.sent, price: parseNum(l.price) }] : []),
+          ...(l.emptyBuy ? [{ type_uid: l.type.uid, qty: l.emptyBuy, empty_sent: 0, price: parseNum(l.emptyRate), mode: 'empty' }] : []),
+        ]),
         paid: paidAmount,
         money_id: paidAmount > 0 ? Number(moneyId) : undefined,
         note,
@@ -134,24 +139,25 @@ function Form({ types }) {
           </div>
 
           <SectionHeader
-            title={t('cylinders_received')}
+            title={t('items_received')}
             action={
               <Button size="sm" variant="outline" icon={Plus} onClick={() => setAddType(true)}>
-                {t('add_cylinder_type')}
+                {t('add_stock_item')}
               </Button>
             }
           />
           <div className="grid sm:grid-cols-2 gap-2.5">
             {lines.map((l, i) => {
-              const active = l.qty || l.sent;
+              const active = l.qty || l.sent || l.emptyBuy;
+              const item = l.type.unit === 'pcs';
               return (
                 <div key={l.type.uid} className={cn('bg-white rounded-[var(--radius-card)] p-3 border transition', active ? 'border-primary ring-1 ring-primary/30' : 'border-line')}>
-                  <div className="flex items-center gap-2">
-                    <Cylinder className={cn('size-5', active ? 'text-primary' : 'text-muted')} />
+                  <div className="flex items-center gap-2.5">
+                    <StockArt type={l.type} size={36} />
                     <div className="min-w-0 flex-1">
                       <div className="font-extrabold truncate">{l.type.name}</div>
-                      <div className="text-[11.5px] text-muted">
-                        {t('full')}: {l.type.full_qty} · {t('empty')}: {l.type.empty_qty}
+                      <div className="text-[11.5px] text-muted truncate">
+                        {item ? `${l.type.category || t('cat_other_items')} · ${t('in_stock')}: ${Math.max(0, l.type.full_qty)}` : `${t('full')}: ${l.type.full_qty} · ${t('empty')}: ${l.type.empty_qty}`}
                       </div>
                     </div>
                   </div>
@@ -160,17 +166,36 @@ function Form({ types }) {
                     <MoneyInput value={l.price} onChange={(v) => set(i, { price: v })} className="w-[148px]" aria-label={t('rate')} />
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[13px] font-semibold">{t('full_recv')}</span>
+                    <span className="text-[13px] font-semibold">{item ? t('qty_received') : t('full_recv')}</span>
                     <QtyStepper value={l.qty} onChange={(v) => set(i, { qty: v })} />
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[13px] font-semibold">{t('empty_sent')}</span>
-                    <QtyStepper value={l.sent} onChange={(v) => set(i, { sent: v })} tone="orange" />
-                  </div>
-                  {l.qty > 0 && (
+                  {!item && (
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-[13px] font-semibold">{t('empty_sent')}</span>
+                      <QtyStepper value={l.sent} onChange={(v) => set(i, { sent: v })} tone="orange" />
+                    </div>
+                  )}
+                  {!item &&
+                    (l.more || l.emptyBuy > 0 ? (
+                      <div className="mt-2 pt-2 border-t border-dashed border-line">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[13px] font-semibold">{t('buy_empty_cyl')}</span>
+                          <QtyStepper value={l.emptyBuy} onChange={(v) => set(i, { emptyBuy: v })} tone="orange" />
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="text-[13px] font-semibold">{t('empty_cyl_rate')}</span>
+                          <MoneyInput value={l.emptyRate} onChange={(v) => set(i, { emptyRate: v })} className="w-[148px]" aria-label={t('empty_cyl_rate')} />
+                        </div>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => set(i, { more: true })} className="mt-2 w-full h-8 rounded-[var(--radius-xs)] bg-bg text-[12.5px] font-bold text-primary hover:bg-soft">
+                        {t('buy_empty_more')}
+                      </button>
+                    ))}
+                  {(l.qty > 0 || l.emptyBuy > 0) && (
                     <div className="mt-2.5 pt-2.5 border-t border-line flex justify-between">
                       <span className="text-[12px] font-bold text-muted">{t('amount')}</span>
-                      <span className="font-black num">{money(l.qty * parseNum(l.price))}</span>
+                      <span className="font-black num">{money(l.qty * parseNum(l.price) + l.emptyBuy * parseNum(l.emptyRate))}</span>
                     </div>
                   )}
                 </div>

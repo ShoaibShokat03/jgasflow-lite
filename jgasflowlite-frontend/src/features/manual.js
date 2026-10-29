@@ -3,7 +3,7 @@
  * English (en) and Roman Urdu (ur). Steps quote on-screen labels in **bold**.
  * Keep it current when a screen changes. No em or en dashes.
  */
-export const MANUAL_UPDATED = '28 Oct 2026';
+export const MANUAL_UPDATED = '29 Oct 2026';
 
 export const MANUAL = [
   {
@@ -121,9 +121,12 @@ export const MANUAL = [
     to: '/app/stock',
     en: {
       title: 'Stock',
-      intro: 'See full, empty and customer cylinders, and correct counts after checking the godown.',
+      intro: 'Gas cylinders, loose gas and other items like chulhas and regulators: see the stock and correct counts after checking the godown.',
       steps: [
-        'Open **Stock**. The top tiles show **Ready to sell**, **To refill**, **With customers** and **Total owned**.',
+        'Click **Add item** and choose **Gas cylinder**, **Loose gas** or **Other item**. A cylinder has a **Cylinder colour** (its picture shows it) and a **Cylinder price**: the price of the cylinder itself. An other item has a **Category** such as Chulha (stove), Regulator or Pipe.',
+        'Open **Stock**. The top tiles show **Ready to sell**, **To refill**, **With customers**, **Total owned** and **Other items**. Use the chips (**Cylinders**, **Loose gas**, each category) to see one group.',
+        'In **New sale** a cylinder can be sold three ways: **Refill** (the empty comes back), **With cylinder** (gas plus the cylinder price, the customer keeps it) or **Empty cylinder** (no gas). Click **Sell with cylinder or empty** on its card. Other items are sold by **Qty**.',
+        'In **New purchase**, other items come in by **Qty received**; click **Bought new empty cylinders?** to add new empty cylinders at their own rate.',
         'Each size card shows **Full**, **Empty** and **With customers**, and the **Stock value** of its full cylinders.',
         '**Stock at cost** and **Stock at sale price** show what all full cylinders are worth (full cylinders x price). The same totals are on **Prices** and **Cylinder types**.',
         'After counting the godown, click **Adjust stock**, enter the real **Full cylinders** and **Empty cylinders**, add a **Reason** and click **Save**.',
@@ -133,8 +136,11 @@ export const MANUAL = [
     },
     ur: {
       title: 'Stock',
-      intro: 'Bhare, khali aur gahakon ke cylinder dekhein, aur godown gin kar ginti theek karein.',
+      intro: 'Gas cylinder, khula gas aur doosra saman jaise chulha aur regulator: stock dekhein aur godown gin kar ginti theek karein.',
       steps: [
+        '**Add item** daba kar **Gas cylinder**, **Loose gas** ya **Other item** chunein. Cylinder ka **Cylinder colour** (tasveer mein dikhta hai) aur **Cylinder price** hota hai: sirf cylinder ki qeemat. Doosre saman ki **Category** hoti hai jaise Chulha (stove), Regulator ya Pipe.',
+        '**New sale** mein cylinder teen tarah bikta hai: **Refill** (khali wapas aata hai), **With cylinder** (gas aur cylinder ki qeemat, cylinder gahak ka) ya **Empty cylinder** (bina gas). Card par **Sell with cylinder or empty** dabayein. Doosra saman **Qty** se bikta hai.',
+        '**New purchase** mein doosra saman **Qty received** se aata hai; naye khali cylinder ke liye **Bought new empty cylinders?** dabayein.',
         '**Stock** kholein. Upar tiles **Ready to sell**, **To refill**, **With customers** aur **Total owned** dikhati hain.',
         'Har size card mein **Full**, **Empty** aur **With customers** hain, aur bhare cylinderon ki **Stock value**.',
         '**Stock at cost** aur **Stock at sale price** batate hain ke sab bhare cylinder kitne ke hain (bhare cylinder x qeemat). Yahi total **Prices** aur **Cylinder types** par bhi hain.',

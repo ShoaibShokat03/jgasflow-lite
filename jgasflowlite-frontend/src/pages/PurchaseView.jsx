@@ -63,7 +63,9 @@ export default function PurchaseView() {
                   <tr key={i.uid}>
                     <td className="py-1 font-semibold">
                       {i.type_name}
-                      <div className="text-[11px] text-muted font-normal">@ {num0(i.price)}</div>
+                      <div className="text-[11px] text-muted font-normal">
+                        {i.mode === 'empty' ? `${t('empty_cyl_line')} · ` : ''}@ {num0(i.price)}
+                      </div>
                     </td>
                     <td className="text-right num">{i.qty}</td>
                     <td className="text-right num">{i.empty_sent}</td>

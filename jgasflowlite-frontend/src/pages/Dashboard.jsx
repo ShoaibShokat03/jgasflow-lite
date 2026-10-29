@@ -1,3 +1,4 @@
+import { StockArt } from '@/ui/StockArt';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -41,6 +42,8 @@ function Body({ d }) {
   const weekTotal = d.last7.reduce((a, x) => a + x.total, 0);
   const stockLink = auth.isManager ? '/app/stock' : undefined;
   const maxFull = Math.max(1, ...d.types.filter((x) => x.unit !== 'kg').map((x) => x.full_qty));
+  // Cylinders first, then loose gas, then other items.
+  d = { ...d, types: [...d.types].sort((a, b) => (a.unit === 'pcs') - (b.unit === 'pcs') || (a.unit === 'kg') - (b.unit === 'kg')) };
 
   const actions = [
     { icon: Plus, label: t('new_sale'), color: '#F26B1D', to: '/app/sales/new' },
@@ -153,19 +156,23 @@ function Body({ d }) {
             {d.types.map((x) => (
               <div key={x.uid} className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <IconBox icon={Cylinder} color={x.is_low ? '#C62828' : '#020033'} size={34} />
+                  <StockArt type={x} size={34} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold truncate">{x.name}</span>
                       {x.is_low && <Tag tone="red">{t('low')}</Tag>}
                     </div>
                     <div className="text-[12px] text-muted truncate">
-                      {x.unit === 'kg' ? `${money(x.price)}/${t('kg')}` : `${num0(x.empty_qty)} ${t('empty')} · ${num0(x.with_customers)} ${t('with_customers').toLowerCase()} · ${money(x.price)}`}
+                      {x.unit === 'kg'
+                        ? `${money(x.price)}/${t('kg')}`
+                        : x.unit === 'pcs'
+                          ? `${x.category || t('cat_other_items')} · ${money(x.price)}`
+                          : `${num0(x.empty_qty)} ${t('empty')} · ${num0(x.with_customers)} ${t('with_customers').toLowerCase()} · ${money(x.price)}`}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-[18px] font-extrabold num leading-tight whitespace-nowrap">{num0(x.unit === 'kg' ? x.gas_kg : x.full_qty)}</div>
-                    <div className="text-[11px] text-muted">{x.unit === 'kg' ? t('kg') : t('full')}</div>
+                    <div className="text-[11px] text-muted">{x.unit === 'kg' ? t('kg') : x.unit === 'pcs' ? t('in_stock') : t('full')}</div>
                   </div>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-soft overflow-hidden">

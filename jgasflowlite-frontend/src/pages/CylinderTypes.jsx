@@ -9,6 +9,7 @@ import { Async, Button, Card, cn, Empty, IconBox, PageHeader, Tag } from '@/ui/k
 import { toast, useConfirm } from '@/ui/overlay';
 import { stockValue, StockValueTiles } from '@/ui/StockValue';
 import { TypeForm } from './Stock';
+import { StockArt } from '@/ui/StockArt';
 
 /** Cylinder sizes: add, edit prices and security, hide or delete. */
 export default function CylinderTypes() {
@@ -73,10 +74,10 @@ export default function CylinderTypes() {
                       <tr key={ty.uid} className={cn('border-t border-line', !ty.active && 'bg-bg/60')}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <IconBox icon={Cylinder} color={ty.active ? '#020033' : '#5F6279'} />
+                            <StockArt type={ty} size={36} />
                             <div>
                               <div className="font-bold">{ty.name}</div>
-                              <div className="text-[12px] text-muted">{ty.unit === 'kg' ? t('per_kg') : `${num0(ty.kg)} kg`}</div>
+                              <div className="text-[12px] text-muted">{ty.unit === 'kg' ? t('per_kg') : ty.unit === 'pcs' ? ty.category || t('cat_other_items') : `${num0(ty.kg)} kg`}</div>
                             </div>
                             {!ty.active && <Tag tone="gray">{t('inactive')}</Tag>}
                           </div>

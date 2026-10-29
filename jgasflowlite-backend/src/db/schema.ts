@@ -6,7 +6,7 @@ import { Col, TABLES } from './tables';
  * Schema is created and upgraded here on boot (idempotent). Bump SCHEMA_VERSION
  * and add a step to UPGRADES for any change after the first release.
  */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 const SAAS_DDL = [
   `CREATE TABLE IF NOT EXISTS meta (
@@ -390,6 +390,14 @@ const UPGRADES: Record<number, string[]> = {
   9: ["ALTER TABLE acc_vouchers ADD COLUMN party VARCHAR(120) NOT NULL DEFAULT '' AFTER to_id"],
   // v10: the shop's own logo for receipts (a small image as a data URL).
   10: ['ALTER TABLE tenants ADD COLUMN logo MEDIUMTEXT NULL AFTER profile_updated_at', 'ALTER TABLE tenants ADD COLUMN logo_at BIGINT NOT NULL DEFAULT 0 AFTER logo'],
+  // v11: other stock items (stoves, regulators...), cylinder colour and price, selling cylinders with gas or empty.
+  11: [
+    "ALTER TABLE cylinder_types ADD COLUMN category VARCHAR(60) NOT NULL DEFAULT '' AFTER unit",
+    "ALTER TABLE cylinder_types ADD COLUMN color VARCHAR(20) NOT NULL DEFAULT '' AFTER category",
+    'ALTER TABLE cylinder_types ADD COLUMN cyl_price DECIMAL(14,2) NOT NULL DEFAULT 0 AFTER color',
+    "ALTER TABLE sale_items ADD COLUMN mode VARCHAR(10) NOT NULL DEFAULT '' AFTER kg",
+    "ALTER TABLE purchase_items ADD COLUMN mode VARCHAR(10) NOT NULL DEFAULT '' AFTER amount",
+  ],
 };
 
 export async function migrate(q: Q) {
